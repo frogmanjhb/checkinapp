@@ -661,6 +661,8 @@ class MoodCheckInApp {
                 ...user,
                 createdAt: new Date(user.createdAt)
             }));
+        } else {
+            this.allUsers = [];
         }
 
         const savedAllHistory = localStorage.getItem('allMoodHistory');
@@ -669,7 +671,109 @@ class MoodCheckInApp {
                 ...record,
                 timestamp: new Date(record.timestamp)
             }));
+        } else {
+            this.allMoodHistory = [];
         }
+        
+        // Add demo students that all teachers can see
+        this.addDemoStudents();
+    }
+
+    addDemoStudents() {
+        const demoStudents = [
+            {
+                id: 'demo-student-1',
+                firstName: 'Emma',
+                surname: 'Johnson',
+                name: 'Emma Johnson',
+                email: 'emma.johnson@stpeters.co.za',
+                password: 'hashed-password-1',
+                type: 'student',
+                class: 'Grade 6',
+                house: 'Mirfield',
+                createdAt: new Date('2024-01-01')
+            },
+            {
+                id: 'demo-student-2',
+                firstName: 'Liam',
+                surname: 'Smith',
+                name: 'Liam Smith',
+                email: 'liam.smith@stpeters.co.za',
+                password: 'hashed-password-2',
+                type: 'student',
+                class: 'Grade 5',
+                house: 'Bavin',
+                createdAt: new Date('2024-01-01')
+            },
+            {
+                id: 'demo-student-3',
+                firstName: 'Sophia',
+                surname: 'Brown',
+                name: 'Sophia Brown',
+                email: 'sophia.brown@stpeters.co.za',
+                password: 'hashed-password-3',
+                type: 'student',
+                class: 'Grade 7',
+                house: 'Sage',
+                createdAt: new Date('2024-01-01')
+            },
+            {
+                id: 'demo-student-4',
+                firstName: 'Noah',
+                surname: 'Davis',
+                name: 'Noah Davis',
+                email: 'noah.davis@stpeters.co.za',
+                password: 'hashed-password-4',
+                type: 'student',
+                class: 'Grade 6',
+                house: 'Bishops',
+                createdAt: new Date('2024-01-01')
+            },
+            {
+                id: 'demo-student-5',
+                firstName: 'Olivia',
+                surname: 'Wilson',
+                name: 'Olivia Wilson',
+                email: 'olivia.wilson@stpeters.co.za',
+                password: 'hashed-password-5',
+                type: 'student',
+                class: 'Grade 5',
+                house: 'Dodson',
+                createdAt: new Date('2024-01-01')
+            }
+        ];
+
+        // Only add demo students if they don't already exist
+        demoStudents.forEach(demoStudent => {
+            if (!this.allUsers.find(user => user.id === demoStudent.id)) {
+                this.allUsers.push(demoStudent);
+            }
+        });
+
+        // Add demo mood history for these students
+        this.addDemoMoodHistory();
+    }
+
+    addDemoMoodHistory() {
+        const demoMoods = [
+            { studentId: 'demo-student-1', mood: 'happy', emoji: '😊', timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000) },
+            { studentId: 'demo-student-2', mood: 'excited', emoji: '🤩', timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000) },
+            { studentId: 'demo-student-3', mood: 'calm', emoji: '😌', timestamp: new Date(Date.now() - 30 * 60 * 1000) },
+            { studentId: 'demo-student-4', mood: 'tired', emoji: '😴', timestamp: new Date(Date.now() - 45 * 60 * 1000) },
+            { studentId: 'demo-student-5', mood: 'happy', emoji: '😊', timestamp: new Date(Date.now() - 15 * 60 * 1000) }
+        ];
+
+        // Only add demo moods if they don't already exist
+        demoMoods.forEach(demoMood => {
+            if (!this.allMoodHistory.find(mood => 
+                mood.studentId === demoMood.studentId && 
+                mood.timestamp.getTime() === demoMood.timestamp.getTime()
+            )) {
+                this.allMoodHistory.push(demoMood);
+            }
+        });
+
+        this.saveAllMoodHistory();
     }
 
     saveHistory() {
