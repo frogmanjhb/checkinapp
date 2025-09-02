@@ -1,0 +1,20 @@
+{
+  "name": "checkinapp",
+  "version": "1.0.0",
+  "description": "Mood check-in app with emoji-based feelings",
+  "main": "index.js",
+  "scripts": {
+    "start": "http-server -p 3000 -o",
+    "build": "echo 'Build complete'",
+    "dev": "http-server -p 3000 -o"
+  },
+  "keywords": ["mood", "checkin", "feelings", "emoji", "wellness"],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^0.12.3"
+  },
+  "dependencies": {
+    "workbox-webpack-plugin": "^6.0.0"
+  }
+}

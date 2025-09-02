@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REACT - Mood Check-In</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    <meta name="theme-color" content="#2196F3">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Its OK">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="nav-container">
+                <h1 class="nav-title"><span id="moodEmoji" class="mood-emoji-animated">😊</span> REACT</h1>
+                <div class="nav-user" id="navUser" style="display: none;">
+                    <span id="userName"></span>
+                    <button id="logoutBtn" class="btn-secondary">Logout</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Login Screen -->
+            <div id="loginScreen" class="screen active">
+                <div class="login-container">
+                    <div class="login-card">
+                        <h2>Welcome to REACT!</h2>
+                        <p>The Mood Check-In and Well-Being System</p>
+                        <form id="loginForm">
+                            <div class="form-group">
+                                <label for="email">Email</label>
+                                <input type="email" id="email" required placeholder="Enter your email">
+                            </div>
+                            <div class="form-group">
+                                <label for="password">Password</label>
+                                <input type="password" id="password" required placeholder="Enter your password">
+                            </div>
+                            <button type="submit" class="btn-primary">Login</button>
+                        </form>
+                        <div class="auth-switch">
+                            <p>Don't have an account? <a href="#" id="showRegister">Register here</a></p>
+                        </div>
+                        <div class="demo-credentials">
+                            <p><strong>Demo Credentials:</strong></p>
+                            <p>Email: demo@stpeters.co.za</p>
+                            <p>Password: password</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Registration Screen -->
+            <div id="registerScreen" class="screen">
+                <div class="register-container">
+                    <div class="register-card">
+                        <h2>Create Account</h2>
+                        <p>Join the REACT Mood Check-In and Well-Being System</p>
+                        
+                        <!-- User Type Selection -->
+                        <div class="user-type-selection">
+                            <h3>I am a:</h3>
+                            <div class="user-type-buttons">
+                                <button type="button" class="user-type-btn active" data-type="student">
+                                    🎓 Student
+                                </button>
+                                <button type="button" class="user-type-btn" data-type="teacher">
+                                    👨‍🏫 Teacher
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Student Registration Form -->
+                        <form id="studentRegisterForm" class="register-form active">
+                            <div class="form-group">
+                                <label for="studentFirstName">First Name</label>
+                                <input type="text" id="studentFirstName" required placeholder="Enter your first name">
+                            </div>
+                            <div class="form-group">
+                                <label for="studentSurname">Surname</label>
+                                <input type="text" id="studentSurname" required placeholder="Enter your surname">
+                            </div>
+                            <div class="form-group">
+                                <label for="studentClass">Grade</label>
+                                <select id="studentClass" required>
+                                    <option value="">Select your grade</option>
+                                    <option value="Grade 5">Grade 5</option>
+                                    <option value="Grade 6">Grade 6</option>
+                                    <option value="Grade 7">Grade 7</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="studentHouse">House</label>
+                                <select id="studentHouse" required>
+                                    <option value="">Select your house</option>
+                                    <option value="Mirfield">Mirfield</option>
+                                    <option value="Bavin">Bavin</option>
+                                    <option value="Sage">Sage</option>
+                                    <option value="Bishops">Bishops</option>
+                                    <option value="Dodson">Dodson</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="studentEmail">Email</label>
+                                <input type="email" id="studentEmail" required placeholder="your.name@stpeters.co.za">
+                                <small class="form-hint">Must be a @stpeters.co.za email address</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="studentPassword">Password</label>
+                                <input type="password" id="studentPassword" required placeholder="Create a password">
+                            </div>
+                            <div class="form-group">
+                                <label for="studentConfirmPassword">Confirm Password</label>
+                                <input type="password" id="studentConfirmPassword" required placeholder="Confirm your password">
+                            </div>
+                            <button type="submit" class="btn-primary">Create Student Account</button>
+                        </form>
+
+                        <!-- Teacher Registration Form -->
+                        <form id="teacherRegisterForm" class="register-form">
+                            <div class="form-group">
+                                <label for="teacherFirstName">First Name</label>
+                                <input type="text" id="teacherFirstName" required placeholder="Enter your first name">
+                            </div>
+                            <div class="form-group">
+                                <label for="teacherSurname">Surname</label>
+                                <input type="text" id="teacherSurname" required placeholder="Enter your surname">
+                            </div>
+                            <div class="form-group">
+                                <label for="teacherEmail">Email</label>
+                                <input type="email" id="teacherEmail" required placeholder="your.name@stpeters.co.za">
+                                <small class="form-hint">Must be a @stpeters.co.za email address</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="teacherPassword">Password</label>
+                                <input type="password" id="teacherPassword" required placeholder="Create a password">
+                            </div>
+                            <div class="form-group">
+                                <label for="teacherConfirmPassword">Confirm Password</label>
+                                <input type="password" id="teacherConfirmPassword" required placeholder="Confirm your password">
+                            </div>
+                            <button type="submit" class="btn-primary">Create Teacher Account</button>
+                        </form>
+
+                        <div class="auth-switch">
+                            <p>Already have an account? <a href="#" id="showLogin">Login here</a></p>
+                        </div>
+                        
+                        <!-- Debug button -->
+                        <div style="margin-top: 20px; text-align: center;">
+                            <button type="button" onclick="console.log('Debug button clicked'); alert('Debug button works!');" style="background: #ff9800; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
+                                🐛 Debug Test
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Student Dashboard Screen -->
+            <div id="studentDashboardScreen" class="screen">
+                <div class="dashboard-container">
+                    <div class="welcome-section">
+                        <h2>Welcome back, <span id="studentName"></span>! 👋</h2>
+                        <p class="current-time" id="currentTime"></p>
+                    </div>
+
+                    <div class="checkin-section">
+                        <div class="checkin-card">
+                            <h3>😊 Mood Check-In</h3>
+                            <div class="status-display" id="statusDisplay">
+                                <div class="status-item">
+                                    <span class="status-label">Last Mood:</span>
+                                    <span class="status-value" id="lastMood">No mood recorded</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">Today's Check-ins:</span>
+                                    <span class="status-value" id="todayCount">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="action-buttons">
+                            <button id="moodCheckInBtn" class="btn-mood-checkin">
+                                😊 How are you feeling?
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Student Analytics -->
+                    <div class="analytics-section">
+                        <h3>📊 Your Mood Analytics</h3>
+                        <div class="analytics-tabs">
+                            <button class="analytics-tab active" data-period="daily">Daily</button>
+                            <button class="analytics-tab" data-period="weekly">Weekly</button>
+                            <button class="analytics-tab" data-period="monthly">Monthly</button>
+                        </div>
+                        <div class="analytics-content" id="studentAnalytics">
+                            <!-- Analytics will be populated here -->
+                        </div>
+                    </div>
+
+                    <div class="history-section">
+                        <h3>📊 Recent Activity</h3>
+                        <div class="history-list" id="historyList">
+                            <!-- History items will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Teacher Dashboard Screen -->
+            <div id="teacherDashboardScreen" class="screen">
+                <div class="dashboard-container">
+                    <div class="welcome-section">
+                        <h2>Welcome, <span id="teacherName"></span>! 👨‍🏫</h2>
+                        <p class="current-time" id="teacherCurrentTime"></p>
+                    </div>
+
+                    <!-- Teacher Controls -->
+                    <div class="teacher-controls">
+                        <div class="filter-section">
+                            <h3>🔍 View Students</h3>
+                            <div class="filter-controls">
+                                <select id="classFilter">
+                                    <option value="">All Grades</option>
+                                    <option value="Grade 5">Grade 5</option>
+                                    <option value="Grade 6">Grade 6</option>
+                                    <option value="Grade 7">Grade 7</option>
+                                </select>
+                                <select id="houseFilter">
+                                    <option value="">All Houses</option>
+                                    <option value="Mirfield">Mirfield</option>
+                                    <option value="Bavin">Bavin</option>
+                                    <option value="Sage">Sage</option>
+                                    <option value="Bishops">Bishops</option>
+                                    <option value="Dodson">Dodson</option>
+                                </select>
+                                <select id="moodFilter">
+                                    <option value="">All Moods</option>
+                                    <option value="happy">😊 Happy</option>
+                                    <option value="excited">🤩 Excited</option>
+                                    <option value="calm">😌 Calm</option>
+                                    <option value="tired">😴 Tired</option>
+                                    <option value="anxious">😰 Anxious</option>
+                                    <option value="sad">😢 Sad</option>
+                                    <option value="angry">😠 Angry</option>
+                                    <option value="confused">😕 Confused</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Teacher Analytics -->
+                    <div class="teacher-analytics">
+                        <h3>📊 Student Analytics</h3>
+                        <div class="analytics-tabs">
+                            <button class="analytics-tab active" data-period="daily">Daily</button>
+                            <button class="analytics-tab" data-period="weekly">Weekly</button>
+                            <button class="analytics-tab" data-period="monthly">Monthly</button>
+                            <button class="analytics-tab" data-period="yearly">Yearly</button>
+                        </div>
+                        <div class="analytics-content" id="teacherAnalytics">
+                            <!-- Teacher analytics will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Student List -->
+                    <div class="students-section">
+                        <h3>👥 Students</h3>
+                        <div class="students-list" id="studentsList">
+                            <!-- Student list will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mood Check-In Modal -->
+            <div id="moodModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>😊 How are you feeling?</h3>
+                        <button class="close-btn" id="closeMoodModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mood-selection">
+                            <h4>Select your current mood:</h4>
+                            <div class="mood-options">
+                                <button class="mood-btn" data-mood="happy" data-emoji="😊">
+                                    <span class="mood-emoji">😊</span>
+                                    <span class="mood-label">Happy</span>
+                                </button>
+                                <button class="mood-btn" data-mood="excited" data-emoji="🤩">
+                                    <span class="mood-emoji">🤩</span>
+                                    <span class="mood-label">Excited</span>
+                                </button>
+                                <button class="mood-btn" data-mood="calm" data-emoji="😌">
+                                    <span class="mood-emoji">😌</span>
+                                    <span class="mood-label">Calm</span>
+                                </button>
+                                <button class="mood-btn" data-mood="tired" data-emoji="😴">
+                                    <span class="mood-emoji">😴</span>
+                                    <span class="mood-label">Tired</span>
+                                </button>
+                                <button class="mood-btn" data-mood="anxious" data-emoji="😰">
+                                    <span class="mood-emoji">😰</span>
+                                    <span class="mood-label">Anxious</span>
+                                </button>
+                                <button class="mood-btn" data-mood="sad" data-emoji="😢">
+                                    <span class="mood-emoji">😢</span>
+                                    <span class="mood-label">Sad</span>
+                                </button>
+                                <button class="mood-btn" data-mood="angry" data-emoji="😠">
+                                    <span class="mood-emoji">😠</span>
+                                    <span class="mood-label">Angry</span>
+                                </button>
+                                <button class="mood-btn" data-mood="confused" data-emoji="😕">
+                                    <span class="mood-emoji">😕</span>
+                                    <span class="mood-label">Confused</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="notes-section">
+                            <label for="moodNotes">How are you feeling? (optional):</label>
+                            <textarea id="moodNotes" placeholder="Tell us more about how you're feeling..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="confirmMoodCheckin" class="btn-primary" disabled>Check In My Mood</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2024 REACT - Mood Check-In System</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
