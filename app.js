@@ -1,3 +1,70 @@
+// Security utility for password hashing
+class SecurityUtils {
+    static async hashPassword(password) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        return hashHex;
+    }
+
+    static async verifyPassword(password, hashedPassword) {
+        const hashedInput = await this.hashPassword(password);
+        return hashedInput === hashedPassword;
+    }
+
+    static validatePasswordStrength(password) {
+        const minLength = 8;
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasLowerCase = /[a-z]/.test(password);
+        const hasNumbers = /\d/.test(password);
+        const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+        const errors = [];
+        if (password.length < minLength) {
+            errors.push(`Password must be at least ${minLength} characters long`);
+        }
+        if (!hasUpperCase) {
+            errors.push('Password must contain at least one uppercase letter');
+        }
+        if (!hasLowerCase) {
+            errors.push('Password must contain at least one lowercase letter');
+        }
+        if (!hasNumbers) {
+            errors.push('Password must contain at least one number');
+        }
+        if (!hasSpecialChar) {
+            errors.push('Password must contain at least one special character');
+        }
+
+        return {
+            isValid: errors.length === 0,
+            errors: errors,
+            strength: this.calculateStrength(password, hasUpperCase, hasLowerCase, hasNumbers, hasSpecialChar)
+        };
+    }
+
+    static calculateStrength(password, hasUpper, hasLower, hasNumber, hasSpecial) {
+        let score = 0;
+        if (password.length >= 8) score++;
+        if (password.length >= 12) score++;
+        if (hasUpper) score++;
+        if (hasLower) score++;
+        if (hasNumber) score++;
+        if (hasSpecial) score++;
+        
+        if (score <= 2) return 'Weak';
+        if (score <= 4) return 'Medium';
+        if (score <= 5) return 'Strong';
+        return 'Very Strong';
+    }
+
+    static sanitizeInput(input) {
+        return input.trim().replace(/[<>]/g, '');
+    }
+}
+
 // REACT - Mood Check-In App
 class MoodCheckInApp {
     constructor() {
@@ -101,6 +168,22 @@ class MoodCheckInApp {
             console.error('User type buttons not found');
         }
 
+        // Password strength checking
+        const studentPassword = document.getElementById('studentPassword');
+        const teacherPassword = document.getElementById('teacherPassword');
+        
+        if (studentPassword) {
+            studentPassword.addEventListener('input', (e) => {
+                this.updatePasswordStrength('studentPasswordStrength', e.target.value);
+            });
+        }
+        
+        if (teacherPassword) {
+            teacherPassword.addEventListener('input', (e) => {
+                this.updatePasswordStrength('teacherPasswordStrength', e.target.value);
+            });
+        }
+
         // Logout button
         document.getElementById('logoutBtn').addEventListener('click', () => {
             this.handleLogout();
@@ -152,8 +235,8 @@ class MoodCheckInApp {
         if (moodFilter) moodFilter.addEventListener('change', () => this.updateTeacherView());
     }
 
-    handleLogin() {
-        const email = document.getElementById('email').value;
+    async handleLogin() {
+        const email = SecurityUtils.sanitizeInput(document.getElementById('email').value);
         const password = document.getElementById('password').value;
 
         // Demo authentication (replace with real authentication)
@@ -173,26 +256,43 @@ class MoodCheckInApp {
             return;
         }
 
-        // Check registered users
-        const user = this.allUsers.find(u => u.email === email && u.password === password);
+        // Check registered users with secure password verification
+        const user = this.allUsers.find(u => u.email === email);
         if (user) {
-            this.currentUser = user;
-            localStorage.setItem('checkinUser', JSON.stringify(this.currentUser));
-            this.showDashboard();
-            this.showMessage('Login successful! Welcome back!', 'success');
+            const isValidPassword = await SecurityUtils.verifyPassword(password, user.password);
+            if (isValidPassword) {
+                // Don't store password in current user object
+                this.currentUser = {
+                    id: user.id,
+                    firstName: user.firstName,
+                    surname: user.surname,
+                    name: user.name,
+                    email: user.email,
+                    type: user.type,
+                    class: user.class,
+                    house: user.house,
+                    createdAt: user.createdAt
+                };
+                
+                localStorage.setItem('checkinUser', JSON.stringify(this.currentUser));
+                this.showDashboard();
+                this.showMessage('Login successful! Welcome back!', 'success');
+            } else {
+                this.showMessage('Invalid credentials. Please try again.', 'error');
+            }
         } else {
             this.showMessage('Invalid credentials. Please try again.', 'error');
         }
     }
 
-    handleStudentRegistration() {
+    async handleStudentRegistration() {
         console.log('handleStudentRegistration called');
         
-        const firstName = document.getElementById('studentFirstName').value;
-        const surname = document.getElementById('studentSurname').value;
+        const firstName = SecurityUtils.sanitizeInput(document.getElementById('studentFirstName').value);
+        const surname = SecurityUtils.sanitizeInput(document.getElementById('studentSurname').value);
         const studentClass = document.getElementById('studentClass').value;
         const house = document.getElementById('studentHouse').value;
-        const email = document.getElementById('studentEmail').value;
+        const email = SecurityUtils.sanitizeInput(document.getElementById('studentEmail').value);
         const password = document.getElementById('studentPassword').value;
         const confirmPassword = document.getElementById('studentConfirmPassword').value;
 
@@ -209,8 +309,10 @@ class MoodCheckInApp {
             return;
         }
 
-        if (password.length < 6) {
-            this.showMessage('Password must be at least 6 characters long.', 'error');
+        // Enhanced password validation
+        const passwordValidation = SecurityUtils.validatePasswordStrength(password);
+        if (!passwordValidation.isValid) {
+            this.showMessage(`Password requirements not met: ${passwordValidation.errors.join(', ')}`, 'error');
             return;
         }
 
@@ -220,6 +322,9 @@ class MoodCheckInApp {
             return;
         }
 
+        // Hash the password securely
+        const hashedPassword = await SecurityUtils.hashPassword(password);
+
         // Create new student
         const newStudent = {
             id: Date.now().toString(),
@@ -227,7 +332,7 @@ class MoodCheckInApp {
             surname: surname,
             name: `${firstName} ${surname}`,
             email: email,
-            password: password,
+            password: hashedPassword, // Store hashed password
             type: 'student',
             class: studentClass,
             house: house,
@@ -237,16 +342,16 @@ class MoodCheckInApp {
         this.allUsers.push(newStudent);
         this.saveAllUsers();
         
-        this.showMessage('Student account created successfully! Please login.', 'success');
+        this.showMessage(`Student account created successfully! Password strength: ${passwordValidation.strength}. Please login.`, 'success');
         this.showLoginScreen();
     }
 
-    handleTeacherRegistration() {
+    async handleTeacherRegistration() {
         console.log('handleTeacherRegistration called');
         
-        const firstName = document.getElementById('teacherFirstName').value;
-        const surname = document.getElementById('teacherSurname').value;
-        const email = document.getElementById('teacherEmail').value;
+        const firstName = SecurityUtils.sanitizeInput(document.getElementById('teacherFirstName').value);
+        const surname = SecurityUtils.sanitizeInput(document.getElementById('teacherSurname').value);
+        const email = SecurityUtils.sanitizeInput(document.getElementById('teacherEmail').value);
         const password = document.getElementById('teacherPassword').value;
         const confirmPassword = document.getElementById('teacherConfirmPassword').value;
 
@@ -263,8 +368,10 @@ class MoodCheckInApp {
             return;
         }
 
-        if (password.length < 6) {
-            this.showMessage('Password must be at least 6 characters long.', 'error');
+        // Enhanced password validation
+        const passwordValidation = SecurityUtils.validatePasswordStrength(password);
+        if (!passwordValidation.isValid) {
+            this.showMessage(`Password requirements not met: ${passwordValidation.errors.join(', ')}`, 'error');
             return;
         }
 
@@ -274,6 +381,9 @@ class MoodCheckInApp {
             return;
         }
 
+        // Hash the password securely
+        const hashedPassword = await SecurityUtils.hashPassword(password);
+
         // Create new teacher
         const newTeacher = {
             id: Date.now().toString(),
@@ -281,7 +391,7 @@ class MoodCheckInApp {
             surname: surname,
             name: `${firstName} ${surname}`,
             email: email,
-            password: password,
+            password: hashedPassword, // Store hashed password
             type: 'teacher',
             createdAt: new Date()
         };
@@ -289,7 +399,7 @@ class MoodCheckInApp {
         this.allUsers.push(newTeacher);
         this.saveAllUsers();
         
-        this.showMessage('Teacher account created successfully! Please login.', 'success');
+        this.showMessage(`Teacher account created successfully! Password strength: ${passwordValidation.strength}. Please login.`, 'success');
         this.showLoginScreen();
     }
 
@@ -748,6 +858,19 @@ class MoodCheckInApp {
             this.currentEmojiIndex = (this.currentEmojiIndex + 1) % this.moodEmojis.length;
             moodEmojiElement.textContent = this.moodEmojis[this.currentEmojiIndex];
         }, 1000);
+    }
+
+    updatePasswordStrength(elementId, password) {
+        const strengthElement = document.getElementById(elementId);
+        if (!strengthElement || !password) {
+            if (strengthElement) {
+                strengthElement.className = 'password-strength';
+            }
+            return;
+        }
+
+        const validation = SecurityUtils.validatePasswordStrength(password);
+        strengthElement.className = `password-strength ${validation.strength.toLowerCase().replace(' ', '-')}`;
     }
 
     // Test function for debugging

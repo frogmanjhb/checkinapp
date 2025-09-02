@@ -114,7 +114,9 @@
                             </div>
                             <div class="form-group">
                                 <label for="studentPassword">Password</label>
-                                <input type="password" id="studentPassword" required placeholder="Create a password">
+                                <input type="password" id="studentPassword" required placeholder="Create a strong password">
+                                <div id="studentPasswordStrength" class="password-strength"></div>
+                                <small class="form-hint">Must be at least 8 characters with uppercase, lowercase, numbers, and special characters</small>
                             </div>
                             <div class="form-group">
                                 <label for="studentConfirmPassword">Confirm Password</label>
@@ -140,7 +142,9 @@
                             </div>
                             <div class="form-group">
                                 <label for="teacherPassword">Password</label>
-                                <input type="password" id="teacherPassword" required placeholder="Create a password">
+                                <input type="password" id="teacherPassword" required placeholder="Create a strong password">
+                                <div id="teacherPasswordStrength" class="password-strength"></div>
+                                <small class="form-hint">Must be at least 8 characters with uppercase, lowercase, numbers, and special characters</small>
                             </div>
                             <div class="form-group">
                                 <label for="teacherConfirmPassword">Confirm Password</label>

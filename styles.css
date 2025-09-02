@@ -168,6 +168,34 @@ body {
     margin-top: 0.5rem;
 }
 
+.password-strength {
+    height: 4px;
+    background: #e1e5e9;
+    border-radius: 2px;
+    margin-top: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.password-strength.weak {
+    background: #f44336;
+    width: 25%;
+}
+
+.password-strength.medium {
+    background: #ff9800;
+    width: 50%;
+}
+
+.password-strength.strong {
+    background: #4caf50;
+    width: 75%;
+}
+
+.password-strength.very-strong {
+    background: #2196f3;
+    width: 100%;
+}
+
 .auth-switch {
     margin-top: 2rem;
     padding-top: 2rem;
