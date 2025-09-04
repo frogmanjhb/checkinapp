@@ -452,6 +452,114 @@ body {
     color: #666;
 }
 
+/* Ghost Mode Toggle */
+.ghost-mode-toggle {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.toggle-container {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.toggle-container input[type="checkbox"] {
+    display: none;
+}
+
+.toggle-slider {
+    position: relative;
+    width: 50px;
+    height: 24px;
+    background: #ccc;
+    border-radius: 24px;
+    transition: background 0.3s;
+    margin-right: 10px;
+}
+
+.toggle-slider:before {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: white;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-container input:checked + .toggle-slider {
+    background: #4CAF50;
+}
+
+.toggle-container input:checked + .toggle-slider:before {
+    transform: translateX(26px);
+}
+
+.toggle-label {
+    font-weight: 500;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.ghost-mode-info {
+    margin-top: 0.5rem;
+    color: #666;
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.ghost-mode-indicator {
+    color: #9c27b0 !important;
+    font-weight: 500;
+}
+
+.ghost-mode-active {
+    background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%) !important;
+    color: white !important;
+}
+
+.ghost-mode-active .status-value {
+    color: white !important;
+}
+
+/* Anonymous Items */
+.anonymous-item {
+    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%) !important;
+    border-left: 4px solid #9c27b0 !important;
+}
+
+.anonymous-item h4 {
+    color: #7b1fa2 !important;
+}
+
+.anonymous-item .student-details {
+    color: #8e24aa !important;
+}
+
+.anonymous-separator {
+    margin: 1rem 0;
+}
+
+/* Ghost Mode Modal Indicator */
+.ghost-mode-modal-indicator {
+    background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%);
+    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin: 0.5rem 0;
+    display: inline-block;
+}
+
 /* Analytics Section */
 .analytics-section, .teacher-analytics {
     background: white;

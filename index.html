@@ -178,6 +178,19 @@
                     <div class="checkin-section">
                         <div class="checkin-card">
                             <h3>😊 Mood Check-In</h3>
+                            
+                            <!-- Ghost Mode Toggle -->
+                            <div class="ghost-mode-toggle">
+                                <label class="toggle-container">
+                                    <input type="checkbox" id="ghostModeToggle">
+                                    <span class="toggle-slider"></span>
+                                    <span class="toggle-label">👻 Ghost Mode</span>
+                                </label>
+                                <div class="ghost-mode-info" id="ghostModeInfo">
+                                    <small>Your mood will be logged anonymously. Teachers can see the mood data but not your identity.</small>
+                                </div>
+                            </div>
+                            
                             <div class="status-display" id="statusDisplay">
                                 <div class="status-item">
                                     <span class="status-label">Last Mood:</span>
@@ -186,6 +199,10 @@
                                 <div class="status-item">
                                     <span class="status-label">Today's Check-ins:</span>
                                     <span class="status-value" id="todayCount">0</span>
+                                </div>
+                                <div class="status-item" id="ghostModeStatus" style="display: none;">
+                                    <span class="status-label">Mode:</span>
+                                    <span class="status-value ghost-mode-indicator">👻 Anonymous</span>
                                 </div>
                             </div>
                         </div>
@@ -293,6 +310,9 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h3>😊 How are you feeling?</h3>
+                        <div id="ghostModeModalIndicator" class="ghost-mode-modal-indicator" style="display: none;">
+                            👻 Anonymous Mode
+                        </div>
                         <button class="close-btn" id="closeMoodModal">&times;</button>
                     </div>
                     <div class="modal-body">

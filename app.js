@@ -75,6 +75,7 @@ class MoodCheckInApp {
         this.allMoodHistory = [];
         this.moodEmojis = ['😊', '🤩', '😌', '😴', '😰', '😢', '😠', '😕'];
         this.currentEmojiIndex = 0;
+        this.ghostMode = false;
         
         this.initializeApp();
         this.setupEventListeners();
@@ -233,6 +234,14 @@ class MoodCheckInApp {
         if (classFilter) classFilter.addEventListener('change', () => this.updateTeacherView());
         if (houseFilter) houseFilter.addEventListener('change', () => this.updateTeacherView());
         if (moodFilter) moodFilter.addEventListener('change', () => this.updateTeacherView());
+
+        // Ghost mode toggle
+        const ghostModeToggle = document.getElementById('ghostModeToggle');
+        if (ghostModeToggle) {
+            ghostModeToggle.addEventListener('change', (e) => {
+                this.toggleGhostMode(e.target.checked);
+            });
+        }
     }
 
     async handleLogin() {
@@ -473,6 +482,9 @@ class MoodCheckInApp {
         document.getElementById('studentName').textContent = this.currentUser.name;
         document.getElementById('userName').textContent = this.currentUser.name;
         
+        // Load ghost mode state
+        this.loadGhostModeState();
+        
         this.updateStatusDisplay();
         this.updateHistoryDisplay();
         this.updateStudentAnalytics();
@@ -490,12 +502,67 @@ class MoodCheckInApp {
         this.updateTeacherAnalytics();
     }
 
+    toggleGhostMode(enabled) {
+        this.ghostMode = enabled;
+        this.saveGhostModeState();
+        this.updateGhostModeDisplay();
+        
+        if (enabled) {
+            this.showMessage('👻 Ghost mode enabled! Your mood will be logged anonymously.', 'success');
+        } else {
+            this.showMessage('👤 Ghost mode disabled. Your mood will be logged with your identity.', 'success');
+        }
+    }
+
+    loadGhostModeState() {
+        const savedGhostMode = localStorage.getItem('ghostMode');
+        if (savedGhostMode !== null) {
+            this.ghostMode = JSON.parse(savedGhostMode);
+            const toggle = document.getElementById('ghostModeToggle');
+            if (toggle) {
+                toggle.checked = this.ghostMode;
+            }
+            this.updateGhostModeDisplay();
+        }
+    }
+
+    saveGhostModeState() {
+        localStorage.setItem('ghostMode', JSON.stringify(this.ghostMode));
+    }
+
+    updateGhostModeDisplay() {
+        const ghostModeStatus = document.getElementById('ghostModeStatus');
+        const checkinCard = document.querySelector('.checkin-card');
+        
+        if (this.ghostMode) {
+            if (ghostModeStatus) {
+                ghostModeStatus.style.display = 'flex';
+            }
+            if (checkinCard) {
+                checkinCard.classList.add('ghost-mode-active');
+            }
+        } else {
+            if (ghostModeStatus) {
+                ghostModeStatus.style.display = 'none';
+            }
+            if (checkinCard) {
+                checkinCard.classList.remove('ghost-mode-active');
+            }
+        }
+    }
+
     showMoodModal() {
         document.getElementById('moodModal').classList.add('active');
         this.selectedMood = null;
         this.updateMoodButtons();
         document.getElementById('confirmMoodCheckin').disabled = true;
         document.getElementById('moodNotes').value = '';
+        
+        // Show ghost mode indicator if active
+        const ghostModeIndicator = document.getElementById('ghostModeModalIndicator');
+        if (ghostModeIndicator) {
+            ghostModeIndicator.style.display = this.ghostMode ? 'inline-block' : 'none';
+        }
     }
 
     hideMoodModal() {
@@ -533,11 +600,33 @@ class MoodCheckInApp {
             emoji: this.selectedMood.emoji,
             timestamp: timestamp,
             notes: notes,
-            type: 'mood-check-in'
+            type: 'mood-check-in',
+            isAnonymous: this.ghostMode
         };
 
+        // Always add to personal history for the student
         this.moodHistory.unshift(moodRecord);
-        this.allMoodHistory.unshift(moodRecord);
+        
+        // For anonymous mode, create a separate anonymous record for teachers
+        if (this.ghostMode) {
+            const anonymousRecord = {
+                id: Date.now() + '_anonymous',
+                userId: 'anonymous',
+                userName: 'Anonymous Student',
+                userClass: 'Unknown',
+                userHouse: 'Unknown',
+                mood: this.selectedMood.mood,
+                emoji: this.selectedMood.emoji,
+                timestamp: timestamp,
+                notes: notes,
+                type: 'mood-check-in',
+                isAnonymous: true
+            };
+            this.allMoodHistory.unshift(anonymousRecord);
+        } else {
+            // Normal mode - add with full identity
+            this.allMoodHistory.unshift(moodRecord);
+        }
         
         this.saveHistory();
         this.saveAllMoodHistory();
@@ -552,7 +641,8 @@ class MoodCheckInApp {
             this.updateTeacherAnalytics();
         }
         
-        this.showMessage(`Mood recorded: ${this.selectedMood.emoji} ${this.selectedMood.mood}!`, 'success');
+        const modeText = this.ghostMode ? ' (anonymously)' : '';
+        this.showMessage(`Mood recorded: ${this.selectedMood.emoji} ${this.selectedMood.mood}${modeText}!`, 'success');
     }
 
     updateStatusDisplay() {
@@ -836,7 +926,14 @@ class MoodCheckInApp {
         }
 
         const history = allUsers ? this.allMoodHistory : this.moodHistory;
-        return history.filter(record => record.timestamp >= startDate);
+        const filteredHistory = history.filter(record => record.timestamp >= startDate);
+        
+        // For teachers viewing all users, include both named and anonymous records
+        if (allUsers && this.currentUser && this.currentUser.type === 'teacher') {
+            return filteredHistory; // This already includes anonymous records
+        }
+        
+        return filteredHistory;
     }
 
     getMoodCounts(history) {
@@ -865,9 +962,34 @@ class MoodCheckInApp {
             confused: '😕'
         };
 
+        // Count anonymous vs named entries for teachers
+        let anonymousCount = 0;
+        let namedCount = 0;
+        if (this.currentUser && this.currentUser.type === 'teacher') {
+            const filteredHistory = this.getFilteredHistory(period, true);
+            anonymousCount = filteredHistory.filter(record => record.isAnonymous).length;
+            namedCount = filteredHistory.filter(record => !record.isAnonymous).length;
+        }
+
         let html = `<div class="analytics-summary">
-            <h4>Total Check-ins: ${total}</h4>
-            <div class="mood-breakdown">`;
+            <h4>Total Check-ins: ${total}</h4>`;
+
+        // Show anonymous vs named breakdown for teachers
+        if (this.currentUser && this.currentUser.type === 'teacher' && (anonymousCount > 0 || namedCount > 0)) {
+            const anonymousPercentage = total > 0 ? ((anonymousCount / total) * 100).toFixed(1) : 0;
+            const namedPercentage = total > 0 ? ((namedCount / total) * 100).toFixed(1) : 0;
+            
+            html += `
+                <div class="data-breakdown" style="margin-bottom: 1rem; padding: 0.5rem; background: #f5f5f5; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                        <span>👤 Named: ${namedCount} (${namedPercentage}%)</span>
+                        <span>👻 Anonymous: ${anonymousCount} (${anonymousPercentage}%)</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        html += `<div class="mood-breakdown">`;
 
         Object.entries(moodCounts).forEach(([mood, count]) => {
             const percentage = ((count / total) * 100).toFixed(1);
@@ -945,12 +1067,93 @@ class MoodCheckInApp {
 
             studentsList.appendChild(studentItem);
         });
+
+        // Add anonymous mood entries if any exist
+        this.addAnonymousMoodEntries(studentsList, classFilter, houseFilter, moodFilter);
     }
 
     getLastMoodForStudent(studentId) {
         return this.allMoodHistory
             .filter(record => record.userId === studentId)
             .sort((a, b) => b.timestamp - a.timestamp)[0];
+    }
+
+    addAnonymousMoodEntries(studentsList, classFilter, houseFilter, moodFilter) {
+        // Get recent anonymous mood entries (last 24 hours)
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const recentAnonymousMoods = this.allMoodHistory
+            .filter(record => 
+                record.isAnonymous && 
+                record.timestamp >= oneDayAgo
+            )
+            .sort((a, b) => b.timestamp - a.timestamp);
+
+        // Apply mood filter if selected
+        let filteredAnonymousMoods = recentAnonymousMoods;
+        if (moodFilter) {
+            filteredAnonymousMoods = recentAnonymousMoods.filter(record => record.mood === moodFilter);
+        }
+
+        if (filteredAnonymousMoods.length > 0) {
+            // Add separator
+            const separator = document.createElement('div');
+            separator.className = 'anonymous-separator';
+            separator.innerHTML = '<hr style="margin: 1rem 0; border: 1px solid #e0e0e0;"><p style="text-align: center; color: #666; font-size: 0.9rem; margin: 0.5rem 0;">👻 Anonymous Mood Check-ins</p>';
+            studentsList.appendChild(separator);
+
+            // Add anonymous mood entries
+            filteredAnonymousMoods.slice(0, 5).forEach(record => {
+                const anonymousItem = document.createElement('div');
+                anonymousItem.className = 'student-item anonymous-item';
+                
+                const timeAgo = this.getTimeAgo(record.timestamp);
+                
+                anonymousItem.innerHTML = `
+                    <div class="student-info">
+                        <h4>👻 Anonymous Student</h4>
+                        <div class="student-details">
+                            ${timeAgo} • Anonymous
+                        </div>
+                    </div>
+                    <div class="student-mood">
+                        ${record.emoji}
+                    </div>
+                `;
+
+                studentsList.appendChild(anonymousItem);
+            });
+
+            if (filteredAnonymousMoods.length > 5) {
+                const moreItem = document.createElement('div');
+                moreItem.className = 'student-item anonymous-item';
+                moreItem.innerHTML = `
+                    <div class="student-info">
+                        <h4>👻 +${filteredAnonymousMoods.length - 5} more anonymous</h4>
+                        <div class="student-details">
+                            check-ins in the last 24 hours
+                        </div>
+                    </div>
+                    <div class="student-mood">
+                        📊
+                    </div>
+                `;
+                studentsList.appendChild(moreItem);
+            }
+        }
+    }
+
+    getTimeAgo(timestamp) {
+        const now = new Date();
+        const diffInMinutes = Math.floor((now - timestamp) / (1000 * 60));
+        
+        if (diffInMinutes < 1) return 'Just now';
+        if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+        
+        const diffInHours = Math.floor(diffInMinutes / 60);
+        if (diffInHours < 24) return `${diffInHours}h ago`;
+        
+        const diffInDays = Math.floor(diffInHours / 24);
+        return `${diffInDays}d ago`;
     }
 
     startMoodEmojiAnimation() {
