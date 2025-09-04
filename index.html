@@ -447,6 +447,35 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Journaling Modal -->
+            <div id="journalingModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>📝 Quick Journal Entry</h3>
+                        <div id="ghostModeJournalingIndicator" class="ghost-mode-modal-indicator" style="display: none;">
+                            👻 Anonymous Mode
+                        </div>
+                        <button class="close-btn" id="closeJournalingModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="journaling-section">
+                            <h4>How are you feeling right now? Share a thought or two:</h4>
+                            <p class="journaling-hint">Write 1-2 sentences about your current thoughts or feelings. This is optional but can help you reflect on your day.</p>
+                            <textarea id="journalEntry" placeholder="I'm feeling... Today I... I'm grateful for... I'm looking forward to..." rows="4"></textarea>
+                            <div class="character-count">
+                                <span id="characterCount">0</span> characters
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="modal-footer-buttons">
+                            <button id="skipJournaling" class="btn-secondary">Skip Journaling</button>
+                            <button id="saveJournalEntry" class="btn-primary">Save & Finish</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
 
         <!-- Footer -->

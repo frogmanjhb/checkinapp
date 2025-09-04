@@ -468,6 +468,18 @@ body {
     font-style: italic;
 }
 
+.history-journal {
+    color: #333;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 3px solid #FF9800;
+    font-style: italic;
+    line-height: 1.4;
+}
+
 /* Ghost Mode Toggle */
 .ghost-mode-toggle {
     margin-bottom: 1rem;
@@ -1082,6 +1094,47 @@ body {
 .notes-section textarea:focus {
     outline: none;
     border-color: #2196F3;
+}
+
+/* Journaling Modal Styles */
+.journaling-section h4 {
+    margin-bottom: 1rem;
+    color: #333;
+    text-align: center;
+    font-size: 1.2rem;
+}
+
+.journaling-hint {
+    color: #666;
+    font-size: 0.9rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    font-style: italic;
+    line-height: 1.4;
+}
+
+.journaling-section textarea {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid #e1e5e9;
+    border-radius: 10px;
+    font-size: 1rem;
+    resize: vertical;
+    min-height: 120px;
+    font-family: inherit;
+    transition: border-color 0.3s ease;
+}
+
+.journaling-section textarea:focus {
+    outline: none;
+    border-color: #2196F3;
+}
+
+.character-count {
+    text-align: right;
+    color: #666;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
 }
 
 .modal-footer {

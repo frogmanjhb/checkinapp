@@ -351,6 +351,12 @@ class MoodCheckInApp {
             }
         });
 
+        document.getElementById('journalingModal').addEventListener('click', (e) => {
+            if (e.target.id === 'journalingModal') {
+                this.hideJournalingModal();
+            }
+        });
+
         // Analytics tabs
         document.querySelectorAll('.analytics-tab').forEach(tab => {
             tab.addEventListener('click', (e) => {
@@ -374,6 +380,24 @@ class MoodCheckInApp {
                 this.toggleGhostMode(e.target.checked);
             });
         }
+
+        // Journaling modal controls
+        document.getElementById('closeJournalingModal').addEventListener('click', () => {
+            this.hideJournalingModal();
+        });
+
+        document.getElementById('skipJournaling').addEventListener('click', () => {
+            this.skipJournaling();
+        });
+
+        document.getElementById('saveJournalEntry').addEventListener('click', () => {
+            this.saveJournalEntry();
+        });
+
+        // Character count for journal entry
+        document.getElementById('journalEntry').addEventListener('input', (e) => {
+            this.updateCharacterCount(e.target.value);
+        });
     }
 
     async handleLogin() {
@@ -753,6 +777,99 @@ class MoodCheckInApp {
         document.getElementById('locationModal').classList.remove('active');
     }
 
+    showJournalingModal() {
+        document.getElementById('journalingModal').classList.add('active');
+        
+        // Reset journal entry
+        document.getElementById('journalEntry').value = '';
+        this.updateCharacterCount('');
+        
+        // Show ghost mode indicator if active
+        const ghostModeIndicator = document.getElementById('ghostModeJournalingIndicator');
+        if (ghostModeIndicator) {
+            ghostModeIndicator.style.display = this.ghostMode ? 'inline-block' : 'none';
+        }
+    }
+
+    hideJournalingModal() {
+        document.getElementById('journalingModal').classList.remove('active');
+    }
+
+    updateCharacterCount(text) {
+        const characterCount = document.getElementById('characterCount');
+        if (characterCount) {
+            characterCount.textContent = text.length;
+        }
+    }
+
+    skipJournaling() {
+        this.completeMoodCheckIn();
+    }
+
+    saveJournalEntry() {
+        const journalText = document.getElementById('journalEntry').value.trim();
+        
+        if (journalText) {
+            // Create journal entry record
+            const journalRecord = {
+                id: Date.now() + '_journal',
+                userId: this.currentUser.id,
+                userName: this.currentUser.name,
+                userClass: this.currentUser.class,
+                userHouse: this.currentUser.house,
+                type: 'journal-entry',
+                content: journalText,
+                timestamp: new Date(),
+                isAnonymous: this.ghostMode
+            };
+
+            // Add to personal history
+            this.moodHistory.unshift(journalRecord);
+            
+            // For anonymous mode, create a separate anonymous record for teachers
+            if (this.ghostMode) {
+                const anonymousJournalRecord = {
+                    ...journalRecord,
+                    id: journalRecord.id + '_anonymous',
+                    userId: 'anonymous',
+                    userName: 'Anonymous Student',
+                    userClass: 'Unknown',
+                    userHouse: 'Unknown',
+                    isAnonymous: true
+                };
+                this.allMoodHistory.unshift(anonymousJournalRecord);
+            } else {
+                // Normal mode - add with full identity
+                this.allMoodHistory.unshift(journalRecord);
+            }
+            
+            this.saveHistory();
+            this.saveAllMoodHistory();
+        }
+        
+        this.completeMoodCheckIn();
+    }
+
+    completeMoodCheckIn() {
+        this.hideJournalingModal();
+        this.updateStatusDisplay();
+        this.updateHistoryDisplay();
+        
+        if (this.currentUser.type === 'student') {
+            this.updateStudentAnalytics();
+        } else {
+            this.updateTeacherAnalytics();
+        }
+        
+        const modeText = this.ghostMode ? ' (anonymously)' : '';
+        const emotionsText = this.selectedEmotions.length > 0 ? ` - ${this.selectedEmotions.join(', ')}` : '';
+        const locationText = this.selectedLocation && this.selectedLocation !== 'other' ? 
+            ` at ${this.selectedLocation}` : 
+            (this.selectedLocation && this.selectedLocation.type === 'other' ? 
+                ` at ${this.selectedLocation.value}` : '');
+        this.showMessage(`Mood recorded: ${this.selectedMood.emoji} ${this.selectedMood.mood}${emotionsText}${locationText}${modeText}!`, 'success');
+    }
+
     selectMood(mood, emoji) {
         this.selectedMood = { mood, emoji };
         this.updateMoodButtons();
@@ -930,19 +1047,9 @@ class MoodCheckInApp {
         this.hideMoodModal();
         this.hideEmotionModal();
         this.hideLocationModal();
-        this.updateStatusDisplay();
-        this.updateHistoryDisplay();
         
-        if (this.currentUser.type === 'student') {
-            this.updateStudentAnalytics();
-        } else {
-            this.updateTeacherAnalytics();
-        }
-        
-        const modeText = this.ghostMode ? ' (anonymously)' : '';
-        const emotionsText = this.selectedEmotions.length > 0 ? ` - ${this.selectedEmotions.join(', ')}` : '';
-        const locationText = locationValue ? ` at ${locationValue}` : '';
-        this.showMessage(`Mood recorded: ${this.selectedMood.emoji} ${this.selectedMood.mood}${emotionsText}${locationText}${modeText}!`, 'success');
+        // Show journaling modal instead of completing immediately
+        this.showJournalingModal();
     }
 
     updateStatusDisplay() {
@@ -989,35 +1096,48 @@ class MoodCheckInApp {
             historyItem.className = 'history-item';
             
             const time = record.timestamp.toLocaleString();
-            const mood = record.mood.charAt(0).toUpperCase() + record.mood.slice(1);
             
-            // Build emotions text
-            let emotionsText = '';
-            if (record.emotions && record.emotions.length > 0) {
-                emotionsText = `<div class="history-emotions">Emotions: ${record.emotions.join(', ')}</div>`;
+            if (record.type === 'journal-entry') {
+                // Display journal entry
+                historyItem.innerHTML = `
+                    <div>
+                        <div class="history-time">📝 Journal Entry</div>
+                        <div class="history-journal">${record.content}</div>
+                    </div>
+                    <div class="history-time">${time}</div>
+                `;
+            } else {
+                // Display mood check-in
+                const mood = record.mood.charAt(0).toUpperCase() + record.mood.slice(1);
+                
+                // Build emotions text
+                let emotionsText = '';
+                if (record.emotions && record.emotions.length > 0) {
+                    emotionsText = `<div class="history-emotions">Emotions: ${record.emotions.join(', ')}</div>`;
+                }
+                
+                // Build location text
+                let locationText = '';
+                if (record.location) {
+                    locationText = `<div class="history-location">📍 ${record.location}</div>`;
+                }
+                
+                // Build notes text
+                let notesText = '';
+                if (record.notes && record.notes.trim()) {
+                    notesText = `<div class="history-notes">${record.notes}</div>`;
+                }
+                
+                historyItem.innerHTML = `
+                    <div>
+                        <div class="history-time">${record.emoji} Mood: ${mood}</div>
+                        ${emotionsText}
+                        ${locationText}
+                        ${notesText}
+                    </div>
+                    <div class="history-time">${time}</div>
+                `;
             }
-            
-            // Build location text
-            let locationText = '';
-            if (record.location) {
-                locationText = `<div class="history-location">📍 ${record.location}</div>`;
-            }
-            
-            // Build notes text
-            let notesText = '';
-            if (record.notes && record.notes.trim()) {
-                notesText = `<div class="history-notes">${record.notes}</div>`;
-            }
-            
-            historyItem.innerHTML = `
-                <div>
-                    <div class="history-time">${record.emoji} Mood: ${mood}</div>
-                    ${emotionsText}
-                    ${locationText}
-                    ${notesText}
-                </div>
-                <div class="history-time">${time}</div>
-            `;
             
             historyList.appendChild(historyItem);
         });
