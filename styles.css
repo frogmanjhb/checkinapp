@@ -755,34 +755,32 @@ body {
 
 /* Emotion Selection */
 .emotion-selection h4 {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     color: #333;
     text-align: center;
-    font-size: 1.2rem;
+    font-size: 1rem;
 }
 
 .emotion-options {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 0.8rem;
-    margin-bottom: 2rem;
-    max-height: 400px;
-    overflow-y: auto;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
     padding: 0.5rem;
 }
 
 .emotion-btn {
     background: #f8f9fa;
     border: 2px solid #e1e5e9;
-    padding: 0.8rem 1rem;
-    border-radius: 12px;
+    padding: 0.6rem 0.8rem;
+    border-radius: 10px;
     cursor: pointer;
     transition: all 0.3s ease;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     font-weight: 500;
     color: #333;
     text-align: center;
-    min-height: 45px;
+    min-height: 35px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -913,10 +911,12 @@ body {
     background: white;
     border-radius: 20px;
     width: 90%;
-    max-width: 500px;
-    max-height: 90vh;
+    max-width: 600px;
+    max-height: 85vh;
     overflow-y: auto;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
 }
 
 .modal-header {
@@ -925,16 +925,27 @@ body {
     align-items: center;
     padding: 2rem 2rem 1rem;
     border-bottom: 1px solid #e1e5e9;
-    position: relative;
+}
+
+.modal-footer {
+    padding: 1rem 2rem 2rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.modal-footer-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
 }
 
 .step-indicator {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
     display: flex;
     gap: 0.5rem;
     align-items: center;
+    justify-content: center;
 }
 
 .step {
@@ -992,6 +1003,8 @@ body {
 
 .modal-body {
     padding: 2rem;
+    flex: 1;
+    overflow-y: auto;
 }
 
 .mood-selection h4 {

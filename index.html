@@ -310,11 +310,6 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h3>😊 How are you feeling?</h3>
-                        <div class="step-indicator">
-                            <span class="step active">1</span>
-                            <span class="step">2</span>
-                            <span class="step">3</span>
-                        </div>
                         <div id="ghostModeModalIndicator" class="ghost-mode-modal-indicator" style="display: none;">
                             👻 Anonymous Mode
                         </div>
@@ -360,6 +355,11 @@
                         </div>
                     </div>
                     <div class="modal-footer">
+                        <div class="step-indicator">
+                            <span class="step active">1</span>
+                            <span class="step">2</span>
+                            <span class="step">3</span>
+                        </div>
                         <button id="proceedToEmotions" class="btn-primary" disabled>Continue to Emotions</button>
                     </div>
                 </div>
@@ -370,11 +370,6 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h3 id="emotionModalTitle">Select your emotions</h3>
-                        <div class="step-indicator">
-                            <span class="step completed">1</span>
-                            <span class="step active">2</span>
-                            <span class="step">3</span>
-                        </div>
                         <div id="ghostModeEmotionIndicator" class="ghost-mode-modal-indicator" style="display: none;">
                             👻 Anonymous Mode
                         </div>
@@ -389,8 +384,15 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button id="backToMood" class="btn-secondary">Back to Mood</button>
-                        <button id="proceedToLocation" class="btn-primary" disabled>Continue to Location</button>
+                        <div class="step-indicator">
+                            <span class="step completed">1</span>
+                            <span class="step active">2</span>
+                            <span class="step">3</span>
+                        </div>
+                        <div class="modal-footer-buttons">
+                            <button id="backToMood" class="btn-secondary">Back to Mood</button>
+                            <button id="proceedToLocation" class="btn-primary" disabled>Continue to Location</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -400,11 +402,6 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h3>Where are you feeling this way?</h3>
-                        <div class="step-indicator">
-                            <span class="step completed">1</span>
-                            <span class="step completed">2</span>
-                            <span class="step active">3</span>
-                        </div>
                         <div id="ghostModeLocationIndicator" class="ghost-mode-modal-indicator" style="display: none;">
                             👻 Anonymous Mode
                         </div>
@@ -438,8 +435,15 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button id="backToEmotions" class="btn-secondary">Back to Emotions</button>
-                        <button id="confirmMoodCheckin" class="btn-primary" disabled>Complete Check-In</button>
+                        <div class="step-indicator">
+                            <span class="step completed">1</span>
+                            <span class="step completed">2</span>
+                            <span class="step active">3</span>
+                        </div>
+                        <div class="modal-footer-buttons">
+                            <button id="backToEmotions" class="btn-secondary">Back to Emotions</button>
+                            <button id="confirmMoodCheckin" class="btn-primary" disabled>Complete Check-In</button>
+                        </div>
                     </div>
                 </div>
             </div>
