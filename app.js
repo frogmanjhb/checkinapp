@@ -71,10 +71,91 @@ class MoodCheckInApp {
         this.currentUser = null;
         this.moodHistory = [];
         this.selectedMood = null;
+        this.selectedEmotions = [];
+        this.selectedLocation = null;
         this.allUsers = [];
         this.allMoodHistory = [];
         this.moodEmojis = ['😊', '🤩', '😌', '😴', '😰', '😢', '😠', '😕'];
         this.currentEmojiIndex = 0;
+        this.ghostMode = false;
+        
+        // Emotional categories with sub-emotions
+        this.emotionalCategories = {
+            happy: {
+                emoji: '😊',
+                label: 'Happy',
+                subEmotions: [
+                    'Joy', 'Excitement', 'Contentment', 'Gratitude', 'Relief',
+                    'Love', 'Affection', 'Amusement', 'Peaceful', 'Relaxed',
+                    'Pleased', 'Comfortable', 'Cheerful', 'Hopeful', 'Playful',
+                    'Friendly', 'Ecstatic', 'Euphoric', 'Thrilled', 'Exhilarated',
+                    'Proud', 'Connected', 'Belonging', 'Inspired'
+                ]
+            },
+            excited: {
+                emoji: '🤩',
+                label: 'Excited',
+                subEmotions: [
+                    'Thrilled', 'Enthusiastic', 'Energetic', 'Anticipating', 'Eager',
+                    'Pumped', 'Amazed', 'Wonder', 'Awe', 'Fascinated',
+                    'Curious', 'Adventurous', 'Bold', 'Confident', 'Optimistic'
+                ]
+            },
+            calm: {
+                emoji: '😌',
+                label: 'Calm',
+                subEmotions: [
+                    'Peaceful', 'Relaxed', 'Serene', 'Tranquil', 'Centered',
+                    'Balanced', 'Mindful', 'Present', 'Grounded', 'Stable',
+                    'Composed', 'Clear-headed', 'Focused', 'Meditative', 'Zen'
+                ]
+            },
+            tired: {
+                emoji: '😴',
+                label: 'Tired',
+                subEmotions: [
+                    'Exhausted', 'Drained', 'Weary', 'Sleepy', 'Fatigued',
+                    'Lethargic', 'Sluggish', 'Worn out', 'Overwhelmed', 'Burnt out',
+                    'Restless', 'Unfocused', 'Drowsy', 'Heavy', 'Slow'
+                ]
+            },
+            anxious: {
+                emoji: '😰',
+                label: 'Anxious',
+                subEmotions: [
+                    'Worried', 'Nervous', 'Stressed', 'Uneasy', 'Restless',
+                    'Tense', 'Apprehensive', 'Overwhelmed', 'Panicked', 'Frightened',
+                    'Uncertain', 'Unsettled', 'Jittery', 'On edge', 'Agitated'
+                ]
+            },
+            sad: {
+                emoji: '😢',
+                label: 'Sad',
+                subEmotions: [
+                    'Melancholy', 'Gloomy', 'Down', 'Blue', 'Disappointed',
+                    'Lonely', 'Isolated', 'Hurt', 'Grief', 'Sorrow',
+                    'Dejected', 'Despondent', 'Mournful', 'Heavy-hearted', 'Bleak'
+                ]
+            },
+            angry: {
+                emoji: '😠',
+                label: 'Angry',
+                subEmotions: [
+                    'Frustrated', 'Irritated', 'Annoyed', 'Furious', 'Rage',
+                    'Indignant', 'Resentful', 'Hostile', 'Aggravated', 'Outraged',
+                    'Impatient', 'Impatient', 'Displeased', 'Cross', 'Livid'
+                ]
+            },
+            confused: {
+                emoji: '😕',
+                label: 'Confused',
+                subEmotions: [
+                    'Puzzled', 'Bewildered', 'Lost', 'Uncertain', 'Perplexed',
+                    'Disoriented', 'Muddled', 'Unclear', 'Ambiguous', 'Vague',
+                    'Indecisive', 'Hesitant', 'Doubtful', 'Questioning', 'Unsure'
+                ]
+            }
+        };
         
         this.initializeApp();
         this.setupEventListeners();
@@ -199,6 +280,14 @@ class MoodCheckInApp {
             this.hideMoodModal();
         });
 
+        document.getElementById('closeEmotionModal').addEventListener('click', () => {
+            this.hideEmotionModal();
+        });
+
+        document.getElementById('closeLocationModal').addEventListener('click', () => {
+            this.hideLocationModal();
+        });
+
         // Mood selection
         document.querySelectorAll('.mood-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -206,15 +295,65 @@ class MoodCheckInApp {
             });
         });
 
+        // Proceed to emotions
+        document.getElementById('proceedToEmotions').addEventListener('click', () => {
+            this.showEmotionModal();
+        });
+
+        // Back to mood
+        document.getElementById('backToMood').addEventListener('click', () => {
+            this.showMoodModal();
+        });
+
+        // Proceed to location
+        document.getElementById('proceedToLocation').addEventListener('click', () => {
+            this.showLocationModal();
+        });
+
+        // Back to emotions
+        document.getElementById('backToEmotions').addEventListener('click', () => {
+            this.showEmotionModal();
+        });
+
+        // Location selection
+        document.querySelectorAll('.location-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.selectLocation(e.target.closest('.location-btn').dataset.location);
+            });
+        });
+
+        // Other location input
+        document.getElementById('otherLocationText').addEventListener('input', (e) => {
+            this.updateOtherLocation(e.target.value);
+        });
+
         // Confirm mood check-in
         document.getElementById('confirmMoodCheckin').addEventListener('click', () => {
             this.handleMoodCheckIn();
         });
 
-        // Close modal when clicking outside
+        // Close modals when clicking outside
         document.getElementById('moodModal').addEventListener('click', (e) => {
             if (e.target.id === 'moodModal') {
                 this.hideMoodModal();
+            }
+        });
+
+        document.getElementById('emotionModal').addEventListener('click', (e) => {
+            if (e.target.id === 'emotionModal') {
+                this.hideEmotionModal();
+            }
+        });
+
+        document.getElementById('locationModal').addEventListener('click', (e) => {
+            if (e.target.id === 'locationModal') {
+                this.hideLocationModal();
+            }
+        });
+
+        document.getElementById('journalingModal').addEventListener('click', (e) => {
+            if (e.target.id === 'journalingModal') {
+                this.hideJournalingModal();
             }
         });
 
@@ -233,6 +372,32 @@ class MoodCheckInApp {
         if (classFilter) classFilter.addEventListener('change', () => this.updateTeacherView());
         if (houseFilter) houseFilter.addEventListener('change', () => this.updateTeacherView());
         if (moodFilter) moodFilter.addEventListener('change', () => this.updateTeacherView());
+
+        // Ghost mode toggle
+        const ghostModeToggle = document.getElementById('ghostModeToggle');
+        if (ghostModeToggle) {
+            ghostModeToggle.addEventListener('change', (e) => {
+                this.toggleGhostMode(e.target.checked);
+            });
+        }
+
+        // Journaling modal controls
+        document.getElementById('closeJournalingModal').addEventListener('click', () => {
+            this.hideJournalingModal();
+        });
+
+        document.getElementById('skipJournaling').addEventListener('click', () => {
+            this.skipJournaling();
+        });
+
+        document.getElementById('saveJournalEntry').addEventListener('click', () => {
+            this.saveJournalEntry();
+        });
+
+        // Character count for journal entry
+        document.getElementById('journalEntry').addEventListener('input', (e) => {
+            this.updateCharacterCount(e.target.value);
+        });
     }
 
     async handleLogin() {
@@ -473,6 +638,9 @@ class MoodCheckInApp {
         document.getElementById('studentName').textContent = this.currentUser.name;
         document.getElementById('userName').textContent = this.currentUser.name;
         
+        // Load ghost mode state
+        this.loadGhostModeState();
+        
         this.updateStatusDisplay();
         this.updateHistoryDisplay();
         this.updateStudentAnalytics();
@@ -490,22 +658,324 @@ class MoodCheckInApp {
         this.updateTeacherAnalytics();
     }
 
+    toggleGhostMode(enabled) {
+        this.ghostMode = enabled;
+        this.saveGhostModeState();
+        this.updateGhostModeDisplay();
+        
+        if (enabled) {
+            this.showMessage('👻 Ghost mode enabled! Your mood will be logged anonymously.', 'success');
+        } else {
+            this.showMessage('👤 Ghost mode disabled. Your mood will be logged with your identity.', 'success');
+        }
+    }
+
+    loadGhostModeState() {
+        const savedGhostMode = localStorage.getItem('ghostMode');
+        if (savedGhostMode !== null) {
+            this.ghostMode = JSON.parse(savedGhostMode);
+            const toggle = document.getElementById('ghostModeToggle');
+            if (toggle) {
+                toggle.checked = this.ghostMode;
+            }
+            this.updateGhostModeDisplay();
+        }
+    }
+
+    saveGhostModeState() {
+        localStorage.setItem('ghostMode', JSON.stringify(this.ghostMode));
+    }
+
+    updateGhostModeDisplay() {
+        const ghostModeStatus = document.getElementById('ghostModeStatus');
+        const checkinCard = document.querySelector('.checkin-card');
+        
+        if (this.ghostMode) {
+            if (ghostModeStatus) {
+                ghostModeStatus.style.display = 'flex';
+            }
+            if (checkinCard) {
+                checkinCard.classList.add('ghost-mode-active');
+            }
+        } else {
+            if (ghostModeStatus) {
+                ghostModeStatus.style.display = 'none';
+            }
+            if (checkinCard) {
+                checkinCard.classList.remove('ghost-mode-active');
+            }
+        }
+    }
+
     showMoodModal() {
         document.getElementById('moodModal').classList.add('active');
+        document.getElementById('emotionModal').classList.remove('active');
+        document.getElementById('locationModal').classList.remove('active');
         this.selectedMood = null;
+        this.selectedEmotions = [];
+        this.selectedLocation = null;
         this.updateMoodButtons();
-        document.getElementById('confirmMoodCheckin').disabled = true;
-        document.getElementById('moodNotes').value = '';
+        document.getElementById('proceedToEmotions').disabled = true;
+        
+        // Show ghost mode indicator if active
+        const ghostModeIndicator = document.getElementById('ghostModeModalIndicator');
+        if (ghostModeIndicator) {
+            ghostModeIndicator.style.display = this.ghostMode ? 'inline-block' : 'none';
+        }
     }
 
     hideMoodModal() {
         document.getElementById('moodModal').classList.remove('active');
     }
 
+    showEmotionModal() {
+        document.getElementById('moodModal').classList.remove('active');
+        document.getElementById('emotionModal').classList.add('active');
+        document.getElementById('locationModal').classList.remove('active');
+        
+        // Update modal title
+        const title = document.getElementById('emotionModalTitle');
+        if (this.selectedMood) {
+            const category = this.emotionalCategories[this.selectedMood.mood];
+            title.textContent = `${category.emoji} ${category.label} - Select your emotions`;
+        }
+        
+        // Populate emotion options
+        this.populateEmotionOptions();
+        
+        // Show ghost mode indicator if active
+        const ghostModeIndicator = document.getElementById('ghostModeEmotionIndicator');
+        if (ghostModeIndicator) {
+            ghostModeIndicator.style.display = this.ghostMode ? 'inline-block' : 'none';
+        }
+    }
+
+    hideEmotionModal() {
+        document.getElementById('emotionModal').classList.remove('active');
+    }
+
+    showLocationModal() {
+        document.getElementById('moodModal').classList.remove('active');
+        document.getElementById('emotionModal').classList.remove('active');
+        document.getElementById('locationModal').classList.add('active');
+        
+        // Reset location selection
+        this.selectedLocation = null;
+        this.updateLocationButtons();
+        document.getElementById('confirmMoodCheckin').disabled = true;
+        document.getElementById('otherLocationText').value = '';
+        document.getElementById('otherLocationInput').style.display = 'none';
+        
+        // Show ghost mode indicator if active
+        const ghostModeIndicator = document.getElementById('ghostModeLocationIndicator');
+        if (ghostModeIndicator) {
+            ghostModeIndicator.style.display = this.ghostMode ? 'inline-block' : 'none';
+        }
+    }
+
+    hideLocationModal() {
+        document.getElementById('locationModal').classList.remove('active');
+    }
+
+    showJournalingModal() {
+        document.getElementById('journalingModal').classList.add('active');
+        
+        // Reset journal entry
+        document.getElementById('journalEntry').value = '';
+        this.updateCharacterCount('');
+        
+        // Show ghost mode indicator if active
+        const ghostModeIndicator = document.getElementById('ghostModeJournalingIndicator');
+        if (ghostModeIndicator) {
+            ghostModeIndicator.style.display = this.ghostMode ? 'inline-block' : 'none';
+        }
+    }
+
+    hideJournalingModal() {
+        document.getElementById('journalingModal').classList.remove('active');
+    }
+
+    updateCharacterCount(text) {
+        const characterCount = document.getElementById('characterCount');
+        if (characterCount) {
+            characterCount.textContent = text.length;
+        }
+    }
+
+    skipJournaling() {
+        this.completeMoodCheckIn();
+    }
+
+    saveJournalEntry() {
+        const journalText = document.getElementById('journalEntry').value.trim();
+        
+        if (journalText) {
+            // Create journal entry record
+            const journalRecord = {
+                id: Date.now() + '_journal',
+                userId: this.currentUser.id,
+                userName: this.currentUser.name,
+                userClass: this.currentUser.class,
+                userHouse: this.currentUser.house,
+                type: 'journal-entry',
+                content: journalText,
+                timestamp: new Date(),
+                isAnonymous: this.ghostMode
+            };
+
+            // Add to personal history
+            this.moodHistory.unshift(journalRecord);
+            
+            // For anonymous mode, create a separate anonymous record for teachers
+            if (this.ghostMode) {
+                const anonymousJournalRecord = {
+                    ...journalRecord,
+                    id: journalRecord.id + '_anonymous',
+                    userId: 'anonymous',
+                    userName: 'Anonymous Student',
+                    userClass: 'Unknown',
+                    userHouse: 'Unknown',
+                    isAnonymous: true
+                };
+                this.allMoodHistory.unshift(anonymousJournalRecord);
+            } else {
+                // Normal mode - add with full identity
+                this.allMoodHistory.unshift(journalRecord);
+            }
+            
+            this.saveHistory();
+            this.saveAllMoodHistory();
+        }
+        
+        this.completeMoodCheckIn();
+    }
+
+    completeMoodCheckIn() {
+        this.hideJournalingModal();
+        this.updateStatusDisplay();
+        this.updateHistoryDisplay();
+        
+        if (this.currentUser.type === 'student') {
+            this.updateStudentAnalytics();
+        } else {
+            this.updateTeacherAnalytics();
+        }
+        
+        const modeText = this.ghostMode ? ' (anonymously)' : '';
+        const emotionsText = this.selectedEmotions.length > 0 ? ` - ${this.selectedEmotions.join(', ')}` : '';
+        const locationText = this.selectedLocation && this.selectedLocation !== 'other' ? 
+            ` at ${this.selectedLocation}` : 
+            (this.selectedLocation && this.selectedLocation.type === 'other' ? 
+                ` at ${this.selectedLocation.value}` : '');
+        this.showMessage(`Mood recorded: ${this.selectedMood.emoji} ${this.selectedMood.mood}${emotionsText}${locationText}${modeText}!`, 'success');
+    }
+
     selectMood(mood, emoji) {
         this.selectedMood = { mood, emoji };
         this.updateMoodButtons();
-        document.getElementById('confirmMoodCheckin').disabled = false;
+        document.getElementById('proceedToEmotions').disabled = false;
+    }
+
+    populateEmotionOptions() {
+        const emotionOptions = document.getElementById('emotionOptions');
+        emotionOptions.innerHTML = '';
+        
+        if (this.selectedMood) {
+            const category = this.emotionalCategories[this.selectedMood.mood];
+            
+            // Add "Select All" button
+            const selectAllBtn = document.createElement('button');
+            selectAllBtn.className = 'emotion-btn select-all-btn';
+            selectAllBtn.textContent = 'Select All';
+            selectAllBtn.addEventListener('click', () => {
+                this.selectAllEmotions();
+            });
+            emotionOptions.appendChild(selectAllBtn);
+            
+            // Add individual emotion buttons
+            category.subEmotions.forEach(emotion => {
+                const emotionBtn = document.createElement('button');
+                emotionBtn.className = 'emotion-btn';
+                emotionBtn.textContent = emotion;
+                emotionBtn.addEventListener('click', () => {
+                    this.toggleEmotion(emotion, emotionBtn);
+                });
+                emotionOptions.appendChild(emotionBtn);
+            });
+        }
+    }
+
+    selectAllEmotions() {
+        if (this.selectedMood) {
+            const category = this.emotionalCategories[this.selectedMood.mood];
+            this.selectedEmotions = [...category.subEmotions];
+            
+            // Update all emotion buttons
+            document.querySelectorAll('.emotion-btn:not(.select-all-btn)').forEach(btn => {
+                btn.classList.add('selected');
+            });
+            
+            // Enable continue button
+            document.getElementById('proceedToLocation').disabled = false;
+        }
+    }
+
+    toggleEmotion(emotion, button) {
+        if (this.selectedEmotions.includes(emotion)) {
+            this.selectedEmotions = this.selectedEmotions.filter(e => e !== emotion);
+            button.classList.remove('selected');
+        } else {
+            this.selectedEmotions.push(emotion);
+            button.classList.add('selected');
+        }
+        
+        // Enable/disable continue button
+        document.getElementById('proceedToLocation').disabled = this.selectedEmotions.length === 0;
+    }
+
+    selectLocation(location) {
+        this.selectedLocation = location;
+        this.updateLocationButtons();
+        
+        // Show/hide other location input
+        const otherInput = document.getElementById('otherLocationInput');
+        if (location === 'other') {
+            otherInput.style.display = 'block';
+            document.getElementById('otherLocationText').required = true;
+        } else {
+            otherInput.style.display = 'none';
+            document.getElementById('otherLocationText').required = false;
+        }
+        
+        // Enable/disable confirm button
+        this.updateConfirmButton();
+    }
+
+    updateOtherLocation(value) {
+        if (value.trim()) {
+            this.selectedLocation = { type: 'other', value: value.trim() };
+        } else {
+            this.selectedLocation = 'other';
+        }
+        this.updateConfirmButton();
+    }
+
+    updateLocationButtons() {
+        document.querySelectorAll('.location-btn').forEach(btn => {
+            btn.classList.remove('selected');
+            if (btn.dataset.location === this.selectedLocation || 
+                (this.selectedLocation && this.selectedLocation.type === 'other' && btn.dataset.location === 'other')) {
+                btn.classList.add('selected');
+            }
+        });
+    }
+
+    updateConfirmButton() {
+        const confirmBtn = document.getElementById('confirmMoodCheckin');
+        const isLocationValid = this.selectedLocation && 
+            (this.selectedLocation !== 'other' || 
+             (this.selectedLocation.type === 'other' && this.selectedLocation.value));
+        confirmBtn.disabled = !isLocationValid;
     }
 
     updateMoodButtons() {
@@ -518,10 +988,16 @@ class MoodCheckInApp {
     }
 
     handleMoodCheckIn() {
-        if (!this.selectedMood) return;
+        if (!this.selectedMood || !this.selectedEmotions.length || !this.selectedLocation) return;
 
         const notes = document.getElementById('moodNotes').value;
         const timestamp = new Date();
+        
+        // Determine location value
+        let locationValue = this.selectedLocation;
+        if (this.selectedLocation && this.selectedLocation.type === 'other') {
+            locationValue = this.selectedLocation.value;
+        }
         
         const moodRecord = {
             id: Date.now(),
@@ -531,28 +1007,49 @@ class MoodCheckInApp {
             userHouse: this.currentUser.house,
             mood: this.selectedMood.mood,
             emoji: this.selectedMood.emoji,
+            emotions: this.selectedEmotions,
+            location: locationValue,
             timestamp: timestamp,
             notes: notes,
-            type: 'mood-check-in'
+            type: 'mood-check-in',
+            isAnonymous: this.ghostMode
         };
 
+        // Always add to personal history for the student
         this.moodHistory.unshift(moodRecord);
-        this.allMoodHistory.unshift(moodRecord);
+        
+        // For anonymous mode, create a separate anonymous record for teachers
+        if (this.ghostMode) {
+            const anonymousRecord = {
+                id: Date.now() + '_anonymous',
+                userId: 'anonymous',
+                userName: 'Anonymous Student',
+                userClass: 'Unknown',
+                userHouse: 'Unknown',
+                mood: this.selectedMood.mood,
+                emoji: this.selectedMood.emoji,
+                emotions: this.selectedEmotions,
+                location: locationValue,
+                timestamp: timestamp,
+                notes: notes,
+                type: 'mood-check-in',
+                isAnonymous: true
+            };
+            this.allMoodHistory.unshift(anonymousRecord);
+        } else {
+            // Normal mode - add with full identity
+            this.allMoodHistory.unshift(moodRecord);
+        }
         
         this.saveHistory();
         this.saveAllMoodHistory();
         
         this.hideMoodModal();
-        this.updateStatusDisplay();
-        this.updateHistoryDisplay();
+        this.hideEmotionModal();
+        this.hideLocationModal();
         
-        if (this.currentUser.type === 'student') {
-            this.updateStudentAnalytics();
-        } else {
-            this.updateTeacherAnalytics();
-        }
-        
-        this.showMessage(`Mood recorded: ${this.selectedMood.emoji} ${this.selectedMood.mood}!`, 'success');
+        // Show journaling modal instead of completing immediately
+        this.showJournalingModal();
     }
 
     updateStatusDisplay() {
@@ -599,15 +1096,48 @@ class MoodCheckInApp {
             historyItem.className = 'history-item';
             
             const time = record.timestamp.toLocaleString();
-            const mood = record.mood.charAt(0).toUpperCase() + record.mood.slice(1);
             
-            historyItem.innerHTML = `
-                <div>
-                    <div class="history-time">${record.emoji} Mood: ${mood}</div>
-                    <div class="history-location">${record.notes || 'No additional notes'}</div>
-                </div>
-                <div class="history-time">${time}</div>
-            `;
+            if (record.type === 'journal-entry') {
+                // Display journal entry
+                historyItem.innerHTML = `
+                    <div>
+                        <div class="history-time">📝 Journal Entry</div>
+                        <div class="history-journal">${record.content}</div>
+                    </div>
+                    <div class="history-time">${time}</div>
+                `;
+            } else {
+                // Display mood check-in
+                const mood = record.mood.charAt(0).toUpperCase() + record.mood.slice(1);
+                
+                // Build emotions text
+                let emotionsText = '';
+                if (record.emotions && record.emotions.length > 0) {
+                    emotionsText = `<div class="history-emotions">Emotions: ${record.emotions.join(', ')}</div>`;
+                }
+                
+                // Build location text
+                let locationText = '';
+                if (record.location) {
+                    locationText = `<div class="history-location">📍 ${record.location}</div>`;
+                }
+                
+                // Build notes text
+                let notesText = '';
+                if (record.notes && record.notes.trim()) {
+                    notesText = `<div class="history-notes">${record.notes}</div>`;
+                }
+                
+                historyItem.innerHTML = `
+                    <div>
+                        <div class="history-time">${record.emoji} Mood: ${mood}</div>
+                        ${emotionsText}
+                        ${locationText}
+                        ${notesText}
+                    </div>
+                    <div class="history-time">${time}</div>
+                `;
+            }
             
             historyList.appendChild(historyItem);
         });
@@ -836,7 +1366,14 @@ class MoodCheckInApp {
         }
 
         const history = allUsers ? this.allMoodHistory : this.moodHistory;
-        return history.filter(record => record.timestamp >= startDate);
+        const filteredHistory = history.filter(record => record.timestamp >= startDate);
+        
+        // For teachers viewing all users, include both named and anonymous records
+        if (allUsers && this.currentUser && this.currentUser.type === 'teacher') {
+            return filteredHistory; // This already includes anonymous records
+        }
+        
+        return filteredHistory;
     }
 
     getMoodCounts(history) {
@@ -865,9 +1402,34 @@ class MoodCheckInApp {
             confused: '😕'
         };
 
+        // Count anonymous vs named entries for teachers
+        let anonymousCount = 0;
+        let namedCount = 0;
+        if (this.currentUser && this.currentUser.type === 'teacher') {
+            const filteredHistory = this.getFilteredHistory(period, true);
+            anonymousCount = filteredHistory.filter(record => record.isAnonymous).length;
+            namedCount = filteredHistory.filter(record => !record.isAnonymous).length;
+        }
+
         let html = `<div class="analytics-summary">
-            <h4>Total Check-ins: ${total}</h4>
-            <div class="mood-breakdown">`;
+            <h4>Total Check-ins: ${total}</h4>`;
+
+        // Show anonymous vs named breakdown for teachers
+        if (this.currentUser && this.currentUser.type === 'teacher' && (anonymousCount > 0 || namedCount > 0)) {
+            const anonymousPercentage = total > 0 ? ((anonymousCount / total) * 100).toFixed(1) : 0;
+            const namedPercentage = total > 0 ? ((namedCount / total) * 100).toFixed(1) : 0;
+            
+            html += `
+                <div class="data-breakdown" style="margin-bottom: 1rem; padding: 0.5rem; background: #f5f5f5; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                        <span>👤 Named: ${namedCount} (${namedPercentage}%)</span>
+                        <span>👻 Anonymous: ${anonymousCount} (${anonymousPercentage}%)</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        html += `<div class="mood-breakdown">`;
 
         Object.entries(moodCounts).forEach(([mood, count]) => {
             const percentage = ((count / total) * 100).toFixed(1);
@@ -945,12 +1507,93 @@ class MoodCheckInApp {
 
             studentsList.appendChild(studentItem);
         });
+
+        // Add anonymous mood entries if any exist
+        this.addAnonymousMoodEntries(studentsList, classFilter, houseFilter, moodFilter);
     }
 
     getLastMoodForStudent(studentId) {
         return this.allMoodHistory
             .filter(record => record.userId === studentId)
             .sort((a, b) => b.timestamp - a.timestamp)[0];
+    }
+
+    addAnonymousMoodEntries(studentsList, classFilter, houseFilter, moodFilter) {
+        // Get recent anonymous mood entries (last 24 hours)
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const recentAnonymousMoods = this.allMoodHistory
+            .filter(record => 
+                record.isAnonymous && 
+                record.timestamp >= oneDayAgo
+            )
+            .sort((a, b) => b.timestamp - a.timestamp);
+
+        // Apply mood filter if selected
+        let filteredAnonymousMoods = recentAnonymousMoods;
+        if (moodFilter) {
+            filteredAnonymousMoods = recentAnonymousMoods.filter(record => record.mood === moodFilter);
+        }
+
+        if (filteredAnonymousMoods.length > 0) {
+            // Add separator
+            const separator = document.createElement('div');
+            separator.className = 'anonymous-separator';
+            separator.innerHTML = '<hr style="margin: 1rem 0; border: 1px solid #e0e0e0;"><p style="text-align: center; color: #666; font-size: 0.9rem; margin: 0.5rem 0;">👻 Anonymous Mood Check-ins</p>';
+            studentsList.appendChild(separator);
+
+            // Add anonymous mood entries
+            filteredAnonymousMoods.slice(0, 5).forEach(record => {
+                const anonymousItem = document.createElement('div');
+                anonymousItem.className = 'student-item anonymous-item';
+                
+                const timeAgo = this.getTimeAgo(record.timestamp);
+                
+                anonymousItem.innerHTML = `
+                    <div class="student-info">
+                        <h4>👻 Anonymous Student</h4>
+                        <div class="student-details">
+                            ${timeAgo} • Anonymous
+                        </div>
+                    </div>
+                    <div class="student-mood">
+                        ${record.emoji}
+                    </div>
+                `;
+
+                studentsList.appendChild(anonymousItem);
+            });
+
+            if (filteredAnonymousMoods.length > 5) {
+                const moreItem = document.createElement('div');
+                moreItem.className = 'student-item anonymous-item';
+                moreItem.innerHTML = `
+                    <div class="student-info">
+                        <h4>👻 +${filteredAnonymousMoods.length - 5} more anonymous</h4>
+                        <div class="student-details">
+                            check-ins in the last 24 hours
+                        </div>
+                    </div>
+                    <div class="student-mood">
+                        📊
+                    </div>
+                `;
+                studentsList.appendChild(moreItem);
+            }
+        }
+    }
+
+    getTimeAgo(timestamp) {
+        const now = new Date();
+        const diffInMinutes = Math.floor((now - timestamp) / (1000 * 60));
+        
+        if (diffInMinutes < 1) return 'Just now';
+        if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+        
+        const diffInHours = Math.floor(diffInMinutes / 60);
+        if (diffInHours < 24) return `${diffInHours}h ago`;
+        
+        const diffInDays = Math.floor(diffInHours / 24);
+        return `${diffInDays}d ago`;
     }
 
     startMoodEmojiAnimation() {
