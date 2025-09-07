@@ -450,6 +450,142 @@ body {
 
 .history-location {
     color: #666;
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+}
+
+.history-emotions {
+    color: #2196F3;
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+    font-weight: 500;
+}
+
+.history-notes {
+    color: #666;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
+.history-journal {
+    color: #333;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 3px solid #FF9800;
+    font-style: italic;
+    line-height: 1.4;
+}
+
+/* Ghost Mode Toggle */
+.ghost-mode-toggle {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.toggle-container {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.toggle-container input[type="checkbox"] {
+    display: none;
+}
+
+.toggle-slider {
+    position: relative;
+    width: 50px;
+    height: 24px;
+    background: #ccc;
+    border-radius: 24px;
+    transition: background 0.3s;
+    margin-right: 10px;
+}
+
+.toggle-slider:before {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: white;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-container input:checked + .toggle-slider {
+    background: #4CAF50;
+}
+
+.toggle-container input:checked + .toggle-slider:before {
+    transform: translateX(26px);
+}
+
+.toggle-label {
+    font-weight: 500;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.ghost-mode-info {
+    margin-top: 0.5rem;
+    color: #666;
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.ghost-mode-indicator {
+    color: #9c27b0 !important;
+    font-weight: 500;
+}
+
+.ghost-mode-active {
+    background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%) !important;
+    color: white !important;
+}
+
+.ghost-mode-active .status-value {
+    color: white !important;
+}
+
+/* Anonymous Items */
+.anonymous-item {
+    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%) !important;
+    border-left: 4px solid #9c27b0 !important;
+}
+
+.anonymous-item h4 {
+    color: #7b1fa2 !important;
+}
+
+.anonymous-item .student-details {
+    color: #8e24aa !important;
+}
+
+.anonymous-separator {
+    margin: 1rem 0;
+}
+
+/* Ghost Mode Modal Indicator */
+.ghost-mode-modal-indicator {
+    background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%);
+    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin: 0.5rem 0;
+    display: inline-block;
 }
 
 /* Analytics Section */
@@ -629,6 +765,154 @@ body {
     backdrop-filter: blur(5px);
 }
 
+/* Emotion Selection */
+.emotion-selection h4 {
+    margin-bottom: 1rem;
+    color: #333;
+    text-align: center;
+    font-size: 1rem;
+}
+
+.emotion-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
+    padding: 0.5rem;
+}
+
+.emotion-btn {
+    background: #f8f9fa;
+    border: 2px solid #e1e5e9;
+    padding: 0.6rem 0.8rem;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #333;
+    text-align: center;
+    min-height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.emotion-btn:hover {
+    border-color: #2196F3;
+    background: #e3f2fd;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(33, 150, 243, 0.2);
+}
+
+.emotion-btn.selected {
+    border-color: #2196F3;
+    background: linear-gradient(135deg, #2196F3, #1976D2);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
+}
+
+.emotion-btn.select-all-btn {
+    background: linear-gradient(135deg, #FF9800, #F57C00);
+    color: white;
+    border-color: #FF9800;
+    font-weight: 600;
+    grid-column: 1 / -1;
+    margin-bottom: 0.5rem;
+}
+
+.emotion-btn.select-all-btn:hover {
+    background: linear-gradient(135deg, #F57C00, #E65100);
+    border-color: #F57C00;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 152, 0, 0.3);
+}
+
+/* Location Selection */
+.location-selection h4 {
+    margin-bottom: 1.5rem;
+    color: #333;
+    text-align: center;
+    font-size: 1.2rem;
+}
+
+.location-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.location-btn {
+    background: #f8f9fa;
+    border: 2px solid #e1e5e9;
+    padding: 1.5rem 1rem;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 100px;
+}
+
+.location-btn:hover {
+    border-color: #4CAF50;
+    background: #e8f5e8;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(76, 175, 80, 0.2);
+}
+
+.location-btn.selected {
+    border-color: #4CAF50;
+    background: linear-gradient(135deg, #4CAF50, #388E3C);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(76, 175, 80, 0.3);
+}
+
+.location-emoji {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.location-label {
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.other-location-input {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 1px solid #e1e5e9;
+}
+
+.other-location-input label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.other-location-input input {
+    width: 100%;
+    padding: 0.8rem;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+.other-location-input input:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
 .modal.active {
     display: flex;
     justify-content: center;
@@ -639,10 +923,12 @@ body {
     background: white;
     border-radius: 20px;
     width: 90%;
-    max-width: 500px;
-    max-height: 90vh;
+    max-width: 600px;
+    max-height: 85vh;
     overflow-y: auto;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
 }
 
 .modal-header {
@@ -651,6 +937,57 @@ body {
     align-items: center;
     padding: 2rem 2rem 1rem;
     border-bottom: 1px solid #e1e5e9;
+}
+
+.modal-footer {
+    padding: 1rem 2rem 2rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.modal-footer-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.step-indicator {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
+}
+
+.step {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: #e1e5e9;
+    color: #666;
+    transition: all 0.3s ease;
+}
+
+.step.active {
+    background: #2196F3;
+    color: white;
+    transform: scale(1.1);
+}
+
+.step.completed {
+    background: #4CAF50;
+    color: white;
+}
+
+.step.completed::after {
+    content: '✓';
+    font-size: 0.8rem;
 }
 
 .modal-header h3 {
@@ -678,6 +1015,8 @@ body {
 
 .modal-body {
     padding: 2rem;
+    flex: 1;
+    overflow-y: auto;
 }
 
 .mood-selection h4 {
@@ -755,6 +1094,47 @@ body {
 .notes-section textarea:focus {
     outline: none;
     border-color: #2196F3;
+}
+
+/* Journaling Modal Styles */
+.journaling-section h4 {
+    margin-bottom: 1rem;
+    color: #333;
+    text-align: center;
+    font-size: 1.2rem;
+}
+
+.journaling-hint {
+    color: #666;
+    font-size: 0.9rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    font-style: italic;
+    line-height: 1.4;
+}
+
+.journaling-section textarea {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid #e1e5e9;
+    border-radius: 10px;
+    font-size: 1rem;
+    resize: vertical;
+    min-height: 120px;
+    font-family: inherit;
+    transition: border-color 0.3s ease;
+}
+
+.journaling-section textarea:focus {
+    outline: none;
+    border-color: #2196F3;
+}
+
+.character-count {
+    text-align: right;
+    color: #666;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
 }
 
 .modal-footer {

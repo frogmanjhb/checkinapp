@@ -178,6 +178,19 @@
                     <div class="checkin-section">
                         <div class="checkin-card">
                             <h3>😊 Mood Check-In</h3>
+                            
+                            <!-- Ghost Mode Toggle -->
+                            <div class="ghost-mode-toggle">
+                                <label class="toggle-container">
+                                    <input type="checkbox" id="ghostModeToggle">
+                                    <span class="toggle-slider"></span>
+                                    <span class="toggle-label">👻 Ghost Mode</span>
+                                </label>
+                                <div class="ghost-mode-info" id="ghostModeInfo">
+                                    <small>Your mood will be logged anonymously. Teachers can see the mood data but not your identity.</small>
+                                </div>
+                            </div>
+                            
                             <div class="status-display" id="statusDisplay">
                                 <div class="status-item">
                                     <span class="status-label">Last Mood:</span>
@@ -186,6 +199,10 @@
                                 <div class="status-item">
                                     <span class="status-label">Today's Check-ins:</span>
                                     <span class="status-value" id="todayCount">0</span>
+                                </div>
+                                <div class="status-item" id="ghostModeStatus" style="display: none;">
+                                    <span class="status-label">Mode:</span>
+                                    <span class="status-value ghost-mode-indicator">👻 Anonymous</span>
                                 </div>
                             </div>
                         </div>
@@ -293,6 +310,9 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h3>😊 How are you feeling?</h3>
+                        <div id="ghostModeModalIndicator" class="ghost-mode-modal-indicator" style="display: none;">
+                            👻 Anonymous Mode
+                        </div>
                         <button class="close-btn" id="closeMoodModal">&times;</button>
                     </div>
                     <div class="modal-body">
@@ -333,13 +353,126 @@
                                 </button>
                             </div>
                         </div>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="step-indicator">
+                            <span class="step active">1</span>
+                            <span class="step">2</span>
+                            <span class="step">3</span>
+                        </div>
+                        <button id="proceedToEmotions" class="btn-primary" disabled>Continue to Emotions</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Emotion Selection Modal -->
+            <div id="emotionModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="emotionModalTitle">Select your emotions</h3>
+                        <div id="ghostModeEmotionIndicator" class="ghost-mode-modal-indicator" style="display: none;">
+                            👻 Anonymous Mode
+                        </div>
+                        <button class="close-btn" id="closeEmotionModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="emotion-selection">
+                            <h4>Choose one or more emotions that describe how you're feeling:</h4>
+                            <div class="emotion-options" id="emotionOptions">
+                                <!-- Emotions will be populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="step-indicator">
+                            <span class="step completed">1</span>
+                            <span class="step active">2</span>
+                            <span class="step">3</span>
+                        </div>
+                        <div class="modal-footer-buttons">
+                            <button id="backToMood" class="btn-secondary">Back to Mood</button>
+                            <button id="proceedToLocation" class="btn-primary" disabled>Continue to Location</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Location Selection Modal -->
+            <div id="locationModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Where are you feeling this way?</h3>
+                        <div id="ghostModeLocationIndicator" class="ghost-mode-modal-indicator" style="display: none;">
+                            👻 Anonymous Mode
+                        </div>
+                        <button class="close-btn" id="closeLocationModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="location-selection">
+                            <h4>Select where you're experiencing these emotions:</h4>
+                            <div class="location-options">
+                                <button class="location-btn" data-location="school">
+                                    <span class="location-emoji">🏫</span>
+                                    <span class="location-label">School</span>
+                                </button>
+                                <button class="location-btn" data-location="home">
+                                    <span class="location-emoji">🏠</span>
+                                    <span class="location-label">Home</span>
+                                </button>
+                                <button class="location-btn" data-location="other">
+                                    <span class="location-emoji">📍</span>
+                                    <span class="location-label">Other</span>
+                                </button>
+                            </div>
+                            <div class="other-location-input" id="otherLocationInput" style="display: none;">
+                                <label for="otherLocationText">Please specify:</label>
+                                <input type="text" id="otherLocationText" placeholder="Enter location...">
+                            </div>
+                        </div>
                         <div class="notes-section">
-                            <label for="moodNotes">How are you feeling? (optional):</label>
+                            <label for="moodNotes">Additional notes (optional):</label>
                             <textarea id="moodNotes" placeholder="Tell us more about how you're feeling..."></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button id="confirmMoodCheckin" class="btn-primary" disabled>Check In My Mood</button>
+                        <div class="step-indicator">
+                            <span class="step completed">1</span>
+                            <span class="step completed">2</span>
+                            <span class="step active">3</span>
+                        </div>
+                        <div class="modal-footer-buttons">
+                            <button id="backToEmotions" class="btn-secondary">Back to Emotions</button>
+                            <button id="confirmMoodCheckin" class="btn-primary" disabled>Complete Check-In</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Journaling Modal -->
+            <div id="journalingModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>📝 Quick Journal Entry</h3>
+                        <div id="ghostModeJournalingIndicator" class="ghost-mode-modal-indicator" style="display: none;">
+                            👻 Anonymous Mode
+                        </div>
+                        <button class="close-btn" id="closeJournalingModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="journaling-section">
+                            <h4>How are you feeling right now? Share a thought or two:</h4>
+                            <p class="journaling-hint">Write 1-2 sentences about your current thoughts or feelings. This is optional but can help you reflect on your day.</p>
+                            <textarea id="journalEntry" placeholder="I'm feeling... Today I... I'm grateful for... I'm looking forward to..." rows="4"></textarea>
+                            <div class="character-count">
+                                <span id="characterCount">0</span> characters
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="modal-footer-buttons">
+                            <button id="skipJournaling" class="btn-secondary">Skip Journaling</button>
+                            <button id="saveJournalEntry" class="btn-primary">Save & Finish</button>
+                        </div>
                     </div>
                 </div>
             </div>
