@@ -1463,32 +1463,43 @@ class MoodCheckInApp {
     }
 
     setupReasonToggleListeners() {
+        console.log('Setting up reason toggle listeners...');
+        
         // Remove existing listeners to avoid duplicates
         document.querySelectorAll('.reason-toggle').forEach(toggle => {
             const newToggle = toggle.cloneNode(true);
             toggle.parentNode.replaceChild(newToggle, toggle);
         });
 
-        // Add event listeners to reason toggles
-        document.querySelectorAll('.reason-toggle').forEach(toggle => {
-            toggle.addEventListener('click', (e) => {
-                const checkbox = toggle.querySelector('input[type="checkbox"]');
-                const reason = checkbox.value;
-                checkbox.checked = !checkbox.checked;
+        // Add event listeners to reason checkboxes
+        const checkboxes = document.querySelectorAll('.reason-toggle input[type="checkbox"]');
+        console.log('Found', checkboxes.length, 'reason checkboxes');
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const reason = e.target.value;
+                console.log('Reason checkbox changed:', reason, 'checked:', e.target.checked);
                 this.selectReason(reason);
             });
         });
     }
 
     selectReason(reason) {
-        if (this.selectedReasons.includes(reason)) {
-            // Remove reason if already selected
-            this.selectedReasons = this.selectedReasons.filter(r => r !== reason);
+        // Find the checkbox for this reason
+        const checkbox = document.querySelector(`input[value="${reason}"]`);
+        const isChecked = checkbox ? checkbox.checked : false;
+        
+        if (isChecked) {
+            // Add reason if checkbox is checked and not already in array
+            if (!this.selectedReasons.includes(reason)) {
+                this.selectedReasons.push(reason);
+            }
         } else {
-            // Add reason if not selected
-            this.selectedReasons.push(reason);
+            // Remove reason if checkbox is unchecked
+            this.selectedReasons = this.selectedReasons.filter(r => r !== reason);
         }
         console.log('Selected reasons:', this.selectedReasons);
+        console.log('Checkbox state for', reason, ':', isChecked);
     }
 
     toggleGhostMode(isEnabled) {
