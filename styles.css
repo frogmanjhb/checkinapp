@@ -993,6 +993,22 @@ body {
     font-size: 1.5rem;
 }
 
+/* Journal Sections */
+.journal-section, .teacher-journal-section, .journal-entries-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.journal-section h3, .teacher-journal-section h3, .journal-entries-section h3 {
+    color: #333;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
 .students-list {
     display: grid;
     gap: 1rem;
