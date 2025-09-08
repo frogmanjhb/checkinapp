@@ -1575,7 +1575,7 @@ class MoodCheckInApp {
         const historyList = document.getElementById('historyList');
         historyList.innerHTML = '';
         
-        const recentHistory = this.moodHistory.slice(0, 10);
+        const recentHistory = this.moodHistory.slice(0, 5); // Show only 5 for orbital layout
         
         if (recentHistory.length === 0) {
             historyList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No mood check-ins yet.</p>';
@@ -1584,62 +1584,83 @@ class MoodCheckInApp {
         
         recentHistory.forEach(record => {
             const historyItem = document.createElement('div');
-            historyItem.className = 'history-item-enhanced';
+            historyItem.className = 'orbital-mood-item';
             
             const time = record.timestamp.toLocaleString();
             const mood = record.mood.charAt(0).toUpperCase() + record.mood.slice(1);
             
-            // Format emotions array
-            const emotionsDisplay = record.emotions && record.emotions.length > 0 
-                ? record.emotions.map(emotion => this.getEmotionDisplay(emotion)).join(', ')
-                : 'No emotions selected';
-            
-            // Format reasons array
-            const reasonsDisplay = record.reasons && record.reasons.length > 0 
-                ? record.reasons.map(reason => this.getReasonDisplay(reason)).join(', ')
-                : 'No reasons selected';
-            
-            // Format location
-            const locationDisplay = record.location 
-                ? this.getLocationDisplay(record.location)
-                : 'No location specified';
+            // Create orbital elements
+            const orbitalElements = this.createOrbitalElements(record);
             
             historyItem.innerHTML = `
-                <div class="history-header">
-                    <div class="history-mood">
-                        <span class="mood-emoji">${record.emoji}</span>
-                        <span class="mood-text">${mood}</span>
-                    </div>
-                    <div class="history-time">${time}</div>
+                <div class="orbital-mood-center">
+                    <div class="orbital-mood-emoji">${record.emoji}</div>
+                    <div class="orbital-mood-text">${mood}</div>
+                    <div class="orbital-mood-time">${time}</div>
                 </div>
-                
-                <div class="history-details">
-                    <div class="history-section">
-                        <span class="history-label"> Location</span>
-                        <span class="history-value">${locationDisplay}</span>
-                    </div>
-                    
-                    <div class="history-section">
-                        <span class="history-label"> Emotions</span>
-                        <span class="history-value">${emotionsDisplay}</span>
-                    </div>
-                    
-                    <div class="history-section">
-                        <span class="history-label"> Reasons</span>
-                        <span class="history-value">${reasonsDisplay}</span>
-                    </div>
-                    
-                    ${record.notes ? `
-                    <div class="history-section">
-                        <span class="history-label">📝 Notes</span>
-                        <span class="history-value">${record.notes}</span>
-                    </div>
-                    ` : ''}
-                </div>
+                ${orbitalElements}
             `;
             
             historyList.appendChild(historyItem);
         });
+    }
+
+    createOrbitalElements(record) {
+        const elements = [];
+        const positions = [
+            'orbital-top-left', 'orbital-top-right', 'orbital-middle-left', 
+            'orbital-middle-right', 'orbital-bottom-left', 'orbital-bottom-right',
+            'orbital-top-center', 'orbital-bottom-center'
+        ];
+        let positionIndex = 0;
+
+        // Add location element
+        if (record.location) {
+            const locationDisplay = this.getLocationDisplay(record.location);
+            elements.push(`
+                <div class="orbital-element orbital-location ${positions[positionIndex % positions.length]}">
+                    ${locationDisplay}
+                </div>
+            `);
+            positionIndex++;
+        }
+
+        // Add emotion elements
+        if (record.emotions && record.emotions.length > 0) {
+            record.emotions.forEach(emotion => {
+                const emotionDisplay = this.getEmotionDisplay(emotion);
+                elements.push(`
+                    <div class="orbital-element orbital-emotion ${positions[positionIndex % positions.length]}">
+                        ${emotionDisplay}
+                    </div>
+                `);
+                positionIndex++;
+            });
+        }
+
+        // Add reason elements
+        if (record.reasons && record.reasons.length > 0) {
+            record.reasons.forEach(reason => {
+                const reasonDisplay = this.getReasonDisplay(reason);
+                elements.push(`
+                    <div class="orbital-element orbital-reason ${positions[positionIndex % positions.length]}">
+                        ${reasonDisplay}
+                    </div>
+                `);
+                positionIndex++;
+            });
+        }
+
+        // Add notes element
+        if (record.notes) {
+            elements.push(`
+                <div class="orbital-element orbital-notes ${positions[positionIndex % positions.length]}">
+                    📝 ${record.notes}
+                </div>
+            `);
+        }
+
+        return elements.join('');
     }
 
     getEmotionDisplay(emotion) {
