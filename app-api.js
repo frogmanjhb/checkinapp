@@ -89,6 +89,11 @@ class APIUtils {
     static async getGradeAnalytics(grade, period = 'daily') {
         return this.makeRequest(`/teacher/grade-analytics?grade=${grade}&period=${period}`);
     }
+
+    // Get students for specific teacher
+    static async getTeacherStudents(teacherId) {
+        return this.makeRequest(`/teacher/students/${teacherId}`);
+    }
 }
 
 // Security utility for password validation
@@ -367,16 +372,7 @@ class MoodCheckInApp {
             });
         });
 
-        // Teacher filters
-        const classFilter = document.getElementById('classFilter');
-        const houseFilter = document.getElementById('houseFilter');
-        const moodFilter = document.getElementById('moodFilter');
-        const gradeSelector = document.getElementById('gradeSelector');
-        
-        if (classFilter) classFilter.addEventListener('change', () => this.updateTeacherView());
-        if (houseFilter) houseFilter.addEventListener('change', () => this.updateTeacherView());
-        if (moodFilter) moodFilter.addEventListener('change', () => this.updateTeacherView());
-        if (gradeSelector) gradeSelector.addEventListener('change', () => this.updateGradeAnalytics());
+        // Teacher filters (removed - teachers can only see their assigned grade and house)
     }
 
     async handleLogin() {
@@ -453,6 +449,8 @@ class MoodCheckInApp {
     async handleTeacherRegistration() {
         const firstName = SecurityUtils.sanitizeInput(document.getElementById('teacherFirstName').value);
         const surname = SecurityUtils.sanitizeInput(document.getElementById('teacherSurname').value);
+        const grade = document.getElementById('teacherGrade').value;
+        const house = document.getElementById('teacherHouse').value;
         const email = SecurityUtils.sanitizeInput(document.getElementById('teacherEmail').value);
         const password = document.getElementById('teacherPassword').value;
         const confirmPassword = document.getElementById('teacherConfirmPassword').value;
@@ -460,6 +458,11 @@ class MoodCheckInApp {
         // Validation
         if (!this.validateEmail(email)) {
             this.showMessage('Please enter a valid @stpeters.co.za email address.', 'error');
+            return;
+        }
+
+        if (!grade || !house) {
+            this.showMessage('Please select both grade and house assignments.', 'error');
             return;
         }
 
@@ -480,11 +483,13 @@ class MoodCheckInApp {
                 surname,
                 email,
                 password,
-                userType: 'teacher'
+                userType: 'teacher',
+                grade,
+                house
             });
 
             if (response.success) {
-                this.showMessage(`Teacher account created successfully! Password strength: ${passwordValidation.strength}. Please login.`, 'success');
+                this.showMessage(`Teacher account created successfully! You are assigned to ${grade} - ${house}. Password strength: ${passwordValidation.strength}. Please login.`, 'success');
                 this.showLoginScreen();
             } else {
                 this.showMessage(response.error || 'Registration failed. Please try again.', 'error');
@@ -632,9 +637,14 @@ class MoodCheckInApp {
         document.getElementById('teacherName').textContent = `${this.currentUser.first_name} ${this.currentUser.surname}`;
         document.getElementById('userName').textContent = `${this.currentUser.first_name} ${this.currentUser.surname}`;
         
+        // Update teacher assignment info
+        document.getElementById('teacherAssignedGrade').textContent = this.currentUser.class || 'Not assigned';
+        document.getElementById('teacherAssignedHouse').textContent = this.currentUser.house || 'Not assigned';
+        
         this.updateTeacherView();
         this.updateTeacherAnalytics();
         this.updateTeacherJournalList();
+        this.updateGradeAnalytics();
     }
 
     showDirectorDashboard() {
@@ -958,38 +968,37 @@ class MoodCheckInApp {
     }
 
     async updateTeacherView() {
-        const classFilter = document.getElementById('classFilter').value;
-        const houseFilter = document.getElementById('houseFilter').value;
-        const moodFilter = document.getElementById('moodFilter').value;
-
         const studentsList = document.getElementById('studentsList');
         if (!studentsList) return;
 
         try {
-            const response = await APIUtils.getAllStudents(classFilter, houseFilter);
+            // Get students from teacher's assigned grade and house only
+            const response = await APIUtils.getTeacherStudents(this.currentUser.id);
             if (!response.success) {
                 studentsList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Failed to load students.</p>';
                 return;
             }
 
-            let filteredStudents = response.students;
-
-            if (moodFilter) {
-                // Filter by mood - this would need additional API endpoint for efficiency
-                // For now, we'll show all students
-            }
+            const students = response.students;
+            const assignment = response.teacherAssignment;
 
             studentsList.innerHTML = '';
 
-            if (filteredStudents.length === 0) {
-                studentsList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No students found matching the selected filters.</p>';
+            if (students.length === 0) {
+                studentsList.innerHTML = `
+                    <div class="no-students-message">
+                        <p style="text-align: center; color: #666; padding: 2rem;">
+                            No students found in your assigned grade (${assignment.grade}) and house (${assignment.house}).
+                        </p>
+                    </div>
+                `;
                 return;
             }
 
             // Load mood history for all students
             await this.loadAllMoodHistory();
 
-            filteredStudents.forEach(student => {
+            students.forEach(student => {
                 const studentItem = document.createElement('div');
                 studentItem.className = 'student-item';
 
@@ -1153,22 +1162,22 @@ class MoodCheckInApp {
     }
 
     async updateGradeAnalytics() {
-        const gradeSelector = document.getElementById('gradeSelector');
         const gradeAnalytics = document.getElementById('gradeAnalytics');
         
-        if (!gradeSelector || !gradeAnalytics) return;
+        if (!gradeAnalytics) return;
 
-        const selectedGrade = gradeSelector.value;
+        // Get the teacher's assigned grade
+        const teacherGrade = this.currentUser.class;
         
-        if (!selectedGrade) {
-            gradeAnalytics.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Select a grade to view anonymous mood analytics.</p>';
+        if (!teacherGrade) {
+            gradeAnalytics.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No grade assignment found.</p>';
             return;
         }
 
         try {
-            const response = await APIUtils.getGradeAnalytics(selectedGrade, 'daily');
+            const response = await APIUtils.getGradeAnalytics(teacherGrade, 'daily');
             if (response.success) {
-                this.displayGradeAnalytics(gradeAnalytics, response.analytics, selectedGrade);
+                this.displayGradeAnalytics(gradeAnalytics, response.analytics, teacherGrade);
             } else {
                 gradeAnalytics.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Failed to load grade analytics.</p>';
             }

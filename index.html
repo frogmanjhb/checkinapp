@@ -139,6 +139,28 @@
                                 <input type="text" id="teacherSurname" required placeholder="Enter your surname">
                             </div>
                             <div class="form-group">
+                                <label for="teacherGrade">Grade Assignment</label>
+                                <select id="teacherGrade" required>
+                                    <option value="">Select your assigned grade</option>
+                                    <option value="Grade 5">Grade 5</option>
+                                    <option value="Grade 6">Grade 6</option>
+                                    <option value="Grade 7">Grade 7</option>
+                                </select>
+                                <small class="form-hint">You will only be able to view data from this grade</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="teacherHouse">House Assignment</label>
+                                <select id="teacherHouse" required>
+                                    <option value="">Select your assigned house</option>
+                                    <option value="Mirfield">Mirfield</option>
+                                    <option value="Bavin">Bavin</option>
+                                    <option value="Sage">Sage</option>
+                                    <option value="Bishops">Bishops</option>
+                                    <option value="Dodson">Dodson</option>
+                                </select>
+                                <small class="form-hint">You will only be able to view data from this house</small>
+                            </div>
+                            <div class="form-group">
                                 <label for="teacherEmail">Email</label>
                                 <input type="email" id="teacherEmail" required placeholder="your.name@stpeters.co.za">
                                 <small class="form-hint">Must be a @stpeters.co.za email address</small>
@@ -285,37 +307,21 @@
                         <p class="current-time" id="teacherCurrentTime"></p>
                     </div>
 
-                    <!-- Teacher Controls -->
-                    <div class="teacher-controls">
-                        <div class="filter-section">
-                            <h3>🔍 View Students</h3>
-                            <div class="filter-controls">
-                                <select id="classFilter">
-                                    <option value="">All Grades</option>
-                                    <option value="Grade 5">Grade 5</option>
-                                    <option value="Grade 6">Grade 6</option>
-                                    <option value="Grade 7">Grade 7</option>
-                                </select>
-                                <select id="houseFilter">
-                                    <option value="">All Houses</option>
-                                    <option value="Mirfield">Mirfield</option>
-                                    <option value="Bavin">Bavin</option>
-                                    <option value="Sage">Sage</option>
-                                    <option value="Bishops">Bishops</option>
-                                    <option value="Dodson">Dodson</option>
-                                </select>
-                                <select id="moodFilter">
-                                    <option value="">All Moods</option>
-                                    <option value="happy">😊 Happy</option>
-                                    <option value="excited">🤩 Excited</option>
-                                    <option value="calm">😌 Calm</option>
-                                    <option value="tired">😴 Tired</option>
-                                    <option value="anxious">😰 Anxious</option>
-                                    <option value="sad">😢 Sad</option>
-                                    <option value="angry">😠 Angry</option>
-                                    <option value="confused">😕 Confused</option>
-                                </select>
+                    <!-- Teacher Assignment Info -->
+                    <div class="teacher-assignment-info">
+                        <div class="assignment-card">
+                            <h3>📋 Your Assignment</h3>
+                            <div class="assignment-details">
+                                <div class="assignment-item">
+                                    <span class="assignment-label">Grade:</span>
+                                    <span class="assignment-value" id="teacherAssignedGrade">-</span>
+                                </div>
+                                <div class="assignment-item">
+                                    <span class="assignment-label">House:</span>
+                                    <span class="assignment-value" id="teacherAssignedHouse">-</span>
+                                </div>
                             </div>
+                            <p class="assignment-note">You can only view data from your assigned grade and house.</p>
                         </div>
                     </div>
 
@@ -336,16 +342,8 @@
                     <!-- Grade Analytics (No Names) -->
                     <div class="grade-analytics">
                         <h3>📊 Grade Analytics (Anonymous)</h3>
-                        <div class="grade-selector">
-                            <select id="gradeSelector">
-                                <option value="">Select Grade</option>
-                                <option value="Grade 5">Grade 5</option>
-                                <option value="Grade 6">Grade 6</option>
-                                <option value="Grade 7">Grade 7</option>
-                            </select>
-                        </div>
                         <div class="grade-analytics-content" id="gradeAnalytics">
-                            <p style="text-align: center; color: #666; padding: 2rem;">Select a grade to view anonymous mood analytics.</p>
+                            <p style="text-align: center; color: #666; padding: 2rem;">Loading your assigned grade analytics...</p>
                         </div>
                     </div>
 
