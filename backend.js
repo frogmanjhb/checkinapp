@@ -148,7 +148,7 @@ app.post('/api/register', async (req, res) => {
   }
   
   try {
-    const { firstName, surname, email, password, userType, class: studentClass, house } = req.body;
+    const { firstName, surname, email, password, userType, class: studentClass, house, grade } = req.body;
     
     // Validate required fields
     if (!firstName || !surname || !email || !password || !userType) {
@@ -158,6 +158,11 @@ app.post('/api/register', async (req, res) => {
     // Validate email format
     if (!email.endsWith('@stpeters.co.za')) {
       return res.status(400).json({ success: false, error: 'Email must be a @stpeters.co.za address' });
+    }
+
+    // Validate teacher-specific fields
+    if (userType === 'teacher' && (!grade || !house)) {
+      return res.status(400).json({ success: false, error: 'Teachers must specify grade and house assignments' });
     }
 
     // Check if user already exists
@@ -170,10 +175,11 @@ app.post('/api/register', async (req, res) => {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
     
-    // Insert user
+    // Insert user - use grade for teachers, class for students
+    const userClass = userType === 'teacher' ? grade : studentClass;
     const result = await pool.query(
       'INSERT INTO users (first_name, surname, email, password_hash, user_type, class, house) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, first_name, surname, email, user_type, class, house, created_at',
-      [firstName, surname, email, passwordHash, userType, studentClass, house]
+      [firstName, surname, email, passwordHash, userType, userClass, house]
     );
     
     res.status(201).json({ success: true, user: result.rows[0] });
@@ -303,6 +309,41 @@ app.get('/api/students', async (req, res) => {
     res.json({ success: true, students: result.rows });
   } catch (error) {
     console.error('Students list error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get students for specific teacher (based on their grade and house assignment)
+app.get('/api/teacher/students/:teacherId', async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    
+    // First get the teacher's grade and house assignment
+    const teacherResult = await pool.query(
+      'SELECT class, house FROM users WHERE id = $1 AND user_type = $2',
+      [teacherId, 'teacher']
+    );
+    
+    if (teacherResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Teacher not found' });
+    }
+    
+    const teacher = teacherResult.rows[0];
+    const teacherGrade = teacher.class;
+    const teacherHouse = teacher.house;
+    
+    // Get students from the teacher's assigned grade and house
+    const result = await pool.query(
+      `SELECT id, first_name, surname, email, class, house, created_at 
+       FROM users 
+       WHERE user_type = $1 AND class = $2 AND house = $3 
+       ORDER BY first_name`,
+      ['student', teacherGrade, teacherHouse]
+    );
+    
+    res.json({ success: true, students: result.rows, teacherAssignment: { grade: teacherGrade, house: teacherHouse } });
+  } catch (error) {
+    console.error('Teacher students list error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
