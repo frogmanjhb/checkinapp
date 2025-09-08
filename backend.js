@@ -154,6 +154,23 @@ async function initializeDatabase() {
       console.log('✅ Director user already exists');
     }
 
+    // Add demo teacher user if it doesn't exist
+    const teacherExists = await pool.query('SELECT id FROM users WHERE email = $1', ['teacher@stpeters.co.za']);
+    if (teacherExists.rows.length === 0) {
+      try {
+        const hashedPassword = await bcrypt.hash('teacher123!', 10);
+        await pool.query(`
+          INSERT INTO users (first_name, surname, email, password_hash, user_type, class, house)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, ['Demo', 'Teacher', 'teacher@stpeters.co.za', hashedPassword, 'teacher', 'Grade 6', 'Mirfield']);
+        console.log('✅ Demo teacher user created');
+      } catch (error) {
+        console.log('⚠️ Demo teacher user creation failed:', error.message);
+      }
+    } else {
+      console.log('✅ Demo teacher user already exists');
+    }
+
   } catch (error) {
     console.error('❌ Database initialization error:', error);
   }
