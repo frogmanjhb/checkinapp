@@ -539,14 +539,14 @@ body {
     font-size: 1.2rem;
     font-weight: 700;
     color: #333;
-    margin-top: 0.25rem;
+    margin-top: 0.5rem;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .orbital-mood-time {
     font-size: 0.8rem;
     color: #666;
-    margin-top: 0.1rem;
+    margin-top: 0.2rem;
     font-style: italic;
 }
 
@@ -676,6 +676,7 @@ body {
     
     .orbital-mood-text {
         font-size: 1rem;
+        margin-top: 0.4rem;
     }
     
     .physics-element {
@@ -705,6 +706,7 @@ body {
     
     .orbital-mood-text {
         font-size: 0.9rem;
+        margin-top: 0.3rem;
     }
     
     .orbital-element {
