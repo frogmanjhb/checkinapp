@@ -1,0 +1,14 @@
+{
+  "terminal.integrated.env.windows": {
+    "DATABASE_URL": "postgresql://postgres:vFfnogESCPdrsqXtPihCTNJLAMEcgKee@metro.proxy.rlwy.net:26973/railway",
+    "NODE_ENV": "development"
+  },
+  "terminal.integrated.env.linux": {
+    "DATABASE_URL": "postgresql://postgres:vFfnogESCPdrsqXtPihCTNJLAMEcgKee@metro.proxy.rlwy.net:26973/railway",
+    "NODE_ENV": "development"
+  },
+  "terminal.integrated.env.osx": {
+    "DATABASE_URL": "postgresql://postgres:vFfnogESCPdrsqXtPihCTNJLAMEcgKee@metro.proxy.rlwy.net:26973/railway",
+    "NODE_ENV": "development"
+  }
+}
