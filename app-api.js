@@ -545,6 +545,14 @@ class MoodCheckInApp {
     }
 
     async handleTeacherRegistration() {
+        // Check if teacher registration form is visible
+        const teacherRegisterForm = document.getElementById('teacherRegisterForm');
+        if (!teacherRegisterForm || !teacherRegisterForm.classList.contains('active')) {
+            console.error('Teacher registration form is not visible');
+            this.showMessage('Please select Teacher registration first.', 'error');
+            return;
+        }
+
         const firstNameElement = document.getElementById('teacherFirstName');
         const surnameElement = document.getElementById('teacherSurname');
         const gradeElement = document.getElementById('teacherGrade');
@@ -556,6 +564,15 @@ class MoodCheckInApp {
         if (!firstNameElement || !surnameElement || !gradeElement || !houseElement || 
             !emailElement || !passwordElement || !confirmPasswordElement) {
             console.error('Teacher registration form elements not found in DOM');
+            console.log('Available elements:', {
+                firstNameElement: !!firstNameElement,
+                surnameElement: !!surnameElement,
+                gradeElement: !!gradeElement,
+                houseElement: !!houseElement,
+                emailElement: !!emailElement,
+                passwordElement: !!passwordElement,
+                confirmPasswordElement: !!confirmPasswordElement
+            });
             this.showMessage('Registration form not ready. Please refresh the page and try again.', 'error');
             return;
         }
