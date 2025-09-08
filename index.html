@@ -50,8 +50,8 @@
                         </div>
                         <div class="demo-credentials">
                             <p><strong>Demo Credentials:</strong></p>
-                            <p>Email: demo@stpeters.co.za</p>
-                            <p>Password: password</p>
+                            <p><strong>Student:</strong> demo@stpeters.co.za / password</p>
+                            <p><strong>Director:</strong> jatlee@stpeters.co.za / director123!</p>
                         </div>
                     </div>
                 </div>
@@ -73,6 +73,9 @@
                                 </button>
                                 <button type="button" class="user-type-btn" data-type="teacher">
                                     👨‍🏫 Teacher
+                                </button>
+                                <button type="button" class="user-type-btn" data-type="director">
+                                    👔 Director
                                 </button>
                             </div>
                         </div>
@@ -153,6 +156,34 @@
                             <button type="submit" class="btn-primary">Create Teacher Account</button>
                         </form>
 
+                        <!-- Director Registration Form -->
+                        <form id="directorRegisterForm" class="register-form">
+                            <div class="form-group">
+                                <label for="directorFirstName">First Name</label>
+                                <input type="text" id="directorFirstName" required placeholder="Enter your first name">
+                            </div>
+                            <div class="form-group">
+                                <label for="directorSurname">Surname</label>
+                                <input type="text" id="directorSurname" required placeholder="Enter your surname">
+                            </div>
+                            <div class="form-group">
+                                <label for="directorEmail">Email</label>
+                                <input type="email" id="directorEmail" required placeholder="your.name@stpeters.co.za">
+                                <small class="form-hint">Must be a @stpeters.co.za email address</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="directorPassword">Password</label>
+                                <input type="password" id="directorPassword" required placeholder="Create a strong password">
+                                <div id="directorPasswordStrength" class="password-strength"></div>
+                                <small class="form-hint">Must be at least 8 characters with uppercase, lowercase, numbers, and special characters</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="directorConfirmPassword">Confirm Password</label>
+                                <input type="password" id="directorConfirmPassword" required placeholder="Confirm your password">
+                            </div>
+                            <button type="submit" class="btn-primary">Create Director Account</button>
+                        </form>
+
                         <div class="auth-switch">
                             <p>Already have an account? <a href="#" id="showLogin">Login here</a></p>
                         </div>
@@ -211,6 +242,9 @@
                             <button id="moodCheckInBtn" class="btn-mood-checkin">
                                 😊 How are you feeling?
                             </button>
+                            <button id="journalEntryBtn" class="btn-journal-entry">
+                                📝 Journal Entry
+                            </button>
                         </div>
                     </div>
 
@@ -231,6 +265,13 @@
                         <h3>📊 Recent Activity</h3>
                         <div class="history-list" id="historyList">
                             <!-- History items will be populated here -->
+                        </div>
+                    </div>
+
+                    <div class="journal-section">
+                        <h3>📝 Your Journal Entries</h3>
+                        <div class="journal-list" id="journalList">
+                            <!-- Journal entries will be populated here -->
                         </div>
                     </div>
                 </div>
@@ -292,6 +333,30 @@
                         </div>
                     </div>
 
+                    <!-- Grade Analytics (No Names) -->
+                    <div class="grade-analytics">
+                        <h3>📊 Grade Analytics (Anonymous)</h3>
+                        <div class="grade-selector">
+                            <select id="gradeSelector">
+                                <option value="">Select Grade</option>
+                                <option value="Grade 5">Grade 5</option>
+                                <option value="Grade 6">Grade 6</option>
+                                <option value="Grade 7">Grade 7</option>
+                            </select>
+                        </div>
+                        <div class="grade-analytics-content" id="gradeAnalytics">
+                            <p style="text-align: center; color: #666; padding: 2rem;">Select a grade to view anonymous mood analytics.</p>
+                        </div>
+                    </div>
+
+                    <!-- Teacher Journal Entry -->
+                    <div class="teacher-journal-section">
+                        <h3>📝 Your Journal Entries</h3>
+                        <div class="teacher-journal-list" id="teacherJournalList">
+                            <!-- Teacher journal entries will be populated here -->
+                        </div>
+                    </div>
+
                     <!-- Student List -->
                     <div class="students-section">
                         <h3>👥 Students</h3>
@@ -300,6 +365,82 @@
                         </div>
                         <div class="students-list" id="studentsList">
                             <!-- Student list will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Director Dashboard Screen -->
+            <div id="directorDashboardScreen" class="screen">
+                <div class="dashboard-container">
+                    <div class="welcome-section">
+                        <h2>Welcome, <span id="directorName"></span>! 👔</h2>
+                        <p class="current-time" id="directorCurrentTime"></p>
+                    </div>
+
+                    <!-- Director Controls -->
+                    <div class="director-controls">
+                        <div class="filter-section">
+                            <h3>🔍 System Overview</h3>
+                            <div class="filter-controls">
+                                <select id="directorUserTypeFilter">
+                                    <option value="">All Users</option>
+                                    <option value="student">Students Only</option>
+                                    <option value="teacher">Teachers Only</option>
+                                </select>
+                                <select id="directorClassFilter">
+                                    <option value="">All Grades</option>
+                                    <option value="Grade 5">Grade 5</option>
+                                    <option value="Grade 6">Grade 6</option>
+                                    <option value="Grade 7">Grade 7</option>
+                                </select>
+                                <select id="directorHouseFilter">
+                                    <option value="">All Houses</option>
+                                    <option value="Mirfield">Mirfield</option>
+                                    <option value="Bavin">Bavin</option>
+                                    <option value="Sage">Sage</option>
+                                    <option value="Bishops">Bishops</option>
+                                    <option value="Dodson">Dodson</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Director Analytics -->
+                    <div class="director-analytics">
+                        <h3>📊 System Analytics</h3>
+                        <div class="analytics-tabs">
+                            <button class="analytics-tab active" data-period="daily">Daily</button>
+                            <button class="analytics-tab" data-period="weekly">Weekly</button>
+                            <button class="analytics-tab" data-period="monthly">Monthly</button>
+                            <button class="analytics-tab" data-period="yearly">Yearly</button>
+                        </div>
+                        <div class="analytics-content" id="directorAnalytics">
+                            <!-- Director analytics will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- All Users List -->
+                    <div class="users-section">
+                        <h3>👥 All Users</h3>
+                        <div class="users-list" id="allUsersList">
+                            <!-- All users list will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- All Mood Data -->
+                    <div class="mood-data-section">
+                        <h3>😊 All Mood Check-ins</h3>
+                        <div class="mood-data-list" id="allMoodDataList">
+                            <!-- All mood data will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- All Journal Entries -->
+                    <div class="journal-entries-section">
+                        <h3>📝 All Journal Entries</h3>
+                        <div class="journal-entries-list" id="allJournalEntriesList">
+                            <!-- All journal entries will be populated here -->
                         </div>
                     </div>
                 </div>
@@ -472,6 +613,32 @@
                         <div class="modal-footer-buttons">
                             <button id="skipJournaling" class="btn-secondary">Skip Journaling</button>
                             <button id="saveJournalEntry" class="btn-primary">Save & Finish</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Journal Entry Modal -->
+            <div id="journalEntryModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>📝 Journal Entry</h3>
+                        <button class="close-btn" id="closeJournalEntryModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="journal-entry-section">
+                            <h4>Share your thoughts and feelings:</h4>
+                            <p class="journal-hint">Write about your day, how you're feeling, or anything you'd like to reflect on.</p>
+                            <textarea id="journalEntryText" placeholder="Today I... I'm feeling... I'm grateful for... I'm looking forward to..." rows="6"></textarea>
+                            <div class="character-count">
+                                <span id="journalCharacterCount">0</span> characters
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="modal-footer-buttons">
+                            <button id="cancelJournalEntry" class="btn-secondary">Cancel</button>
+                            <button id="saveJournalEntryBtn" class="btn-primary">Save Entry</button>
                         </div>
                     </div>
                 </div>

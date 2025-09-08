@@ -59,6 +59,36 @@ class APIUtils {
     static async getAllMoodCheckins(period = 'daily') {
         return this.makeRequest(`/all-mood-checkins?period=${period}`);
     }
+
+    // Journal entry methods
+    static async saveJournalEntry(entryData) {
+        return this.makeRequest('/journal-entry', {
+            method: 'POST',
+            body: JSON.stringify(entryData)
+        });
+    }
+
+    static async getJournalEntries(userId, period = 'daily') {
+        return this.makeRequest(`/journal-entries/${userId}?period=${period}`);
+    }
+
+    // Director methods
+    static async getAllUsers() {
+        return this.makeRequest('/director/all-users');
+    }
+
+    static async getAllMoodData(period = 'daily') {
+        return this.makeRequest(`/director/all-mood-data?period=${period}`);
+    }
+
+    static async getAllJournalEntries(period = 'daily') {
+        return this.makeRequest(`/director/all-journal-entries?period=${period}`);
+    }
+
+    // Teacher grade analytics (no names)
+    static async getGradeAnalytics(grade, period = 'daily') {
+        return this.makeRequest(`/teacher/grade-analytics?grade=${grade}&period=${period}`);
+    }
 }
 
 // Security utility for password validation
@@ -177,6 +207,14 @@ class MoodCheckInApp {
             });
         }
 
+        const directorRegisterForm = document.getElementById('directorRegisterForm');
+        if (directorRegisterForm) {
+            directorRegisterForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleDirectorRegistration();
+            });
+        }
+
         // Auth screen switching
         const showRegister = document.getElementById('showRegister');
         if (showRegister) {
@@ -205,6 +243,7 @@ class MoodCheckInApp {
         // Password strength checking
         const studentPassword = document.getElementById('studentPassword');
         const teacherPassword = document.getElementById('teacherPassword');
+        const directorPassword = document.getElementById('directorPassword');
         
         if (studentPassword) {
             studentPassword.addEventListener('input', (e) => {
@@ -215,6 +254,12 @@ class MoodCheckInApp {
         if (teacherPassword) {
             teacherPassword.addEventListener('input', (e) => {
                 this.updatePasswordStrength('teacherPasswordStrength', e.target.value);
+            });
+        }
+
+        if (directorPassword) {
+            directorPassword.addEventListener('input', (e) => {
+                this.updatePasswordStrength('directorPasswordStrength', e.target.value);
             });
         }
 
@@ -231,6 +276,14 @@ class MoodCheckInApp {
         if (moodCheckInBtn) {
             moodCheckInBtn.addEventListener('click', () => {
                 this.showMoodModal();
+            });
+        }
+
+        // Journal entry button
+        const journalEntryBtn = document.getElementById('journalEntryBtn');
+        if (journalEntryBtn) {
+            journalEntryBtn.addEventListener('click', () => {
+                this.showJournalEntryModal();
             });
         }
 
@@ -267,6 +320,46 @@ class MoodCheckInApp {
             });
         }
 
+        // Journal entry modal controls
+        const closeJournalEntryModal = document.getElementById('closeJournalEntryModal');
+        if (closeJournalEntryModal) {
+            closeJournalEntryModal.addEventListener('click', () => {
+                this.hideJournalEntryModal();
+            });
+        }
+
+        const cancelJournalEntry = document.getElementById('cancelJournalEntry');
+        if (cancelJournalEntry) {
+            cancelJournalEntry.addEventListener('click', () => {
+                this.hideJournalEntryModal();
+            });
+        }
+
+        const saveJournalEntryBtn = document.getElementById('saveJournalEntryBtn');
+        if (saveJournalEntryBtn) {
+            saveJournalEntryBtn.addEventListener('click', () => {
+                this.handleJournalEntry();
+            });
+        }
+
+        // Journal entry character count
+        const journalEntryText = document.getElementById('journalEntryText');
+        if (journalEntryText) {
+            journalEntryText.addEventListener('input', (e) => {
+                this.updateJournalCharacterCount(e.target.value);
+            });
+        }
+
+        // Close journal entry modal when clicking outside
+        const journalEntryModal = document.getElementById('journalEntryModal');
+        if (journalEntryModal) {
+            journalEntryModal.addEventListener('click', (e) => {
+                if (e.target.id === 'journalEntryModal') {
+                    this.hideJournalEntryModal();
+                }
+            });
+        }
+
         // Analytics tabs
         document.querySelectorAll('.analytics-tab').forEach(tab => {
             tab.addEventListener('click', (e) => {
@@ -278,10 +371,12 @@ class MoodCheckInApp {
         const classFilter = document.getElementById('classFilter');
         const houseFilter = document.getElementById('houseFilter');
         const moodFilter = document.getElementById('moodFilter');
+        const gradeSelector = document.getElementById('gradeSelector');
         
         if (classFilter) classFilter.addEventListener('change', () => this.updateTeacherView());
         if (houseFilter) houseFilter.addEventListener('change', () => this.updateTeacherView());
         if (moodFilter) moodFilter.addEventListener('change', () => this.updateTeacherView());
+        if (gradeSelector) gradeSelector.addEventListener('change', () => this.updateGradeAnalytics());
     }
 
     async handleLogin() {
@@ -400,6 +495,51 @@ class MoodCheckInApp {
         }
     }
 
+    async handleDirectorRegistration() {
+        const firstName = SecurityUtils.sanitizeInput(document.getElementById('directorFirstName').value);
+        const surname = SecurityUtils.sanitizeInput(document.getElementById('directorSurname').value);
+        const email = SecurityUtils.sanitizeInput(document.getElementById('directorEmail').value);
+        const password = document.getElementById('directorPassword').value;
+        const confirmPassword = document.getElementById('directorConfirmPassword').value;
+
+        // Validation
+        if (!this.validateEmail(email)) {
+            this.showMessage('Please enter a valid @stpeters.co.za email address.', 'error');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            this.showMessage('Passwords do not match.', 'error');
+            return;
+        }
+
+        const passwordValidation = SecurityUtils.validatePasswordStrength(password);
+        if (!passwordValidation.isValid) {
+            this.showMessage(`Password requirements not met: ${passwordValidation.errors.join(', ')}`, 'error');
+            return;
+        }
+
+        try {
+            const response = await APIUtils.register({
+                firstName,
+                surname,
+                email,
+                password,
+                userType: 'director'
+            });
+
+            if (response.success) {
+                this.showMessage(`Director account created successfully! Password strength: ${passwordValidation.strength}. Please login.`, 'success');
+                this.showLoginScreen();
+            } else {
+                this.showMessage(response.error || 'Registration failed. Please try again.', 'error');
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
+            this.showMessage('Registration failed. Please try again.', 'error');
+        }
+    }
+
     validateEmail(email) {
         return email.endsWith('@stpeters.co.za') && email.includes('@');
     }
@@ -417,6 +557,7 @@ class MoodCheckInApp {
         document.getElementById('registerScreen').classList.remove('active');
         document.getElementById('studentDashboardScreen').classList.remove('active');
         document.getElementById('teacherDashboardScreen').classList.remove('active');
+        document.getElementById('directorDashboardScreen').classList.remove('active');
         document.getElementById('navUser').style.display = 'none';
         
         // Clear form
@@ -428,6 +569,7 @@ class MoodCheckInApp {
         document.getElementById('registerScreen').classList.add('active');
         document.getElementById('studentDashboardScreen').classList.remove('active');
         document.getElementById('teacherDashboardScreen').classList.remove('active');
+        document.getElementById('directorDashboardScreen').classList.remove('active');
         document.getElementById('navUser').style.display = 'none';
     }
 
@@ -445,8 +587,10 @@ class MoodCheckInApp {
         
         if (type === 'student') {
             document.getElementById('studentRegisterForm').classList.add('active');
-        } else {
+        } else if (type === 'teacher') {
             document.getElementById('teacherRegisterForm').classList.add('active');
+        } else if (type === 'director') {
+            document.getElementById('directorRegisterForm').classList.add('active');
         }
     }
 
@@ -457,14 +601,17 @@ class MoodCheckInApp {
         
         if (this.currentUser.user_type === 'student') {
             this.showStudentDashboard();
-        } else {
+        } else if (this.currentUser.user_type === 'teacher') {
             this.showTeacherDashboard();
+        } else if (this.currentUser.user_type === 'director') {
+            this.showDirectorDashboard();
         }
     }
 
     showStudentDashboard() {
         document.getElementById('studentDashboardScreen').classList.add('active');
         document.getElementById('teacherDashboardScreen').classList.remove('active');
+        document.getElementById('directorDashboardScreen').classList.remove('active');
         
         // Update user info
         document.getElementById('studentName').textContent = `${this.currentUser.first_name} ${this.currentUser.surname}`;
@@ -473,11 +620,13 @@ class MoodCheckInApp {
         this.updateStatusDisplay();
         this.updateHistoryDisplay();
         this.updateStudentAnalytics();
+        this.updateStudentJournalList();
     }
 
     showTeacherDashboard() {
         document.getElementById('studentDashboardScreen').classList.remove('active');
         document.getElementById('teacherDashboardScreen').classList.add('active');
+        document.getElementById('directorDashboardScreen').classList.remove('active');
         
         // Update user info
         document.getElementById('teacherName').textContent = `${this.currentUser.first_name} ${this.currentUser.surname}`;
@@ -485,6 +634,20 @@ class MoodCheckInApp {
         
         this.updateTeacherView();
         this.updateTeacherAnalytics();
+        this.updateTeacherJournalList();
+    }
+
+    showDirectorDashboard() {
+        document.getElementById('studentDashboardScreen').classList.remove('active');
+        document.getElementById('teacherDashboardScreen').classList.remove('active');
+        document.getElementById('directorDashboardScreen').classList.add('active');
+        
+        // Update user info
+        document.getElementById('directorName').textContent = `${this.currentUser.first_name} ${this.currentUser.surname}`;
+        document.getElementById('userName').textContent = `${this.currentUser.first_name} ${this.currentUser.surname}`;
+        
+        this.updateDirectorView();
+        this.updateDirectorAnalytics();
     }
 
     async loadUserData() {
@@ -881,6 +1044,329 @@ class MoodCheckInApp {
 
         const validation = SecurityUtils.validatePasswordStrength(password);
         strengthElement.className = `password-strength ${validation.strength.toLowerCase().replace(' ', '-')}`;
+    }
+
+    // Journal entry methods
+    showJournalEntryModal() {
+        document.getElementById('journalEntryModal').classList.add('active');
+        document.getElementById('journalEntryText').value = '';
+        this.updateJournalCharacterCount('');
+    }
+
+    hideJournalEntryModal() {
+        document.getElementById('journalEntryModal').classList.remove('active');
+    }
+
+    updateJournalCharacterCount(text) {
+        const countElement = document.getElementById('journalCharacterCount');
+        if (countElement) {
+            countElement.textContent = text.length;
+        }
+    }
+
+    async handleJournalEntry() {
+        if (!this.currentUser) return;
+
+        const entryText = document.getElementById('journalEntryText').value.trim();
+        
+        if (!entryText) {
+            this.showMessage('Please enter some text for your journal entry.', 'error');
+            return;
+        }
+
+        try {
+            const response = await APIUtils.saveJournalEntry({
+                userId: this.currentUser.id,
+                entry: entryText
+            });
+
+            if (response.success) {
+                this.hideJournalEntryModal();
+                this.showMessage('Journal entry saved successfully!', 'success');
+                
+                // Update journal display
+                if (this.currentUser.user_type === 'student') {
+                    this.updateStudentJournalList();
+                } else if (this.currentUser.user_type === 'teacher') {
+                    this.updateTeacherJournalList();
+                }
+            } else {
+                this.showMessage('Failed to save journal entry. Please try again.', 'error');
+            }
+        } catch (error) {
+            console.error('Journal entry error:', error);
+            this.showMessage('Failed to save journal entry. Please try again.', 'error');
+        }
+    }
+
+    async updateStudentJournalList() {
+        const journalList = document.getElementById('journalList');
+        if (!journalList) return;
+
+        try {
+            const response = await APIUtils.getJournalEntries(this.currentUser.id, 'daily');
+            if (response.success) {
+                this.displayJournalEntries(journalList, response.entries);
+            }
+        } catch (error) {
+            console.error('Failed to load journal entries:', error);
+        }
+    }
+
+    async updateTeacherJournalList() {
+        const journalList = document.getElementById('teacherJournalList');
+        if (!journalList) return;
+
+        try {
+            const response = await APIUtils.getJournalEntries(this.currentUser.id, 'daily');
+            if (response.success) {
+                this.displayJournalEntries(journalList, response.entries);
+            }
+        } catch (error) {
+            console.error('Failed to load journal entries:', error);
+        }
+    }
+
+    displayJournalEntries(container, entries) {
+        container.innerHTML = '';
+
+        if (entries.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No journal entries yet.</p>';
+            return;
+        }
+
+        entries.forEach(entry => {
+            const entryItem = document.createElement('div');
+            entryItem.className = 'journal-entry-item';
+            
+            const time = new Date(entry.timestamp).toLocaleString();
+            
+            entryItem.innerHTML = `
+                <div class="journal-entry-content">
+                    <div class="journal-entry-text">${entry.entry}</div>
+                </div>
+                <div class="journal-entry-time">${time}</div>
+            `;
+            
+            container.appendChild(entryItem);
+        });
+    }
+
+    async updateGradeAnalytics() {
+        const gradeSelector = document.getElementById('gradeSelector');
+        const gradeAnalytics = document.getElementById('gradeAnalytics');
+        
+        if (!gradeSelector || !gradeAnalytics) return;
+
+        const selectedGrade = gradeSelector.value;
+        
+        if (!selectedGrade) {
+            gradeAnalytics.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Select a grade to view anonymous mood analytics.</p>';
+            return;
+        }
+
+        try {
+            const response = await APIUtils.getGradeAnalytics(selectedGrade, 'daily');
+            if (response.success) {
+                this.displayGradeAnalytics(gradeAnalytics, response.analytics, selectedGrade);
+            } else {
+                gradeAnalytics.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Failed to load grade analytics.</p>';
+            }
+        } catch (error) {
+            console.error('Failed to load grade analytics:', error);
+            gradeAnalytics.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Failed to load grade analytics.</p>';
+        }
+    }
+
+    displayGradeAnalytics(container, analytics, grade) {
+        container.innerHTML = '';
+
+        if (analytics.length === 0) {
+            container.innerHTML = `<p style="text-align: center; color: #666; padding: 2rem;">No mood data available for ${grade}.</p>`;
+            return;
+        }
+
+        const total = analytics.reduce((sum, item) => sum + parseInt(item.count), 0);
+        
+        let html = `
+            <div class="grade-analytics-summary">
+                <h4>${grade} Mood Distribution (Anonymous)</h4>
+                <p>Total check-ins: ${total}</p>
+                <div class="mood-breakdown">
+        `;
+
+        analytics.forEach(item => {
+            const percentage = ((parseInt(item.count) / total) * 100).toFixed(1);
+            html += `
+                <div class="mood-stat">
+                    <span class="mood-emoji">${item.emoji}</span>
+                    <span class="mood-name">${item.mood.charAt(0).toUpperCase() + item.mood.slice(1)}</span>
+                    <span class="mood-count">${item.count} (${percentage}%)</span>
+                </div>
+            `;
+        });
+
+        html += `</div></div>`;
+        container.innerHTML = html;
+    }
+
+    // Director methods
+    async updateDirectorView() {
+        try {
+            // Load all users
+            const usersResponse = await APIUtils.getAllUsers();
+            if (usersResponse.success) {
+                this.updateAllUsersList(usersResponse.users);
+            }
+
+            // Load all mood data
+            const moodResponse = await APIUtils.getAllMoodData('daily');
+            if (moodResponse.success) {
+                this.updateAllMoodDataList(moodResponse.checkins);
+            }
+
+            // Load all journal entries
+            const journalResponse = await APIUtils.getAllJournalEntries('daily');
+            if (journalResponse.success) {
+                this.updateAllJournalEntriesList(journalResponse.entries);
+            }
+        } catch (error) {
+            console.error('Failed to update director view:', error);
+        }
+    }
+
+    updateAllUsersList(users) {
+        const usersList = document.getElementById('allUsersList');
+        if (!usersList) return;
+
+        usersList.innerHTML = '';
+
+        if (users.length === 0) {
+            usersList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No users found.</p>';
+            return;
+        }
+
+        users.forEach(user => {
+            const userItem = document.createElement('div');
+            userItem.className = 'user-item';
+            
+            const userTypeIcon = user.user_type === 'student' ? '🎓' : '👨‍🏫';
+            const userTypeLabel = user.user_type === 'student' ? 'Student' : 'Teacher';
+            
+            userItem.innerHTML = `
+                <div class="user-info">
+                    <h4>${userTypeIcon} ${user.first_name} ${user.surname}</h4>
+                    <div class="user-details">
+                        ${userTypeLabel} • ${user.email}
+                        ${user.class ? ` • ${user.class}` : ''}
+                        ${user.house ? ` • ${user.house}` : ''}
+                    </div>
+                </div>
+                <div class="user-status">
+                    <span class="user-type-badge ${user.user_type}">${userTypeLabel}</span>
+                </div>
+            `;
+            
+            usersList.appendChild(userItem);
+        });
+    }
+
+    updateAllMoodDataList(checkins) {
+        const moodDataList = document.getElementById('allMoodDataList');
+        if (!moodDataList) return;
+
+        moodDataList.innerHTML = '';
+
+        if (checkins.length === 0) {
+            moodDataList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No mood check-ins found.</p>';
+            return;
+        }
+
+        const recentCheckins = checkins.slice(0, 20); // Show last 20
+
+        recentCheckins.forEach(checkin => {
+            const checkinItem = document.createElement('div');
+            checkinItem.className = 'mood-data-item';
+            
+            const time = new Date(checkin.timestamp).toLocaleString();
+            const mood = checkin.mood.charAt(0).toUpperCase() + checkin.mood.slice(1);
+            const userTypeIcon = checkin.user_type === 'student' ? '🎓' : '👨‍🏫';
+            
+            checkinItem.innerHTML = `
+                <div class="mood-data-info">
+                    <div class="mood-data-user">
+                        ${userTypeIcon} ${checkin.first_name} ${checkin.surname}
+                        <span class="user-type-badge ${checkin.user_type}">${checkin.user_type}</span>
+                    </div>
+                    <div class="mood-data-details">
+                        ${checkin.emoji} ${mood}
+                        ${checkin.class ? ` • ${checkin.class}` : ''}
+                        ${checkin.house ? ` • ${checkin.house}` : ''}
+                    </div>
+                    ${checkin.notes ? `<div class="mood-data-notes">${checkin.notes}</div>` : ''}
+                </div>
+                <div class="mood-data-time">${time}</div>
+            `;
+            
+            moodDataList.appendChild(checkinItem);
+        });
+    }
+
+    updateAllJournalEntriesList(entries) {
+        const journalList = document.getElementById('allJournalEntriesList');
+        if (!journalList) return;
+
+        journalList.innerHTML = '';
+
+        if (entries.length === 0) {
+            journalList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No journal entries found.</p>';
+            return;
+        }
+
+        const recentEntries = entries.slice(0, 20); // Show last 20
+
+        recentEntries.forEach(entry => {
+            const entryItem = document.createElement('div');
+            entryItem.className = 'journal-entry-item';
+            
+            const time = new Date(entry.timestamp).toLocaleString();
+            const userTypeIcon = entry.user_type === 'student' ? '🎓' : '👨‍🏫';
+            
+            entryItem.innerHTML = `
+                <div class="journal-entry-info">
+                    <div class="journal-entry-user">
+                        ${userTypeIcon} ${entry.first_name} ${entry.surname}
+                        <span class="user-type-badge ${entry.user_type}">${entry.user_type}</span>
+                    </div>
+                    <div class="journal-entry-details">
+                        ${entry.class ? `${entry.class}` : ''}
+                        ${entry.house ? ` • ${entry.house}` : ''}
+                    </div>
+                    <div class="journal-entry-text">${entry.entry}</div>
+                </div>
+                <div class="journal-entry-time">${time}</div>
+            `;
+            
+            journalList.appendChild(entryItem);
+        });
+    }
+
+    updateDirectorAnalytics() {
+        const analyticsContent = document.getElementById('directorAnalytics');
+        if (!analyticsContent) return;
+
+        const activeTab = document.querySelector('.analytics-tab.active');
+        const period = activeTab ? activeTab.dataset.period : 'daily';
+
+        // This would be implemented to show system-wide analytics
+        analyticsContent.innerHTML = `
+            <div class="analytics-summary">
+                <h4>System Overview - ${period.charAt(0).toUpperCase() + period.slice(1)}</h4>
+                <p style="text-align: center; color: #666; padding: 2rem;">
+                    Director analytics will show system-wide mood trends, user activity, and comprehensive data insights.
+                </p>
+            </div>
+        `;
     }
 }
 
