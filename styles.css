@@ -510,15 +510,20 @@ body {
 }
 
 .orbital-mood-center {
-    position: relative;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     z-index: 10;
     text-align: center;
+    pointer-events: none;
 }
 
 .orbital-mood-emoji {
-    font-size: 4rem;
+    font-size: 8rem;
     animation: orbitalPulse 3s ease-in-out infinite;
     filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+    line-height: 1;
 }
 
 @keyframes orbitalPulse {
@@ -531,17 +536,17 @@ body {
 }
 
 .orbital-mood-text {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     font-weight: 700;
     color: #333;
-    margin-top: 0.5rem;
+    margin-top: 0.25rem;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .orbital-mood-time {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: #666;
-    margin-top: 0.25rem;
+    margin-top: 0.1rem;
     font-style: italic;
 }
 
@@ -666,11 +671,11 @@ body {
     }
     
     .orbital-mood-emoji {
-        font-size: 3rem;
+        font-size: 6rem;
     }
     
     .orbital-mood-text {
-        font-size: 1.2rem;
+        font-size: 1rem;
     }
     
     .physics-element {
@@ -695,11 +700,11 @@ body {
     }
     
     .orbital-mood-emoji {
-        font-size: 2.5rem;
+        font-size: 5rem;
     }
     
     .orbital-mood-text {
-        font-size: 1rem;
+        font-size: 0.9rem;
     }
     
     .orbital-element {
