@@ -449,8 +449,17 @@ class MoodCheckInApp {
     }
 
     async handleLogin() {
-        const email = SecurityUtils.sanitizeInput(document.getElementById('email').value);
-        const password = document.getElementById('password').value;
+        const emailElement = document.getElementById('email');
+        const passwordElement = document.getElementById('password');
+        
+        if (!emailElement || !passwordElement) {
+            console.error('Login form elements not found in DOM');
+            this.showMessage('Login form not ready. Please refresh the page and try again.', 'error');
+            return;
+        }
+        
+        const email = SecurityUtils.sanitizeInput(emailElement.value);
+        const password = passwordElement.value;
 
         try {
             const response = await APIUtils.login(email, password);
@@ -472,13 +481,28 @@ class MoodCheckInApp {
     }
 
     async handleStudentRegistration() {
-        const firstName = SecurityUtils.sanitizeInput(document.getElementById('studentFirstName').value);
-        const surname = SecurityUtils.sanitizeInput(document.getElementById('studentSurname').value);
-        const studentClass = document.getElementById('studentClass').value;
-        const house = document.getElementById('studentHouse').value;
-        const email = SecurityUtils.sanitizeInput(document.getElementById('studentEmail').value);
-        const password = document.getElementById('studentPassword').value;
-        const confirmPassword = document.getElementById('studentConfirmPassword').value;
+        const firstNameElement = document.getElementById('studentFirstName');
+        const surnameElement = document.getElementById('studentSurname');
+        const studentClassElement = document.getElementById('studentClass');
+        const houseElement = document.getElementById('studentHouse');
+        const emailElement = document.getElementById('studentEmail');
+        const passwordElement = document.getElementById('studentPassword');
+        const confirmPasswordElement = document.getElementById('studentConfirmPassword');
+        
+        if (!firstNameElement || !surnameElement || !studentClassElement || !houseElement ||
+            !emailElement || !passwordElement || !confirmPasswordElement) {
+            console.error('Student registration form elements not found in DOM');
+            this.showMessage('Registration form not ready. Please refresh the page and try again.', 'error');
+            return;
+        }
+        
+        const firstName = SecurityUtils.sanitizeInput(firstNameElement.value);
+        const surname = SecurityUtils.sanitizeInput(surnameElement.value);
+        const studentClass = studentClassElement.value;
+        const house = houseElement.value;
+        const email = SecurityUtils.sanitizeInput(emailElement.value);
+        const password = passwordElement.value;
+        const confirmPassword = confirmPasswordElement.value;
 
         // Validation
         if (!this.validateEmail(email)) {
@@ -521,13 +545,28 @@ class MoodCheckInApp {
     }
 
     async handleTeacherRegistration() {
-        const firstName = SecurityUtils.sanitizeInput(document.getElementById('teacherFirstName').value);
-        const surname = SecurityUtils.sanitizeInput(document.getElementById('teacherSurname').value);
-        const grade = document.getElementById('teacherGrade').value;
-        const house = document.getElementById('teacherHouse').value;
-        const email = SecurityUtils.sanitizeInput(document.getElementById('teacherEmail').value);
-        const password = document.getElementById('teacherPassword').value;
-        const confirmPassword = document.getElementById('teacherConfirmPassword').value;
+        const firstNameElement = document.getElementById('teacherFirstName');
+        const surnameElement = document.getElementById('teacherSurname');
+        const gradeElement = document.getElementById('teacherGrade');
+        const houseElement = document.getElementById('teacherHouse');
+        const emailElement = document.getElementById('teacherEmail');
+        const passwordElement = document.getElementById('teacherPassword');
+        const confirmPasswordElement = document.getElementById('teacherConfirmPassword');
+        
+        if (!firstNameElement || !surnameElement || !gradeElement || !houseElement || 
+            !emailElement || !passwordElement || !confirmPasswordElement) {
+            console.error('Teacher registration form elements not found in DOM');
+            this.showMessage('Registration form not ready. Please refresh the page and try again.', 'error');
+            return;
+        }
+        
+        const firstName = SecurityUtils.sanitizeInput(firstNameElement.value);
+        const surname = SecurityUtils.sanitizeInput(surnameElement.value);
+        const grade = gradeElement.value;
+        const house = houseElement.value;
+        const email = SecurityUtils.sanitizeInput(emailElement.value);
+        const password = passwordElement.value;
+        const confirmPassword = confirmPasswordElement.value;
 
         // Validation
         if (!this.validateEmail(email)) {
@@ -575,11 +614,24 @@ class MoodCheckInApp {
     }
 
     async handleDirectorRegistration() {
-        const firstName = SecurityUtils.sanitizeInput(document.getElementById('directorFirstName').value);
-        const surname = SecurityUtils.sanitizeInput(document.getElementById('directorSurname').value);
-        const email = SecurityUtils.sanitizeInput(document.getElementById('directorEmail').value);
-        const password = document.getElementById('directorPassword').value;
-        const confirmPassword = document.getElementById('directorConfirmPassword').value;
+        const firstNameElement = document.getElementById('directorFirstName');
+        const surnameElement = document.getElementById('directorSurname');
+        const emailElement = document.getElementById('directorEmail');
+        const passwordElement = document.getElementById('directorPassword');
+        const confirmPasswordElement = document.getElementById('directorConfirmPassword');
+        
+        if (!firstNameElement || !surnameElement || !emailElement || 
+            !passwordElement || !confirmPasswordElement) {
+            console.error('Director registration form elements not found in DOM');
+            this.showMessage('Registration form not ready. Please refresh the page and try again.', 'error');
+            return;
+        }
+        
+        const firstName = SecurityUtils.sanitizeInput(firstNameElement.value);
+        const surname = SecurityUtils.sanitizeInput(surnameElement.value);
+        const email = SecurityUtils.sanitizeInput(emailElement.value);
+        const password = passwordElement.value;
+        const confirmPassword = confirmPasswordElement.value;
 
         // Validation
         if (!this.validateEmail(email)) {
