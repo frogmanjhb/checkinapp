@@ -169,7 +169,6 @@ class MoodCheckInApp {
     }
 
     async initializeApp(retryCount = 0) {
-        console.log('Initializing app with database... (attempt', retryCount + 1, ')');
         
         // Check if all required DOM elements exist
         const requiredElements = [
@@ -183,29 +182,20 @@ class MoodCheckInApp {
         const missingElements = requiredElements.filter(id => !document.getElementById(id));
         if (missingElements.length > 0) {
             console.error('Missing required DOM elements:', missingElements);
-            console.log('Available elements in DOM:', requiredElements.map(id => ({
-                id: id,
-                exists: !!document.getElementById(id),
-                element: document.getElementById(id)
-            })));
             
             if (retryCount < 50) { // Max 50 retries (5 seconds)
-                console.log('Waiting for DOM to be ready... (retry', retryCount + 1, '/50)');
                 setTimeout(() => this.initializeApp(retryCount + 1), 100);
                 return;
             } else {
                 console.error('Max retries reached. Some elements may be missing from HTML.');
-                console.log('Proceeding anyway...');
             }
         }
         
-        console.log('All required DOM elements found, proceeding with initialization');
         
         // Check if user is already logged in
         const savedUser = localStorage.getItem('checkinUser');
         if (savedUser) {
             this.currentUser = JSON.parse(savedUser);
-            console.log('User loaded from localStorage:', this.currentUser); // Debug log
             await this.loadUserData();
             this.showDashboard();
         } else {
@@ -223,42 +213,7 @@ class MoodCheckInApp {
             }
         }, 1000);
         
-        // Add a test button for debugging (temporary)
-        setTimeout(() => {
-            const testButton = document.createElement('button');
-            testButton.textContent = 'Test Set Name';
-            testButton.style.position = 'fixed';
-            testButton.style.top = '10px';
-            testButton.style.right = '10px';
-            testButton.style.zIndex = '9999';
-            testButton.onclick = () => {
-                console.log('Manual test - current user:', this.currentUser);
-                this.updateStudentName();
-            };
-            document.body.appendChild(testButton);
-            
-            // Add a DOM check button
-            const domCheckButton = document.createElement('button');
-            domCheckButton.textContent = 'Check DOM';
-            domCheckButton.style.position = 'fixed';
-            domCheckButton.style.top = '50px';
-            domCheckButton.style.right = '10px';
-            domCheckButton.style.zIndex = '9999';
-            domCheckButton.onclick = () => {
-                const requiredElements = [
-                    'loginScreen', 'registerScreen', 'studentDashboardScreen', 
-                    'teacherDashboardScreen', 'directorDashboardScreen'
-                ];
-                console.log('DOM Check Results:');
-                requiredElements.forEach(id => {
-                    const element = document.getElementById(id);
-                    console.log(`${id}:`, element ? 'EXISTS' : 'MISSING', element);
-                });
-            };
-            document.body.appendChild(domCheckButton);
-        }, 2000);
         
-        console.log('App initialized successfully');
     }
 
     setupEventListeners() {
@@ -495,7 +450,6 @@ class MoodCheckInApp {
         const confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
         if (confirmMoodCheckin) {
             confirmMoodCheckin.addEventListener('click', () => {
-                console.log('Complete check-in button clicked');
                 this.handleMoodCheckIn();
             });
         } else {
@@ -540,7 +494,6 @@ class MoodCheckInApp {
             
             if (response.success) {
                 this.currentUser = response.user;
-                console.log('User logged in:', this.currentUser); // Debug log
                 localStorage.setItem('checkinUser', JSON.stringify(this.currentUser));
                 await this.loadUserData();
                 this.showDashboard();
@@ -662,7 +615,6 @@ class MoodCheckInApp {
             }
             
             if (i < 2) {
-                console.log(`Attempt ${i + 1} failed, retrying...`);
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
         }
@@ -670,21 +622,6 @@ class MoodCheckInApp {
         if (!firstNameElement || !surnameElement || !gradeElement || !houseElement || 
             !emailElement || !passwordElement || !confirmPasswordElement) {
             console.error('Teacher registration form elements not found in DOM');
-            console.log('Available elements:', {
-                firstNameElement: !!firstNameElement,
-                surnameElement: !!surnameElement,
-                gradeElement: !!gradeElement,
-                houseElement: !!houseElement,
-                emailElement: !!emailElement,
-                passwordElement: !!passwordElement,
-                confirmPasswordElement: !!confirmPasswordElement
-            });
-            
-            // Additional debugging
-            console.log('Teacher form visibility:', teacherRegisterForm.classList.contains('active'));
-            console.log('All elements in teacher form:', teacherRegisterForm.querySelectorAll('input, select'));
-            console.log('Grade element by ID:', document.getElementById('teacherGrade'));
-            console.log('House element by ID:', document.getElementById('teacherHouse'));
             
             this.showMessage('Registration form not ready. Please refresh the page and try again.', 'error');
             return;
@@ -872,7 +809,6 @@ class MoodCheckInApp {
     }
 
     switchUserType(type) {
-        console.log('Switching to user type:', type);
         
         // Update button states
         document.querySelectorAll('.user-type-btn').forEach(btn => {
@@ -889,31 +825,16 @@ class MoodCheckInApp {
             const studentForm = document.getElementById('studentRegisterForm');
             if (studentForm) {
                 studentForm.classList.add('active');
-                console.log('Student form activated');
             }
         } else if (type === 'teacher') {
             const teacherForm = document.getElementById('teacherRegisterForm');
             if (teacherForm) {
                 teacherForm.classList.add('active');
-                console.log('Teacher form activated');
-                
-                // Debug: Check if all elements are visible
-                setTimeout(() => {
-                    const gradeElement = document.getElementById('teacherGrade');
-                    const houseElement = document.getElementById('teacherHouse');
-                    console.log('Teacher form elements after activation:', {
-                        gradeElement: !!gradeElement,
-                        houseElement: !!houseElement,
-                        gradeVisible: gradeElement ? window.getComputedStyle(gradeElement).display !== 'none' : false,
-                        houseVisible: houseElement ? window.getComputedStyle(houseElement).display !== 'none' : false
-                    });
-                }, 100);
             }
         } else if (type === 'director') {
             const directorForm = document.getElementById('directorRegisterForm');
             if (directorForm) {
                 directorForm.classList.add('active');
-                console.log('Director form activated');
             }
         }
     }
@@ -967,20 +888,13 @@ class MoodCheckInApp {
         const studentNameElement = document.getElementById('studentName');
         const userNameElement = document.getElementById('userName');
         
-        console.log('Updating student name:', this.currentUser); // Debug log
-        console.log('Student name element found:', !!studentNameElement); // Debug log
-        console.log('User name element found:', !!userNameElement); // Debug log
         
         if (this.currentUser) {
-            // Check if the user object has the expected properties
-            console.log('User first_name:', this.currentUser.first_name);
-            console.log('User surname:', this.currentUser.surname);
             
             const firstName = this.currentUser.first_name || this.currentUser.firstName || '';
             const surname = this.currentUser.surname || this.currentUser.lastName || '';
             const fullName = `${firstName} ${surname}`.trim();
             
-            console.log('Constructed full name:', fullName); // Debug log
             
             if (studentNameElement) {
                 studentNameElement.textContent = fullName;
@@ -988,7 +902,6 @@ class MoodCheckInApp {
                 if (studentNameElement.textContent !== fullName) {
                     studentNameElement.innerHTML = fullName;
                 }
-                console.log('Student name set to:', studentNameElement.textContent); // Debug log
             } else {
                 console.error('Student name element not found!');
             }
@@ -999,7 +912,6 @@ class MoodCheckInApp {
                 if (userNameElement.textContent !== fullName) {
                     userNameElement.innerHTML = fullName;
                 }
-                console.log('User name set to:', userNameElement.textContent); // Debug log
             } else {
                 console.error('User name element not found!');
             }
@@ -1268,7 +1180,6 @@ class MoodCheckInApp {
             emotionOptions.appendChild(button);
         });
 
-        console.log(`Populated ${emotions.length} emotions for mood: ${selectedMood}`);
     }
 
     hideEmotionModal() {
@@ -1420,12 +1331,10 @@ class MoodCheckInApp {
         const confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
         if (confirmMoodCheckin) {
             confirmMoodCheckin.disabled = !this.selectedLocation;
-            console.log('Location selected:', this.selectedLocation, 'Button disabled:', confirmMoodCheckin.disabled);
         }
     }
 
     selectLocation(location) {
-        console.log('selectLocation called with:', location);
         this.selectedLocation = location;
         this.selectedReasons = []; // Reset selected reasons
         this.updateLocationButtons();
@@ -1451,7 +1360,6 @@ class MoodCheckInApp {
         // Set up reason toggle event listeners for the visible section
         this.setupReasonToggleListeners();
         
-        console.log('Location selection complete. selectedLocation:', this.selectedLocation);
     }
 
     clearReasonSelections() {
@@ -1463,7 +1371,6 @@ class MoodCheckInApp {
     }
 
     setupReasonToggleListeners() {
-        console.log('Setting up reason toggle listeners...');
         
         // Remove existing listeners to avoid duplicates
         document.querySelectorAll('.reason-toggle').forEach(toggle => {
@@ -1473,12 +1380,10 @@ class MoodCheckInApp {
 
         // Add event listeners to reason checkboxes
         const checkboxes = document.querySelectorAll('.reason-toggle input[type="checkbox"]');
-        console.log('Found', checkboxes.length, 'reason checkboxes');
         
         checkboxes.forEach(checkbox => {
             checkbox.addEventListener('change', (e) => {
                 const reason = e.target.value;
-                console.log('Reason checkbox changed:', reason, 'checked:', e.target.checked);
                 this.selectReason(reason);
             });
         });
@@ -1498,12 +1403,9 @@ class MoodCheckInApp {
             // Remove reason if checkbox is unchecked
             this.selectedReasons = this.selectedReasons.filter(r => r !== reason);
         }
-        console.log('Selected reasons:', this.selectedReasons);
-        console.log('Checkbox state for', reason, ':', isChecked);
     }
 
     toggleGhostMode(isEnabled) {
-        console.log('Ghost mode toggled:', isEnabled);
         
         // Update ghost mode status display
         const ghostModeStatus = document.getElementById('ghostModeStatus');
@@ -1579,15 +1481,7 @@ class MoodCheckInApp {
     }
 
     async handleMoodCheckIn() {
-        console.log('handleMoodCheckIn called');
-        console.log('selectedMood:', this.selectedMood);
-        console.log('currentUser:', this.currentUser);
-        console.log('selectedLocation:', this.selectedLocation);
-        console.log('selectedEmotions:', this.selectedEmotions);
-        console.log('selectedReasons:', this.selectedReasons);
-        
         if (!this.selectedMood || !this.currentUser) {
-            console.log('Missing required data - returning early');
             return;
         }
 
@@ -1613,9 +1507,6 @@ class MoodCheckInApp {
                 moodData.emotions = this.selectedEmotions;
             }
             
-            console.log('Sending mood data:', moodData);
-            console.log('Selected reasons array:', this.selectedReasons);
-            console.log('Selected emotions array:', this.selectedEmotions);
             
             const response = await APIUtils.saveMoodCheckin(moodData);
 
@@ -1724,17 +1615,17 @@ class MoodCheckInApp {
                 
                 <div class="history-details">
                     <div class="history-section">
-                        <span class="history-label">📍 Location</span>
+                        <span class="history-label"> Location</span>
                         <span class="history-value">${locationDisplay}</span>
                     </div>
                     
                     <div class="history-section">
-                        <span class="history-label">😊 Emotions</span>
+                        <span class="history-label"> Emotions</span>
                         <span class="history-value">${emotionsDisplay}</span>
                     </div>
                     
                     <div class="history-section">
-                        <span class="history-label">💭 Reasons</span>
+                        <span class="history-label"> Reasons</span>
                         <span class="history-value">${reasonsDisplay}</span>
                     </div>
                     
@@ -2382,61 +2273,6 @@ class MoodCheckInApp {
     }
 }
 
-// Global function to check DOM elements
-window.checkDOM = function() {
-    const requiredElements = [
-        'loginScreen', 'registerScreen', 'studentDashboardScreen', 
-        'teacherDashboardScreen', 'directorDashboardScreen'
-    ];
-    console.log('DOM Check Results:');
-    requiredElements.forEach(id => {
-        const element = document.getElementById(id);
-        console.log(`${id}:`, element ? 'EXISTS' : 'MISSING', element);
-    });
-    return requiredElements.map(id => ({
-        id: id,
-        exists: !!document.getElementById(id),
-        element: document.getElementById(id)
-    }));
-};
-
-// Global function to check teacher registration form elements
-window.checkTeacherForm = function() {
-    const teacherForm = document.getElementById('teacherRegisterForm');
-    console.log('Teacher Form Check:');
-    console.log('Form exists:', !!teacherForm);
-    console.log('Form visible:', teacherForm ? teacherForm.classList.contains('active') : false);
-    console.log('Form display style:', teacherForm ? window.getComputedStyle(teacherForm).display : 'N/A');
-    
-    const elements = {
-        firstName: document.getElementById('teacherFirstName'),
-        surname: document.getElementById('teacherSurname'),
-        grade: document.getElementById('teacherGrade'),
-        house: document.getElementById('teacherHouse'),
-        email: document.getElementById('teacherEmail'),
-        password: document.getElementById('teacherPassword'),
-        confirmPassword: document.getElementById('teacherConfirmPassword')
-    };
-    
-    console.log('Form Elements:');
-    Object.entries(elements).forEach(([name, element]) => {
-        console.log(`${name}:`, element ? 'EXISTS' : 'MISSING', element);
-        if (element) {
-            console.log(`  - ${name} display:`, window.getComputedStyle(element).display);
-            console.log(`  - ${name} visibility:`, window.getComputedStyle(element).visibility);
-        }
-    });
-    
-    // Check if grade and house elements are in the DOM
-    const allSelects = document.querySelectorAll('select');
-    console.log('All select elements in DOM:', allSelects.length);
-    allSelects.forEach((select, index) => {
-        console.log(`Select ${index}:`, select.id, select.className);
-    });
-    
-    return { form: teacherForm, elements };
-};
-
 // Global function to force show teacher form
 window.showTeacherForm = function() {
     console.log('Forcing teacher form to show...');
@@ -2472,7 +2308,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('DOM loaded, initializing app with database...');
         window.moodApp = new MoodCheckInApp();
         console.log('App instance created and available as window.moodApp');
-        console.log('You can run checkDOM() in console to check DOM elements');
     } catch (error) {
         console.error('Error initializing app:', error);
         alert('Error initializing app: ' + error.message);
