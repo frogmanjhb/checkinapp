@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
@@ -280,24 +281,10 @@ app.post('/api/mood-checkin', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
-    // Check if new columns exist, if not use old schema
-    let result;
-    try {
-      result = await pool.query(
-        'INSERT INTO mood_checkins (user_id, mood, emoji, notes, location, reasons, emotions) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-        [userId, mood, emoji, notes, location, reasons || [], emotions || []]
-      );
-    } catch (error) {
-      if (error.message.includes('column "location" does not exist')) {
-        // Fallback to old schema if new columns don't exist
-        result = await pool.query(
-          'INSERT INTO mood_checkins (user_id, mood, emoji, notes) VALUES ($1, $2, $3, $4) RETURNING *',
-          [userId, mood, emoji, notes]
-        );
-      } else {
-        throw error;
-      }
-    }
+    const result = await pool.query(
+      'INSERT INTO mood_checkins (user_id, mood, emoji, notes, location, reasons, emotions) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [userId, mood, emoji, notes, location, reasons || [], emotions || []]
+    );
     
     res.status(201).json({ success: true, checkin: result.rows[0] });
   } catch (error) {
