@@ -399,13 +399,7 @@ class MoodCheckInApp {
             });
         }
 
-        // Confirm mood check-in
-        const confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
-        if (confirmMoodCheckin) {
-            confirmMoodCheckin.addEventListener('click', () => {
-                this.handleMoodCheckIn();
-            });
-        }
+        // Confirm mood check-in - moved to location modal section
 
         // Close modal when clicking outside
         const moodModal = document.getElementById('moodModal');
@@ -503,6 +497,17 @@ class MoodCheckInApp {
                 this.hideLocationModal();
                 this.showEmotionModal();
             });
+        }
+
+        // Complete mood check-in button
+        const confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
+        if (confirmMoodCheckin) {
+            confirmMoodCheckin.addEventListener('click', () => {
+                console.log('Complete check-in button clicked');
+                this.handleMoodCheckIn();
+            });
+        } else {
+            console.error('confirmMoodCheckin button not found');
         }
 
         // Close journal entry modal when clicking outside
@@ -1423,10 +1428,12 @@ class MoodCheckInApp {
         const confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
         if (confirmMoodCheckin) {
             confirmMoodCheckin.disabled = !this.selectedLocation;
+            console.log('Location selected:', this.selectedLocation, 'Button disabled:', confirmMoodCheckin.disabled);
         }
     }
 
     selectLocation(location) {
+        console.log('selectLocation called with:', location);
         this.selectedLocation = location;
         this.selectedReasons = []; // Reset selected reasons
         this.updateLocationButtons();
@@ -1448,6 +1455,8 @@ class MoodCheckInApp {
         
         // Clear any previously selected reasons
         this.clearReasonSelections();
+        
+        console.log('Location selection complete. selectedLocation:', this.selectedLocation);
     }
 
     clearReasonSelections() {
@@ -1546,20 +1555,43 @@ class MoodCheckInApp {
     }
 
     async handleMoodCheckIn() {
-        if (!this.selectedMood || !this.currentUser) return;
+        console.log('handleMoodCheckIn called');
+        console.log('selectedMood:', this.selectedMood);
+        console.log('currentUser:', this.currentUser);
+        console.log('selectedLocation:', this.selectedLocation);
+        console.log('selectedEmotions:', this.selectedEmotions);
+        console.log('selectedReasons:', this.selectedReasons);
+        
+        if (!this.selectedMood || !this.currentUser) {
+            console.log('Missing required data - returning early');
+            return;
+        }
 
         const notes = document.getElementById('moodNotes').value;
         
         try {
-            const response = await APIUtils.saveMoodCheckin({
+            // Prepare data for API call
+            const moodData = {
                 userId: this.currentUser.id,
                 mood: this.selectedMood.mood,
                 emoji: this.selectedMood.emoji,
-                notes: notes,
-                location: this.selectedLocation,
-                reasons: this.selectedReasons,
-                emotions: this.selectedEmotions
-            });
+                notes: notes
+            };
+            
+            // Add new fields if available
+            if (this.selectedLocation) {
+                moodData.location = this.selectedLocation;
+            }
+            if (this.selectedReasons && this.selectedReasons.length > 0) {
+                moodData.reasons = this.selectedReasons;
+            }
+            if (this.selectedEmotions && this.selectedEmotions.length > 0) {
+                moodData.emotions = this.selectedEmotions;
+            }
+            
+            console.log('Sending mood data:', moodData);
+            
+            const response = await APIUtils.saveMoodCheckin(moodData);
 
             if (response.success) {
                 const moodRecord = {
