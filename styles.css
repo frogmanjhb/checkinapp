@@ -315,6 +315,91 @@ body {
     box-shadow: 0 15px 30px rgba(255, 107, 107, 0.3);
 }
 
+.btn-journal-entry {
+    background: linear-gradient(135deg, #4ECDC4, #44A08D);
+    color: white;
+    border: none;
+    padding: 1.5rem 2rem;
+    border-radius: 15px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.btn-journal-entry:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 30px rgba(78, 205, 196, 0.3);
+}
+
+/* Journal Entry Items */
+.journal-entry-item {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e1e5e9;
+    transition: all 0.3s ease;
+}
+
+.journal-entry-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.journal-entry-content {
+    margin-bottom: 0.75rem;
+}
+
+.journal-entry-text {
+    font-size: 1.1rem;
+    color: #333;
+    line-height: 1.6;
+    font-weight: 500;
+}
+
+.journal-entry-time {
+    font-size: 0.9rem;
+    color: #666;
+    font-style: italic;
+}
+
+/* Journal Lists */
+.journal-list, .teacher-journal-list, .journal-entries-list {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.journal-list::-webkit-scrollbar, 
+.teacher-journal-list::-webkit-scrollbar,
+.journal-entries-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.journal-list::-webkit-scrollbar-track,
+.teacher-journal-list::-webkit-scrollbar-track,
+.journal-entries-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.journal-list::-webkit-scrollbar-thumb,
+.teacher-journal-list::-webkit-scrollbar-thumb,
+.journal-entries-list::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.journal-list::-webkit-scrollbar-thumb:hover,
+.teacher-journal-list::-webkit-scrollbar-thumb:hover,
+.journal-entries-list::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
 /* Demo Credentials */
 .demo-credentials {
     margin-top: 2rem;
