@@ -489,20 +489,24 @@ body {
     word-wrap: break-word;
 }
 
-/* Orbital Mood Layout */
-.orbital-mood-item {
+/* Physics Mood Boxes Layout */
+.physics-mood-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.physics-mood-item {
     background: white;
     border-radius: 20px;
-    padding: 2rem;
-    margin-bottom: 2rem;
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
     border: 1px solid #e1e5e9;
     position: relative;
-    min-height: 300px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 100%;
+    aspect-ratio: 1;
     overflow: hidden;
+    cursor: none; /* Hide cursor when hovering over mood boxes */
 }
 
 .orbital-mood-center {
@@ -541,7 +545,7 @@ body {
     font-style: italic;
 }
 
-.orbital-element {
+.physics-element {
     position: absolute;
     background: rgba(255, 255, 255, 0.95);
     border: 2px solid #e1e5e9;
@@ -551,12 +555,13 @@ body {
     font-weight: 600;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
-    animation: orbitalFloat 4s ease-in-out infinite;
+    transition: none; /* No CSS transitions for physics movement */
     z-index: 5;
+    pointer-events: none; /* Prevent element from interfering with mouse tracking */
+    user-select: none;
 }
 
-.orbital-element:hover {
+.physics-element:hover {
     transform: scale(1.1);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
     z-index: 15;
@@ -571,25 +576,25 @@ body {
     }
 }
 
-.orbital-emotion {
+.physics-emotion {
     color: #4ECDC4;
     border-color: #4ECDC4;
     background: linear-gradient(135deg, rgba(78, 205, 196, 0.1), rgba(68, 160, 141, 0.1));
 }
 
-.orbital-location {
+.physics-location {
     color: #FF6B6B;
     border-color: #FF6B6B;
     background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(255, 99, 132, 0.1));
 }
 
-.orbital-reason {
+.physics-reason {
     color: #4ECDC4;
     border-color: #4ECDC4;
     background: linear-gradient(135deg, rgba(78, 205, 196, 0.1), rgba(68, 160, 141, 0.1));
 }
 
-.orbital-notes {
+.physics-notes {
     color: #9C27B0;
     border-color: #9C27B0;
     background: linear-gradient(135deg, rgba(156, 39, 176, 0.1), rgba(103, 58, 183, 0.1));
@@ -650,10 +655,14 @@ body {
         font-size: 0.8rem;
     }
 
-    /* Orbital layout mobile adjustments */
-    .orbital-mood-item {
-        min-height: 250px;
-        padding: 1.5rem;
+    /* Physics layout mobile adjustments */
+    .physics-mood-container {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .physics-mood-item {
+        aspect-ratio: 1;
     }
     
     .orbital-mood-emoji {
@@ -664,7 +673,7 @@ body {
         font-size: 1.2rem;
     }
     
-    .orbital-element {
+    .physics-element {
         font-size: 0.75rem;
         padding: 0.4rem 0.6rem;
     }

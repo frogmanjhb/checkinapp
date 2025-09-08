@@ -162,6 +162,9 @@ class MoodCheckInApp {
         this.isGhostMode = false;
         this.selectedEmotions = [];
         this.selectedReasons = [];
+        this.mouseX = 0;
+        this.mouseY = 0;
+        this.physicsInterval = null;
         
         this.initializeApp();
         this.setupEventListeners();
@@ -322,6 +325,19 @@ class MoodCheckInApp {
                 this.showJournalEntryModal();
             });
         }
+
+        // Mouse tracking for physics
+        document.addEventListener('mousemove', (e) => {
+            this.mouseX = e.clientX;
+            this.mouseY = e.clientY;
+        });
+
+        // Cleanup physics on page unload
+        window.addEventListener('beforeunload', () => {
+            if (this.physicsInterval) {
+                clearInterval(this.physicsInterval);
+            }
+        });
 
         // Modal controls
         const closeMoodModal = document.getElementById('closeMoodModal');
@@ -1575,66 +1591,66 @@ class MoodCheckInApp {
         const historyList = document.getElementById('historyList');
         historyList.innerHTML = '';
         
-        const recentHistory = this.moodHistory.slice(0, 5); // Show only 5 for orbital layout
+        const recentHistory = this.moodHistory.slice(0, 6); // Show up to 6 for 2x3 grid
         
         if (recentHistory.length === 0) {
             historyList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No mood check-ins yet.</p>';
             return;
         }
         
-        recentHistory.forEach(record => {
-            const historyItem = document.createElement('div');
-            historyItem.className = 'orbital-mood-item';
-            
-            const time = record.timestamp.toLocaleString();
-            const mood = record.mood.charAt(0).toUpperCase() + record.mood.slice(1);
-            
-            // Create orbital elements
-            const orbitalElements = this.createOrbitalElements(record);
-            
-            historyItem.innerHTML = `
-                <div class="orbital-mood-center">
-                    <div class="orbital-mood-emoji">${record.emoji}</div>
-                    <div class="orbital-mood-text">${mood}</div>
-                    <div class="orbital-mood-time">${time}</div>
-                </div>
-                ${orbitalElements}
-            `;
-            
-            historyList.appendChild(historyItem);
+        // Create physics container
+        const physicsContainer = document.createElement('div');
+        physicsContainer.className = 'physics-mood-container';
+        
+        recentHistory.forEach((record, index) => {
+            const moodBox = this.createPhysicsMoodBox(record, index);
+            physicsContainer.appendChild(moodBox);
         });
+        
+        historyList.appendChild(physicsContainer);
+        
+        // Initialize physics for all mood boxes
+        this.initializePhysics();
     }
 
-    createOrbitalElements(record) {
-        const elements = [];
-        const positions = [
-            'orbital-top-left', 'orbital-top-right', 'orbital-middle-left', 
-            'orbital-middle-right', 'orbital-bottom-left', 'orbital-bottom-right',
-            'orbital-top-center', 'orbital-bottom-center'
-        ];
-        let positionIndex = 0;
+    createPhysicsMoodBox(record, index) {
+        const moodBox = document.createElement('div');
+        moodBox.className = 'physics-mood-item';
+        moodBox.dataset.moodIndex = index;
+        
+        const time = record.timestamp.toLocaleString();
+        const mood = record.mood.charAt(0).toUpperCase() + record.mood.slice(1);
+        
+        moodBox.innerHTML = `
+            <div class="orbital-mood-center">
+                <div class="orbital-mood-emoji">${record.emoji}</div>
+                <div class="orbital-mood-text">${mood}</div>
+                <div class="orbital-mood-time">${time}</div>
+            </div>
+        `;
+        
+        // Create physics elements
+        this.createPhysicsElements(moodBox, record);
+        
+        return moodBox;
+    }
 
+    createPhysicsElements(moodBox, record) {
+        const elements = [];
+        
         // Add location element
         if (record.location) {
             const locationDisplay = this.getLocationDisplay(record.location);
-            elements.push(`
-                <div class="orbital-element orbital-location ${positions[positionIndex % positions.length]}">
-                    ${locationDisplay}
-                </div>
-            `);
-            positionIndex++;
+            const element = this.createPhysicsElement('location', locationDisplay, moodBox);
+            elements.push(element);
         }
 
         // Add emotion elements
         if (record.emotions && record.emotions.length > 0) {
             record.emotions.forEach(emotion => {
                 const emotionDisplay = this.getEmotionDisplay(emotion);
-                elements.push(`
-                    <div class="orbital-element orbital-emotion ${positions[positionIndex % positions.length]}">
-                        ${emotionDisplay}
-                    </div>
-                `);
-                positionIndex++;
+                const element = this.createPhysicsElement('emotion', emotionDisplay, moodBox);
+                elements.push(element);
             });
         }
 
@@ -1642,25 +1658,156 @@ class MoodCheckInApp {
         if (record.reasons && record.reasons.length > 0) {
             record.reasons.forEach(reason => {
                 const reasonDisplay = this.getReasonDisplay(reason);
-                elements.push(`
-                    <div class="orbital-element orbital-reason ${positions[positionIndex % positions.length]}">
-                        ${reasonDisplay}
-                    </div>
-                `);
-                positionIndex++;
+                const element = this.createPhysicsElement('reason', reasonDisplay, moodBox);
+                elements.push(element);
             });
         }
 
         // Add notes element
         if (record.notes) {
-            elements.push(`
-                <div class="orbital-element orbital-notes ${positions[positionIndex % positions.length]}">
-                    📝 ${record.notes}
-                </div>
-            `);
+            const element = this.createPhysicsElement('notes', `📝 ${record.notes}`, moodBox);
+            elements.push(element);
         }
+    }
 
-        return elements.join('');
+    createPhysicsElement(type, content, moodBox) {
+        const element = document.createElement('div');
+        element.className = `physics-element physics-${type}`;
+        element.textContent = content;
+        element.dataset.type = type;
+        
+        // Random initial position
+        const boxRect = moodBox.getBoundingClientRect();
+        const elementSize = 60; // Approximate element size
+        const x = Math.random() * (boxRect.width - elementSize);
+        const y = Math.random() * (boxRect.height - elementSize);
+        
+        element.style.left = `${x}px`;
+        element.style.top = `${y}px`;
+        
+        // Store physics properties
+        element.physics = {
+            x: x,
+            y: y,
+            vx: (Math.random() - 0.5) * 2, // Random velocity
+            vy: (Math.random() - 0.5) * 2,
+            size: elementSize,
+            type: type
+        };
+        
+        moodBox.appendChild(element);
+        return element;
+    }
+
+    initializePhysics() {
+        // Clear any existing physics intervals
+        if (this.physicsInterval) {
+            clearInterval(this.physicsInterval);
+        }
+        
+        // Start physics simulation
+        this.physicsInterval = setInterval(() => {
+            this.updatePhysics();
+        }, 16); // ~60fps
+    }
+
+    updatePhysics() {
+        const moodBoxes = document.querySelectorAll('.physics-mood-item');
+        
+        moodBoxes.forEach(moodBox => {
+            const elements = moodBox.querySelectorAll('.physics-element');
+            const boxRect = moodBox.getBoundingClientRect();
+            const mousePos = this.getMousePosition(moodBox);
+            
+            elements.forEach(element => {
+                if (!element.physics) return;
+                
+                const physics = element.physics;
+                const elementSize = physics.size;
+                
+                // Mouse avoidance
+                if (mousePos) {
+                    const dx = physics.x - mousePos.x;
+                    const dy = physics.y - mousePos.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const avoidanceRadius = 100;
+                    
+                    if (distance < avoidanceRadius) {
+                        const force = (avoidanceRadius - distance) / avoidanceRadius;
+                        physics.vx += (dx / distance) * force * 0.5;
+                        physics.vy += (dy / distance) * force * 0.5;
+                    }
+                }
+                
+                // Collision detection with other elements
+                elements.forEach(otherElement => {
+                    if (otherElement === element || !otherElement.physics) return;
+                    
+                    const other = otherElement.physics;
+                    const dx = physics.x - other.x;
+                    const dy = physics.y - other.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const minDistance = (physics.size + other.size) / 2;
+                    
+                    if (distance < minDistance && distance > 0) {
+                        // Collision response
+                        const overlap = minDistance - distance;
+                        const separationX = (dx / distance) * overlap * 0.5;
+                        const separationY = (dy / distance) * overlap * 0.5;
+                        
+                        physics.x += separationX;
+                        physics.y += separationY;
+                        other.x -= separationX;
+                        other.y -= separationY;
+                        
+                        // Bounce effect
+                        const bounce = 0.3;
+                        physics.vx += (dx / distance) * bounce;
+                        physics.vy += (dy / distance) * bounce;
+                        other.vx -= (dx / distance) * bounce;
+                        other.vy -= (dy / distance) * bounce;
+                    }
+                });
+                
+                // Boundary collision
+                if (physics.x < 0) {
+                    physics.x = 0;
+                    physics.vx = Math.abs(physics.vx) * 0.8;
+                }
+                if (physics.x > boxRect.width - elementSize) {
+                    physics.x = boxRect.width - elementSize;
+                    physics.vx = -Math.abs(physics.vx) * 0.8;
+                }
+                if (physics.y < 0) {
+                    physics.y = 0;
+                    physics.vy = Math.abs(physics.vy) * 0.8;
+                }
+                if (physics.y > boxRect.height - elementSize) {
+                    physics.y = boxRect.height - elementSize;
+                    physics.vy = -Math.abs(physics.vy) * 0.8;
+                }
+                
+                // Apply velocity
+                physics.x += physics.vx;
+                physics.y += physics.vy;
+                
+                // Apply friction
+                physics.vx *= 0.98;
+                physics.vy *= 0.98;
+                
+                // Update position
+                element.style.left = `${physics.x}px`;
+                element.style.top = `${physics.y}px`;
+            });
+        });
+    }
+
+    getMousePosition(moodBox) {
+        const rect = moodBox.getBoundingClientRect();
+        return {
+            x: this.mouseX - rect.left,
+            y: this.mouseY - rect.top
+        };
     }
 
     getEmotionDisplay(emotion) {
