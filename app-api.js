@@ -547,19 +547,51 @@ class MoodCheckInApp {
     async handleTeacherRegistration() {
         // Check if teacher registration form is visible
         const teacherRegisterForm = document.getElementById('teacherRegisterForm');
-        if (!teacherRegisterForm || !teacherRegisterForm.classList.contains('active')) {
+        if (!teacherRegisterForm) {
+            console.error('Teacher registration form not found in DOM');
+            this.showMessage('Registration form not found. Please refresh the page and try again.', 'error');
+            return;
+        }
+        
+        if (!teacherRegisterForm.classList.contains('active')) {
             console.error('Teacher registration form is not visible');
             this.showMessage('Please select Teacher registration first.', 'error');
             return;
         }
+        
+        // Ensure the form is actually visible in the DOM
+        const formStyle = window.getComputedStyle(teacherRegisterForm);
+        if (formStyle.display === 'none') {
+            console.error('Teacher registration form is hidden');
+            this.showMessage('Registration form is not visible. Please select Teacher registration first.', 'error');
+            return;
+        }
 
-        const firstNameElement = document.getElementById('teacherFirstName');
-        const surnameElement = document.getElementById('teacherSurname');
-        const gradeElement = document.getElementById('teacherGrade');
-        const houseElement = document.getElementById('teacherHouse');
-        const emailElement = document.getElementById('teacherEmail');
-        const passwordElement = document.getElementById('teacherPassword');
-        const confirmPasswordElement = document.getElementById('teacherConfirmPassword');
+        // Wait a bit for DOM to be fully ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Try to get elements with retry mechanism
+        let firstNameElement, surnameElement, gradeElement, houseElement, emailElement, passwordElement, confirmPasswordElement;
+        
+        for (let i = 0; i < 3; i++) {
+            firstNameElement = document.getElementById('teacherFirstName');
+            surnameElement = document.getElementById('teacherSurname');
+            gradeElement = document.getElementById('teacherGrade');
+            houseElement = document.getElementById('teacherHouse');
+            emailElement = document.getElementById('teacherEmail');
+            passwordElement = document.getElementById('teacherPassword');
+            confirmPasswordElement = document.getElementById('teacherConfirmPassword');
+            
+            if (firstNameElement && surnameElement && gradeElement && houseElement && 
+                emailElement && passwordElement && confirmPasswordElement) {
+                break;
+            }
+            
+            if (i < 2) {
+                console.log(`Attempt ${i + 1} failed, retrying...`);
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
         
         if (!firstNameElement || !surnameElement || !gradeElement || !houseElement || 
             !emailElement || !passwordElement || !confirmPasswordElement) {
@@ -573,6 +605,13 @@ class MoodCheckInApp {
                 passwordElement: !!passwordElement,
                 confirmPasswordElement: !!confirmPasswordElement
             });
+            
+            // Additional debugging
+            console.log('Teacher form visibility:', teacherRegisterForm.classList.contains('active'));
+            console.log('All elements in teacher form:', teacherRegisterForm.querySelectorAll('input, select'));
+            console.log('Grade element by ID:', document.getElementById('teacherGrade'));
+            console.log('House element by ID:', document.getElementById('teacherHouse'));
+            
             this.showMessage('Registration form not ready. Please refresh the page and try again.', 'error');
             return;
         }
@@ -1672,6 +1711,32 @@ window.checkDOM = function() {
         exists: !!document.getElementById(id),
         element: document.getElementById(id)
     }));
+};
+
+// Global function to check teacher registration form elements
+window.checkTeacherForm = function() {
+    const teacherForm = document.getElementById('teacherRegisterForm');
+    console.log('Teacher Form Check:');
+    console.log('Form exists:', !!teacherForm);
+    console.log('Form visible:', teacherForm ? teacherForm.classList.contains('active') : false);
+    console.log('Form display style:', teacherForm ? window.getComputedStyle(teacherForm).display : 'N/A');
+    
+    const elements = {
+        firstName: document.getElementById('teacherFirstName'),
+        surname: document.getElementById('teacherSurname'),
+        grade: document.getElementById('teacherGrade'),
+        house: document.getElementById('teacherHouse'),
+        email: document.getElementById('teacherEmail'),
+        password: document.getElementById('teacherPassword'),
+        confirmPassword: document.getElementById('teacherConfirmPassword')
+    };
+    
+    console.log('Form Elements:');
+    Object.entries(elements).forEach(([name, element]) => {
+        console.log(`${name}:`, element ? 'EXISTS' : 'MISSING', element);
+    });
+    
+    return { form: teacherForm, elements };
 };
 
 // Initialize the app when the page loads
