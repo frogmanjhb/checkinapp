@@ -168,6 +168,22 @@ class MoodCheckInApp {
     async initializeApp() {
         console.log('Initializing app with database...');
         
+        // Check if all required DOM elements exist
+        const requiredElements = [
+            'loginScreen', 'registerScreen', 'studentDashboardScreen', 
+            'teacherDashboardScreen', 'directorDashboardScreen'
+        ];
+        
+        const missingElements = requiredElements.filter(id => !document.getElementById(id));
+        if (missingElements.length > 0) {
+            console.error('Missing required DOM elements:', missingElements);
+            console.log('Waiting for DOM to be ready...');
+            setTimeout(() => this.initializeApp(), 100);
+            return;
+        }
+        
+        console.log('All required DOM elements found, proceeding with initialization');
+        
         // Check if user is already logged in
         const savedUser = localStorage.getItem('checkinUser');
         if (savedUser) {
@@ -582,24 +598,57 @@ class MoodCheckInApp {
     }
 
     showLoginScreen() {
-        document.getElementById('loginScreen').classList.add('active');
-        document.getElementById('registerScreen').classList.remove('active');
-        document.getElementById('studentDashboardScreen').classList.remove('active');
-        document.getElementById('teacherDashboardScreen').classList.remove('active');
-        document.getElementById('directorDashboardScreen').classList.remove('active');
-        document.getElementById('navUser').style.display = 'none';
+        const loginScreen = document.getElementById('loginScreen');
+        const registerScreen = document.getElementById('registerScreen');
+        const studentScreen = document.getElementById('studentDashboardScreen');
+        const teacherScreen = document.getElementById('teacherDashboardScreen');
+        const directorScreen = document.getElementById('directorDashboardScreen');
+        const navUser = document.getElementById('navUser');
+        const loginForm = document.getElementById('loginForm');
+        
+        if (!loginScreen || !registerScreen || !studentScreen || !teacherScreen || !directorScreen) {
+            console.error('Required screens not found in DOM');
+            return;
+        }
+        
+        loginScreen.classList.add('active');
+        registerScreen.classList.remove('active');
+        studentScreen.classList.remove('active');
+        teacherScreen.classList.remove('active');
+        directorScreen.classList.remove('active');
+        
+        if (navUser) {
+            navUser.style.display = 'none';
+        }
         
         // Clear form
-        document.getElementById('loginForm').reset();
+        if (loginForm) {
+            loginForm.reset();
+        }
     }
 
     showRegisterScreen() {
-        document.getElementById('loginScreen').classList.remove('active');
-        document.getElementById('registerScreen').classList.add('active');
-        document.getElementById('studentDashboardScreen').classList.remove('active');
-        document.getElementById('teacherDashboardScreen').classList.remove('active');
-        document.getElementById('directorDashboardScreen').classList.remove('active');
-        document.getElementById('navUser').style.display = 'none';
+        const loginScreen = document.getElementById('loginScreen');
+        const registerScreen = document.getElementById('registerScreen');
+        const studentScreen = document.getElementById('studentDashboardScreen');
+        const teacherScreen = document.getElementById('teacherDashboardScreen');
+        const directorScreen = document.getElementById('directorDashboardScreen');
+        const navUser = document.getElementById('navUser');
+        
+        if (!loginScreen || !registerScreen || !studentScreen || !teacherScreen || !directorScreen) {
+            console.error('Required screens not found in DOM');
+            return;
+        }
+        
+        loginScreen.classList.remove('active');
+        registerScreen.classList.add('active');
+        studentScreen.classList.remove('active');
+        teacherScreen.classList.remove('active');
+        directorScreen.classList.remove('active');
+        
+        if (navUser) {
+            navUser.style.display = 'none';
+        }
     }
 
     switchUserType(type) {
@@ -638,9 +687,18 @@ class MoodCheckInApp {
     }
 
     showStudentDashboard() {
-        document.getElementById('studentDashboardScreen').classList.add('active');
-        document.getElementById('teacherDashboardScreen').classList.remove('active');
-        document.getElementById('directorDashboardScreen').classList.remove('active');
+        const studentScreen = document.getElementById('studentDashboardScreen');
+        const teacherScreen = document.getElementById('teacherDashboardScreen');
+        const directorScreen = document.getElementById('directorDashboardScreen');
+        
+        if (!studentScreen || !teacherScreen || !directorScreen) {
+            console.error('Dashboard screens not found in DOM');
+            return;
+        }
+        
+        studentScreen.classList.add('active');
+        teacherScreen.classList.remove('active');
+        directorScreen.classList.remove('active');
         
         // Update user info with multiple attempts to ensure it gets set
         this.updateStudentName();
@@ -703,17 +761,37 @@ class MoodCheckInApp {
     }
 
     showTeacherDashboard() {
-        document.getElementById('studentDashboardScreen').classList.remove('active');
-        document.getElementById('teacherDashboardScreen').classList.add('active');
-        document.getElementById('directorDashboardScreen').classList.remove('active');
+        const studentScreen = document.getElementById('studentDashboardScreen');
+        const teacherScreen = document.getElementById('teacherDashboardScreen');
+        const directorScreen = document.getElementById('directorDashboardScreen');
+        
+        if (!studentScreen || !teacherScreen || !directorScreen) {
+            console.error('Dashboard screens not found in DOM');
+            return;
+        }
+        
+        studentScreen.classList.remove('active');
+        teacherScreen.classList.add('active');
+        directorScreen.classList.remove('active');
         
         // Update user info
-        document.getElementById('teacherName').textContent = `${this.currentUser.first_name} ${this.currentUser.surname}`;
-        document.getElementById('userName').textContent = `${this.currentUser.first_name} ${this.currentUser.surname}`;
+        const teacherNameElement = document.getElementById('teacherName');
+        const userNameElement = document.getElementById('userName');
+        const teacherAssignedGradeElement = document.getElementById('teacherAssignedGrade');
+        const teacherAssignedHouseElement = document.getElementById('teacherAssignedHouse');
         
-        // Update teacher assignment info
-        document.getElementById('teacherAssignedGrade').textContent = this.currentUser.class || 'Not assigned';
-        document.getElementById('teacherAssignedHouse').textContent = this.currentUser.house || 'Not assigned';
+        if (teacherNameElement) {
+            teacherNameElement.textContent = `${this.currentUser.first_name} ${this.currentUser.surname}`;
+        }
+        if (userNameElement) {
+            userNameElement.textContent = `${this.currentUser.first_name} ${this.currentUser.surname}`;
+        }
+        if (teacherAssignedGradeElement) {
+            teacherAssignedGradeElement.textContent = this.currentUser.class || 'Not assigned';
+        }
+        if (teacherAssignedHouseElement) {
+            teacherAssignedHouseElement.textContent = this.currentUser.house || 'Not assigned';
+        }
         
         this.updateTeacherView();
         this.updateTeacherAnalytics();
@@ -722,9 +800,18 @@ class MoodCheckInApp {
     }
 
     showDirectorDashboard() {
-        document.getElementById('studentDashboardScreen').classList.remove('active');
-        document.getElementById('teacherDashboardScreen').classList.remove('active');
-        document.getElementById('directorDashboardScreen').classList.add('active');
+        const studentScreen = document.getElementById('studentDashboardScreen');
+        const teacherScreen = document.getElementById('teacherDashboardScreen');
+        const directorScreen = document.getElementById('directorDashboardScreen');
+        
+        if (!studentScreen || !teacherScreen || !directorScreen) {
+            console.error('Dashboard screens not found in DOM');
+            return;
+        }
+        
+        studentScreen.classList.remove('active');
+        teacherScreen.classList.remove('active');
+        directorScreen.classList.add('active');
         
         // Update user info
         document.getElementById('directorName').textContent = `${this.currentUser.first_name} ${this.currentUser.surname}`;
