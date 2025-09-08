@@ -288,6 +288,12 @@ app.post('/api/mood-checkin', async (req, res) => {
   try {
     const { userId, mood, emoji, notes, location, reasons, emotions } = req.body;
     
+    console.log('Received mood check-in data:', {
+      userId, mood, emoji, notes, location, 
+      reasons: reasons, 
+      emotions: emotions
+    });
+    
     if (!userId || !mood || !emoji) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
