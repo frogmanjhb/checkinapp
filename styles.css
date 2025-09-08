@@ -1195,7 +1195,7 @@ body {
 
 .modal-content {
     background: white;
-    border-radius: 20px;
+    border-radius: 12px;
     width: 90%;
     max-width: 600px;
     max-height: 85vh;
@@ -1203,6 +1203,7 @@ body {
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
     display: flex;
     flex-direction: column;
+    border: 1px solid #e1e5e9;
 }
 
 .modal-header {
@@ -1211,6 +1212,8 @@ body {
     align-items: center;
     padding: 2rem 2rem 1rem;
     border-bottom: 1px solid #e1e5e9;
+    background: white;
+    border-radius: 12px 12px 0 0;
 }
 
 .modal-footer {
@@ -1267,6 +1270,10 @@ body {
 .modal-header h3 {
     color: #333;
     font-size: 1.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .close-btn {
@@ -1371,49 +1378,146 @@ body {
 }
 
 /* Journaling Modal Styles */
+.journaling-section {
+    padding: 1.5rem;
+}
+
 .journaling-section h4 {
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
     color: #333;
-    text-align: center;
-    font-size: 1.2rem;
+    font-size: 1.3rem;
+    font-weight: 600;
 }
 
 .journaling-hint {
     color: #666;
-    font-size: 0.9rem;
-    text-align: center;
+    font-size: 0.95rem;
     margin-bottom: 1.5rem;
-    font-style: italic;
-    line-height: 1.4;
+    line-height: 1.5;
 }
 
 .journaling-section textarea {
     width: 100%;
-    padding: 1rem;
+    padding: 1.25rem;
     border: 2px solid #e1e5e9;
-    border-radius: 10px;
+    border-radius: 12px;
     font-size: 1rem;
-    resize: vertical;
-    min-height: 120px;
     font-family: inherit;
-    transition: border-color 0.3s ease;
+    resize: vertical;
+    min-height: 150px;
+    max-height: 300px;
+    transition: all 0.3s ease;
+    background: #fafbfc;
+    line-height: 1.6;
 }
 
 .journaling-section textarea:focus {
     outline: none;
-    border-color: #2196F3;
+    border-color: #4ECDC4;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
+}
+
+.journaling-section textarea::placeholder {
+    color: #999;
+    font-style: italic;
 }
 
 .character-count {
     text-align: right;
     color: #666;
-    font-size: 0.8rem;
-    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+    font-weight: 500;
+}
+
+/* Main Journal Entry Modal Styles */
+.journal-entry-section {
+    padding: 1.5rem;
+}
+
+.journal-entry-section h4 {
+    margin-bottom: 0.75rem;
+    color: #333;
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.journal-hint {
+    color: #666;
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
+.journal-entry-section textarea {
+    width: 100%;
+    padding: 1.25rem;
+    border: 2px solid #e1e5e9;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 180px;
+    max-height: 400px;
+    transition: all 0.3s ease;
+    background: #fafbfc;
+    line-height: 1.6;
+}
+
+.journal-entry-section textarea:focus {
+    outline: none;
+    border-color: #4ECDC4;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
+}
+
+.journal-entry-section textarea::placeholder {
+    color: #999;
+    font-style: italic;
 }
 
 .modal-footer {
-    padding: 1rem 2rem 2rem;
-    text-align: right;
+    padding: 1.5rem 2rem 2rem;
+    border-top: 1px solid #e1e5e9;
+    background: #fafbfc;
+}
+
+.modal-footer-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.modal-footer-buttons .btn-secondary {
+    background: white;
+    color: #666;
+    border: 2px solid #e1e5e9;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.modal-footer-buttons .btn-secondary:hover {
+    background: #f8f9fa;
+    border-color: #d1d5db;
+    color: #333;
+}
+
+.modal-footer-buttons .btn-primary {
+    background: linear-gradient(135deg, #4ECDC4, #44A08D);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.modal-footer-buttons .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
 }
 
 /* Footer */
