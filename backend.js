@@ -66,6 +66,49 @@ async function initializeDatabase() {
       )
     `);
 
+    // Update existing constraint to include 'director' if it doesn't already
+    try {
+      // Check if constraint exists and what values it allows
+      const constraintCheck = await pool.query(`
+        SELECT conname, consrc 
+        FROM pg_constraint 
+        WHERE conname = 'users_user_type_check' 
+        AND conrelid = 'users'::regclass
+      `);
+      
+      if (constraintCheck.rows.length > 0) {
+        const constraintSource = constraintCheck.rows[0].consrc;
+        if (!constraintSource.includes("'director'")) {
+          console.log('🔄 Updating constraint to include director...');
+          await pool.query(`ALTER TABLE users DROP CONSTRAINT users_user_type_check`);
+          await pool.query(`
+            ALTER TABLE users ADD CONSTRAINT users_user_type_check 
+            CHECK (user_type IN ('student', 'teacher', 'director'))
+          `);
+          console.log('✅ Updated user_type constraint to include director');
+        } else {
+          console.log('✅ Constraint already includes director');
+        }
+      } else {
+        console.log('✅ No existing constraint found, new table created with correct constraint');
+      }
+    } catch (error) {
+      console.log('⚠️ Constraint update failed:', error.message);
+      // Try a simpler approach
+      try {
+        await pool.query(`
+          ALTER TABLE users DROP CONSTRAINT IF EXISTS users_user_type_check
+        `);
+        await pool.query(`
+          ALTER TABLE users ADD CONSTRAINT users_user_type_check 
+          CHECK (user_type IN ('student', 'teacher', 'director'))
+        `);
+        console.log('✅ Constraint updated with fallback method');
+      } catch (fallbackError) {
+        console.log('⚠️ Fallback constraint update also failed:', fallbackError.message);
+      }
+    }
+
     // Create mood check-ins table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS mood_checkins (
@@ -126,12 +169,18 @@ async function initializeDatabase() {
     // Add director user if it doesn't exist
     const directorExists = await pool.query('SELECT id FROM users WHERE email = $1', ['jatlee@stpeters.co.za']);
     if (directorExists.rows.length === 0) {
-      const hashedPassword = await bcrypt.hash('director123!', 10);
-      await pool.query(`
-        INSERT INTO users (first_name, surname, email, password_hash, user_type)
-        VALUES ($1, $2, $3, $4, $5)
-      `, ['Jat', 'Lee', 'jatlee@stpeters.co.za', hashedPassword, 'director']);
-      console.log('✅ Director user created');
+      try {
+        const hashedPassword = await bcrypt.hash('director123!', 10);
+        await pool.query(`
+          INSERT INTO users (first_name, surname, email, password_hash, user_type)
+          VALUES ($1, $2, $3, $4, $5)
+        `, ['Jat', 'Lee', 'jatlee@stpeters.co.za', hashedPassword, 'director']);
+        console.log('✅ Director user created');
+      } catch (error) {
+        console.log('⚠️ Director user creation failed:', error.message);
+      }
+    } else {
+      console.log('✅ Director user already exists');
     }
 
   } catch (error) {
