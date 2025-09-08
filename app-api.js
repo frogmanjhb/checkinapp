@@ -171,8 +171,11 @@ class MoodCheckInApp {
         // Check if all required DOM elements exist
         const requiredElements = [
             'loginScreen', 'registerScreen', 'studentDashboardScreen', 
-            'teacherDashboardScreen', 'directorDashboardScreen'
+            'teacherDashboardScreen'
         ];
+        
+        // Optional elements (not critical for basic functionality)
+        const optionalElements = ['directorDashboardScreen'];
         
         const missingElements = requiredElements.filter(id => !document.getElementById(id));
         if (missingElements.length > 0) {
@@ -637,7 +640,7 @@ class MoodCheckInApp {
         const navUser = document.getElementById('navUser');
         const loginForm = document.getElementById('loginForm');
         
-        if (!loginScreen || !registerScreen || !studentScreen || !teacherScreen || !directorScreen) {
+        if (!loginScreen || !registerScreen || !studentScreen || !teacherScreen) {
             console.error('Required screens not found in DOM');
             return;
         }
@@ -646,7 +649,9 @@ class MoodCheckInApp {
         registerScreen.classList.remove('active');
         studentScreen.classList.remove('active');
         teacherScreen.classList.remove('active');
-        directorScreen.classList.remove('active');
+        if (directorScreen) {
+            directorScreen.classList.remove('active');
+        }
         
         if (navUser) {
             navUser.style.display = 'none';
@@ -666,7 +671,7 @@ class MoodCheckInApp {
         const directorScreen = document.getElementById('directorDashboardScreen');
         const navUser = document.getElementById('navUser');
         
-        if (!loginScreen || !registerScreen || !studentScreen || !teacherScreen || !directorScreen) {
+        if (!loginScreen || !registerScreen || !studentScreen || !teacherScreen) {
             console.error('Required screens not found in DOM');
             return;
         }
@@ -675,7 +680,9 @@ class MoodCheckInApp {
         registerScreen.classList.add('active');
         studentScreen.classList.remove('active');
         teacherScreen.classList.remove('active');
-        directorScreen.classList.remove('active');
+        if (directorScreen) {
+            directorScreen.classList.remove('active');
+        }
         
         if (navUser) {
             navUser.style.display = 'none';
@@ -722,14 +729,16 @@ class MoodCheckInApp {
         const teacherScreen = document.getElementById('teacherDashboardScreen');
         const directorScreen = document.getElementById('directorDashboardScreen');
         
-        if (!studentScreen || !teacherScreen || !directorScreen) {
-            console.error('Dashboard screens not found in DOM');
+        if (!studentScreen || !teacherScreen) {
+            console.error('Required dashboard screens not found in DOM');
             return;
         }
         
         studentScreen.classList.add('active');
         teacherScreen.classList.remove('active');
-        directorScreen.classList.remove('active');
+        if (directorScreen) {
+            directorScreen.classList.remove('active');
+        }
         
         // Update user info with multiple attempts to ensure it gets set
         this.updateStudentName();
@@ -796,14 +805,16 @@ class MoodCheckInApp {
         const teacherScreen = document.getElementById('teacherDashboardScreen');
         const directorScreen = document.getElementById('directorDashboardScreen');
         
-        if (!studentScreen || !teacherScreen || !directorScreen) {
-            console.error('Dashboard screens not found in DOM');
+        if (!studentScreen || !teacherScreen) {
+            console.error('Required dashboard screens not found in DOM');
             return;
         }
         
         studentScreen.classList.remove('active');
         teacherScreen.classList.add('active');
-        directorScreen.classList.remove('active');
+        if (directorScreen) {
+            directorScreen.classList.remove('active');
+        }
         
         // Update user info
         const teacherNameElement = document.getElementById('teacherName');
@@ -835,8 +846,13 @@ class MoodCheckInApp {
         const teacherScreen = document.getElementById('teacherDashboardScreen');
         const directorScreen = document.getElementById('directorDashboardScreen');
         
-        if (!studentScreen || !teacherScreen || !directorScreen) {
-            console.error('Dashboard screens not found in DOM');
+        if (!studentScreen || !teacherScreen) {
+            console.error('Required dashboard screens not found in DOM');
+            return;
+        }
+        
+        if (!directorScreen) {
+            console.error('Director dashboard screen not found in DOM');
             return;
         }
         
