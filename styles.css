@@ -489,6 +489,142 @@ body {
     word-wrap: break-word;
 }
 
+/* Orbital Mood Layout */
+.orbital-mood-item {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e1e5e9;
+    position: relative;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.orbital-mood-center {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+}
+
+.orbital-mood-emoji {
+    font-size: 4rem;
+    animation: orbitalPulse 3s ease-in-out infinite;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+}
+
+@keyframes orbitalPulse {
+    0%, 100% { 
+        transform: scale(1) rotate(0deg); 
+    }
+    50% { 
+        transform: scale(1.1) rotate(5deg); 
+    }
+}
+
+.orbital-mood-text {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #333;
+    margin-top: 0.5rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.orbital-mood-time {
+    font-size: 0.9rem;
+    color: #666;
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
+.orbital-element {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid #e1e5e9;
+    border-radius: 15px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    animation: orbitalFloat 4s ease-in-out infinite;
+    z-index: 5;
+}
+
+.orbital-element:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    z-index: 15;
+}
+
+@keyframes orbitalFloat {
+    0%, 100% { 
+        transform: translateY(0px) rotate(0deg); 
+    }
+    50% { 
+        transform: translateY(-5px) rotate(2deg); 
+    }
+}
+
+.orbital-emotion {
+    color: #4ECDC4;
+    border-color: #4ECDC4;
+    background: linear-gradient(135deg, rgba(78, 205, 196, 0.1), rgba(68, 160, 141, 0.1));
+}
+
+.orbital-location {
+    color: #FF6B6B;
+    border-color: #FF6B6B;
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(255, 99, 132, 0.1));
+}
+
+.orbital-reason {
+    color: #4ECDC4;
+    border-color: #4ECDC4;
+    background: linear-gradient(135deg, rgba(78, 205, 196, 0.1), rgba(68, 160, 141, 0.1));
+}
+
+.orbital-notes {
+    color: #9C27B0;
+    border-color: #9C27B0;
+    background: linear-gradient(135deg, rgba(156, 39, 176, 0.1), rgba(103, 58, 183, 0.1));
+    max-width: 200px;
+    word-wrap: break-word;
+}
+
+.orbital-connection-line {
+    position: absolute;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(78, 205, 196, 0.3), transparent);
+    transform-origin: left center;
+    z-index: 1;
+    animation: connectionFlow 2s ease-in-out infinite;
+}
+
+@keyframes connectionFlow {
+    0%, 100% { 
+        opacity: 0.3; 
+    }
+    50% { 
+        opacity: 0.8; 
+    }
+}
+
+/* Orbital positioning classes */
+.orbital-top-left { top: 20px; left: 20px; }
+.orbital-top-right { top: 20px; right: 20px; }
+.orbital-middle-left { top: 50%; left: 20px; transform: translateY(-50%); }
+.orbital-middle-right { top: 50%; right: 20px; transform: translateY(-50%); }
+.orbital-bottom-left { bottom: 20px; left: 20px; }
+.orbital-bottom-right { bottom: 20px; right: 20px; }
+.orbital-top-center { top: 20px; left: 50%; transform: translateX(-50%); }
+.orbital-bottom-center { bottom: 20px; left: 50%; transform: translateX(-50%); }
+
 /* Responsive design for history items */
 @media (max-width: 768px) {
     .history-header {
@@ -513,6 +649,25 @@ body {
     .history-value {
         font-size: 0.8rem;
     }
+
+    /* Orbital layout mobile adjustments */
+    .orbital-mood-item {
+        min-height: 250px;
+        padding: 1.5rem;
+    }
+    
+    .orbital-mood-emoji {
+        font-size: 3rem;
+    }
+    
+    .orbital-mood-text {
+        font-size: 1.2rem;
+    }
+    
+    .orbital-element {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.6rem;
+    }
 }
 
 @media (max-width: 480px) {
@@ -522,6 +677,29 @@ body {
     
     .history-details {
         margin-top: 0.75rem;
+    }
+
+    /* Orbital layout small mobile */
+    .orbital-mood-item {
+        min-height: 200px;
+        padding: 1rem;
+    }
+    
+    .orbital-mood-emoji {
+        font-size: 2.5rem;
+    }
+    
+    .orbital-mood-text {
+        font-size: 1rem;
+    }
+    
+    .orbital-element {
+        font-size: 0.7rem;
+        padding: 0.3rem 0.5rem;
+    }
+    
+    .orbital-notes {
+        max-width: 150px;
     }
 }
 
