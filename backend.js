@@ -58,7 +58,7 @@ async function initializeDatabase() {
         surname VARCHAR(50) NOT NULL,
         email VARCHAR(100) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
-        user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('student', 'teacher')),
+        user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('student', 'teacher', 'director')),
         class VARCHAR(20),
         house VARCHAR(20),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -79,12 +79,29 @@ async function initializeDatabase() {
       )
     `);
 
+    // Create journal entries table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS journal_entries (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        entry TEXT NOT NULL,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Create indexes for better performance
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_mood_checkins_user_id ON mood_checkins(user_id)
     `);
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_mood_checkins_timestamp ON mood_checkins(timestamp)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_journal_entries_user_id ON journal_entries(user_id)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_journal_entries_timestamp ON journal_entries(timestamp)
     `);
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)
@@ -104,6 +121,17 @@ async function initializeDatabase() {
         VALUES ($1, $2, $3, $4, $5, $6, $7)
       `, ['Demo', 'Student', 'demo@stpeters.co.za', hashedPassword, 'student', 'Grade 6', 'Mirfield']);
       console.log('✅ Demo user created');
+    }
+
+    // Add director user if it doesn't exist
+    const directorExists = await pool.query('SELECT id FROM users WHERE email = $1', ['jatlee@stpeters.co.za']);
+    if (directorExists.rows.length === 0) {
+      const hashedPassword = await bcrypt.hash('director123!', 10);
+      await pool.query(`
+        INSERT INTO users (first_name, surname, email, password_hash, user_type)
+        VALUES ($1, $2, $3, $4, $5)
+      `, ['Jat', 'Lee', 'jatlee@stpeters.co.za', hashedPassword, 'director']);
+      console.log('✅ Director user created');
     }
 
   } catch (error) {
@@ -308,6 +336,175 @@ app.get('/api/all-mood-checkins', async (req, res) => {
     res.json({ success: true, checkins: result.rows });
   } catch (error) {
     console.error('All mood check-ins error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Journal entry endpoints
+app.post('/api/journal-entry', async (req, res) => {
+  try {
+    const { userId, entry } = req.body;
+    
+    if (!userId || !entry) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO journal_entries (user_id, entry) VALUES ($1, $2) RETURNING *',
+      [userId, entry]
+    );
+    
+    res.status(201).json({ success: true, journalEntry: result.rows[0] });
+  } catch (error) {
+    console.error('Journal entry error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/journal-entries/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { period = 'daily' } = req.query;
+    
+    let whereClause = 'WHERE user_id = $1';
+    let queryParams = [userId];
+    
+    // Add time filtering based on period
+    if (period === 'daily') {
+      whereClause += ' AND timestamp >= CURRENT_DATE';
+    } else if (period === 'weekly') {
+      whereClause += ' AND timestamp >= CURRENT_DATE - INTERVAL \'7 days\'';
+    } else if (period === 'monthly') {
+      whereClause += ' AND timestamp >= CURRENT_DATE - INTERVAL \'30 days\'';
+    }
+    
+    const result = await pool.query(
+      `SELECT * FROM journal_entries ${whereClause} ORDER BY timestamp DESC`,
+      queryParams
+    );
+    
+    res.json({ success: true, entries: result.rows });
+  } catch (error) {
+    console.error('Journal entries error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Director endpoints
+app.get('/api/director/all-users', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, first_name, surname, email, user_type, class, house, created_at 
+       FROM users 
+       WHERE user_type IN ('student', 'teacher')
+       ORDER BY user_type, first_name`
+    );
+    
+    res.json({ success: true, users: result.rows });
+  } catch (error) {
+    console.error('Director all users error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/director/all-mood-data', async (req, res) => {
+  try {
+    const { period = 'daily' } = req.query;
+    
+    let whereClause = '';
+    let queryParams = [];
+    
+    // Add time filtering based on period
+    if (period === 'daily') {
+      whereClause = 'WHERE mc.timestamp >= CURRENT_DATE';
+    } else if (period === 'weekly') {
+      whereClause = 'WHERE mc.timestamp >= CURRENT_DATE - INTERVAL \'7 days\'';
+    } else if (period === 'monthly') {
+      whereClause = 'WHERE mc.timestamp >= CURRENT_DATE - INTERVAL \'30 days\'';
+    }
+    
+    const result = await pool.query(
+      `SELECT mc.*, u.first_name, u.surname, u.class, u.house, u.user_type
+       FROM mood_checkins mc 
+       JOIN users u ON mc.user_id = u.id 
+       ${whereClause} 
+       ORDER BY mc.timestamp DESC`,
+      queryParams
+    );
+    
+    res.json({ success: true, checkins: result.rows });
+  } catch (error) {
+    console.error('Director all mood data error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/director/all-journal-entries', async (req, res) => {
+  try {
+    const { period = 'daily' } = req.query;
+    
+    let whereClause = '';
+    let queryParams = [];
+    
+    // Add time filtering based on period
+    if (period === 'daily') {
+      whereClause = 'WHERE je.timestamp >= CURRENT_DATE';
+    } else if (period === 'weekly') {
+      whereClause = 'WHERE je.timestamp >= CURRENT_DATE - INTERVAL \'7 days\'';
+    } else if (period === 'monthly') {
+      whereClause = 'WHERE je.timestamp >= CURRENT_DATE - INTERVAL \'30 days\'';
+    }
+    
+    const result = await pool.query(
+      `SELECT je.*, u.first_name, u.surname, u.class, u.house, u.user_type
+       FROM journal_entries je 
+       JOIN users u ON je.user_id = u.id 
+       ${whereClause} 
+       ORDER BY je.timestamp DESC`,
+      queryParams
+    );
+    
+    res.json({ success: true, entries: result.rows });
+  } catch (error) {
+    console.error('Director all journal entries error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Teacher grade analytics (no names, just emotions)
+app.get('/api/teacher/grade-analytics', async (req, res) => {
+  try {
+    const { grade, period = 'daily' } = req.query;
+    
+    if (!grade) {
+      return res.status(400).json({ success: false, error: 'Grade parameter is required' });
+    }
+    
+    let whereClause = 'WHERE u.class = $1';
+    let queryParams = [grade];
+    
+    // Add time filtering based on period
+    if (period === 'daily') {
+      whereClause += ' AND mc.timestamp >= CURRENT_DATE';
+    } else if (period === 'weekly') {
+      whereClause += ' AND mc.timestamp >= CURRENT_DATE - INTERVAL \'7 days\'';
+    } else if (period === 'monthly') {
+      whereClause += ' AND mc.timestamp >= CURRENT_DATE - INTERVAL \'30 days\'';
+    }
+    
+    const result = await pool.query(
+      `SELECT mc.mood, mc.emoji, COUNT(*) as count
+       FROM mood_checkins mc 
+       JOIN users u ON mc.user_id = u.id 
+       ${whereClause}
+       GROUP BY mc.mood, mc.emoji
+       ORDER BY count DESC`,
+      queryParams
+    );
+    
+    res.json({ success: true, analytics: result.rows });
+  } catch (error) {
+    console.error('Teacher grade analytics error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
