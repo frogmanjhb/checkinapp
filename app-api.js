@@ -165,8 +165,8 @@ class MoodCheckInApp {
         this.startMoodEmojiAnimation();
     }
 
-    async initializeApp() {
-        console.log('Initializing app with database...');
+    async initializeApp(retryCount = 0) {
+        console.log('Initializing app with database... (attempt', retryCount + 1, ')');
         
         // Check if all required DOM elements exist
         const requiredElements = [
@@ -177,9 +177,20 @@ class MoodCheckInApp {
         const missingElements = requiredElements.filter(id => !document.getElementById(id));
         if (missingElements.length > 0) {
             console.error('Missing required DOM elements:', missingElements);
-            console.log('Waiting for DOM to be ready...');
-            setTimeout(() => this.initializeApp(), 100);
-            return;
+            console.log('Available elements in DOM:', requiredElements.map(id => ({
+                id: id,
+                exists: !!document.getElementById(id),
+                element: document.getElementById(id)
+            })));
+            
+            if (retryCount < 50) { // Max 50 retries (5 seconds)
+                console.log('Waiting for DOM to be ready... (retry', retryCount + 1, '/50)');
+                setTimeout(() => this.initializeApp(retryCount + 1), 100);
+                return;
+            } else {
+                console.error('Max retries reached. Some elements may be missing from HTML.');
+                console.log('Proceeding anyway...');
+            }
         }
         
         console.log('All required DOM elements found, proceeding with initialization');
@@ -219,6 +230,26 @@ class MoodCheckInApp {
                 this.updateStudentName();
             };
             document.body.appendChild(testButton);
+            
+            // Add a DOM check button
+            const domCheckButton = document.createElement('button');
+            domCheckButton.textContent = 'Check DOM';
+            domCheckButton.style.position = 'fixed';
+            domCheckButton.style.top = '50px';
+            domCheckButton.style.right = '10px';
+            domCheckButton.style.zIndex = '9999';
+            domCheckButton.onclick = () => {
+                const requiredElements = [
+                    'loginScreen', 'registerScreen', 'studentDashboardScreen', 
+                    'teacherDashboardScreen', 'directorDashboardScreen'
+                ];
+                console.log('DOM Check Results:');
+                requiredElements.forEach(id => {
+                    const element = document.getElementById(id);
+                    console.log(`${id}:`, element ? 'EXISTS' : 'MISSING', element);
+                });
+            };
+            document.body.appendChild(domCheckButton);
         }, 2000);
         
         console.log('App initialized successfully');
@@ -1540,12 +1571,31 @@ class MoodCheckInApp {
     }
 }
 
+// Global function to check DOM elements
+window.checkDOM = function() {
+    const requiredElements = [
+        'loginScreen', 'registerScreen', 'studentDashboardScreen', 
+        'teacherDashboardScreen', 'directorDashboardScreen'
+    ];
+    console.log('DOM Check Results:');
+    requiredElements.forEach(id => {
+        const element = document.getElementById(id);
+        console.log(`${id}:`, element ? 'EXISTS' : 'MISSING', element);
+    });
+    return requiredElements.map(id => ({
+        id: id,
+        exists: !!document.getElementById(id),
+        element: document.getElementById(id)
+    }));
+};
+
 // Initialize the app when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     try {
         console.log('DOM loaded, initializing app with database...');
         window.moodApp = new MoodCheckInApp();
         console.log('App instance created and available as window.moodApp');
+        console.log('You can run checkDOM() in console to check DOM elements');
     } catch (error) {
         console.error('Error initializing app:', error);
         alert('Error initializing app: ' + error.message);
