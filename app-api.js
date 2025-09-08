@@ -159,6 +159,7 @@ class MoodCheckInApp {
         this.allMoodHistory = [];
         this.moodEmojis = ['😊', '🤩', '😌', '😴', '😰', '😢', '😠', '😕'];
         this.currentEmojiIndex = 0;
+        this.isGhostMode = false;
         
         this.initializeApp();
         this.setupEventListeners();
@@ -370,6 +371,14 @@ class MoodCheckInApp {
         if (closeMoodModal) {
             closeMoodModal.addEventListener('click', () => {
                 this.hideMoodModal();
+            });
+        }
+
+        // Ghost mode toggle
+        const ghostModeToggle = document.getElementById('ghostModeToggle');
+        if (ghostModeToggle) {
+            ghostModeToggle.addEventListener('change', (e) => {
+                this.toggleGhostMode(e.target.checked);
             });
         }
 
@@ -1047,18 +1056,64 @@ class MoodCheckInApp {
         document.getElementById('moodModal').classList.add('active');
         this.selectedMood = null;
         this.updateMoodButtons();
-        document.getElementById('confirmMoodCheckin').disabled = true;
-        document.getElementById('moodNotes').value = '';
+        
+        // Disable all mood modal buttons initially
+        const proceedToEmotions = document.getElementById('proceedToEmotions');
+        const confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
+        
+        if (proceedToEmotions) {
+            proceedToEmotions.disabled = true;
+        }
+        if (confirmMoodCheckin) {
+            confirmMoodCheckin.disabled = true;
+        }
+        
+        // Clear notes
+        const moodNotes = document.getElementById('moodNotes');
+        if (moodNotes) {
+            moodNotes.value = '';
+        }
     }
 
     hideMoodModal() {
         document.getElementById('moodModal').classList.remove('active');
     }
 
+    toggleGhostMode(isEnabled) {
+        console.log('Ghost mode toggled:', isEnabled);
+        
+        // Update ghost mode status display
+        const ghostModeStatus = document.getElementById('ghostModeStatus');
+        if (ghostModeStatus) {
+            ghostModeStatus.style.display = isEnabled ? 'block' : 'none';
+        }
+        
+        // Update modal indicators
+        const modalIndicators = document.querySelectorAll('.ghost-mode-modal-indicator');
+        modalIndicators.forEach(indicator => {
+            indicator.style.display = isEnabled ? 'block' : 'none';
+        });
+        
+        // Store ghost mode state
+        this.isGhostMode = isEnabled;
+        
+        console.log('Ghost mode state updated:', this.isGhostMode);
+    }
+
     selectMood(mood, emoji) {
         this.selectedMood = { mood, emoji };
         this.updateMoodButtons();
-        document.getElementById('confirmMoodCheckin').disabled = false;
+        
+        // Enable the correct button based on the modal step
+        const proceedToEmotions = document.getElementById('proceedToEmotions');
+        const confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
+        
+        if (proceedToEmotions) {
+            proceedToEmotions.disabled = false;
+        }
+        if (confirmMoodCheckin) {
+            confirmMoodCheckin.disabled = false;
+        }
     }
 
     updateMoodButtons() {
