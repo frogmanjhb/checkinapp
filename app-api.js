@@ -798,6 +798,8 @@ class MoodCheckInApp {
     }
 
     switchUserType(type) {
+        console.log('Switching to user type:', type);
+        
         // Update button states
         document.querySelectorAll('.user-type-btn').forEach(btn => {
             btn.classList.remove('active');
@@ -810,11 +812,35 @@ class MoodCheckInApp {
         });
         
         if (type === 'student') {
-            document.getElementById('studentRegisterForm').classList.add('active');
+            const studentForm = document.getElementById('studentRegisterForm');
+            if (studentForm) {
+                studentForm.classList.add('active');
+                console.log('Student form activated');
+            }
         } else if (type === 'teacher') {
-            document.getElementById('teacherRegisterForm').classList.add('active');
+            const teacherForm = document.getElementById('teacherRegisterForm');
+            if (teacherForm) {
+                teacherForm.classList.add('active');
+                console.log('Teacher form activated');
+                
+                // Debug: Check if all elements are visible
+                setTimeout(() => {
+                    const gradeElement = document.getElementById('teacherGrade');
+                    const houseElement = document.getElementById('teacherHouse');
+                    console.log('Teacher form elements after activation:', {
+                        gradeElement: !!gradeElement,
+                        houseElement: !!houseElement,
+                        gradeVisible: gradeElement ? window.getComputedStyle(gradeElement).display !== 'none' : false,
+                        houseVisible: houseElement ? window.getComputedStyle(houseElement).display !== 'none' : false
+                    });
+                }, 100);
+            }
         } else if (type === 'director') {
-            document.getElementById('directorRegisterForm').classList.add('active');
+            const directorForm = document.getElementById('directorRegisterForm');
+            if (directorForm) {
+                directorForm.classList.add('active');
+                console.log('Director form activated');
+            }
         }
     }
 
@@ -1734,9 +1760,49 @@ window.checkTeacherForm = function() {
     console.log('Form Elements:');
     Object.entries(elements).forEach(([name, element]) => {
         console.log(`${name}:`, element ? 'EXISTS' : 'MISSING', element);
+        if (element) {
+            console.log(`  - ${name} display:`, window.getComputedStyle(element).display);
+            console.log(`  - ${name} visibility:`, window.getComputedStyle(element).visibility);
+        }
+    });
+    
+    // Check if grade and house elements are in the DOM
+    const allSelects = document.querySelectorAll('select');
+    console.log('All select elements in DOM:', allSelects.length);
+    allSelects.forEach((select, index) => {
+        console.log(`Select ${index}:`, select.id, select.className);
     });
     
     return { form: teacherForm, elements };
+};
+
+// Global function to force show teacher form
+window.showTeacherForm = function() {
+    console.log('Forcing teacher form to show...');
+    
+    // Hide all forms
+    document.querySelectorAll('.register-form').forEach(form => {
+        form.classList.remove('active');
+    });
+    
+    // Show teacher form
+    const teacherForm = document.getElementById('teacherRegisterForm');
+    if (teacherForm) {
+        teacherForm.classList.add('active');
+        console.log('Teacher form activated');
+        
+        // Check elements after a delay
+        setTimeout(() => {
+            const gradeElement = document.getElementById('teacherGrade');
+            const houseElement = document.getElementById('teacherHouse');
+            console.log('After forcing show:', {
+                gradeElement: !!gradeElement,
+                houseElement: !!houseElement,
+                gradeParent: gradeElement ? gradeElement.parentElement : null,
+                houseParent: houseElement ? houseElement.parentElement : null
+            });
+        }, 100);
+    }
 };
 
 // Initialize the app when the page loads
