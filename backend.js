@@ -88,6 +88,9 @@ async function initializeDatabase() {
         mood VARCHAR(20) NOT NULL,
         emoji VARCHAR(10) NOT NULL,
         notes TEXT,
+        location VARCHAR(50),
+        reasons TEXT[],
+        emotions TEXT[],
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -271,15 +274,15 @@ app.post('/api/login', async (req, res) => {
 // Mood check-in
 app.post('/api/mood-checkin', async (req, res) => {
   try {
-    const { userId, mood, emoji, notes } = req.body;
+    const { userId, mood, emoji, notes, location, reasons, emotions } = req.body;
     
     if (!userId || !mood || !emoji) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
     const result = await pool.query(
-      'INSERT INTO mood_checkins (user_id, mood, emoji, notes) VALUES ($1, $2, $3, $4) RETURNING *',
-      [userId, mood, emoji, notes]
+      'INSERT INTO mood_checkins (user_id, mood, emoji, notes, location, reasons, emotions) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [userId, mood, emoji, notes, location, reasons || [], emotions || []]
     );
     
     res.status(201).json({ success: true, checkin: result.rows[0] });

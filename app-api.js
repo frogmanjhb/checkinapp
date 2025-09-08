@@ -161,6 +161,7 @@ class MoodCheckInApp {
         this.currentEmojiIndex = 0;
         this.isGhostMode = false;
         this.selectedEmotions = [];
+        this.selectedReasons = [];
         
         this.initializeApp();
         this.setupEventListeners();
@@ -475,6 +476,16 @@ class MoodCheckInApp {
         document.querySelectorAll('.location-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 this.selectLocation(e.target.closest('.location-btn').dataset.location);
+            });
+        });
+
+        // Reason toggles
+        document.querySelectorAll('.reason-toggle').forEach(toggle => {
+            toggle.addEventListener('click', (e) => {
+                const checkbox = toggle.querySelector('input[type="checkbox"]');
+                const reason = checkbox.value;
+                checkbox.checked = !checkbox.checked;
+                this.selectReason(reason);
             });
         });
 
@@ -1295,6 +1306,111 @@ class MoodCheckInApp {
         document.getElementById('locationModal').classList.remove('active');
     }
 
+    showJournalingEncouragementModal() {
+        // Show the journaling modal
+        document.getElementById('journalingModal').classList.add('active');
+        
+        // Update ghost mode indicator
+        const ghostModeJournalingIndicator = document.getElementById('ghostModeJournalingIndicator');
+        if (ghostModeJournalingIndicator) {
+            ghostModeJournalingIndicator.style.display = this.isGhostMode ? 'block' : 'none';
+        }
+        
+        // Clear any existing journal entry
+        const journalEntry = document.getElementById('journalEntry');
+        if (journalEntry) {
+            journalEntry.value = '';
+            this.updateJournalCharacterCount('');
+        }
+        
+        // Set up journaling modal event listeners if not already set
+        this.setupJournalingModalListeners();
+    }
+
+    hideJournalingEncouragementModal() {
+        document.getElementById('journalingModal').classList.remove('active');
+    }
+
+    setupJournalingModalListeners() {
+        // Skip journaling button
+        const skipJournaling = document.getElementById('skipJournaling');
+        if (skipJournaling && !skipJournaling.hasAttribute('data-listener-added')) {
+            skipJournaling.addEventListener('click', () => {
+                this.hideJournalingEncouragementModal();
+            });
+            skipJournaling.setAttribute('data-listener-added', 'true');
+        }
+
+        // Save journal entry button
+        const saveJournalEntry = document.getElementById('saveJournalEntry');
+        if (saveJournalEntry && !saveJournalEntry.hasAttribute('data-listener-added')) {
+            saveJournalEntry.addEventListener('click', () => {
+                this.handleJournalingEntry();
+            });
+            saveJournalEntry.setAttribute('data-listener-added', 'true');
+        }
+
+        // Close modal button
+        const closeJournalingModal = document.getElementById('closeJournalingModal');
+        if (closeJournalingModal && !closeJournalingModal.hasAttribute('data-listener-added')) {
+            closeJournalingModal.addEventListener('click', () => {
+                this.hideJournalingEncouragementModal();
+            });
+            closeJournalingModal.setAttribute('data-listener-added', 'true');
+        }
+
+        // Journal entry character count
+        const journalEntry = document.getElementById('journalEntry');
+        if (journalEntry && !journalEntry.hasAttribute('data-listener-added')) {
+            journalEntry.addEventListener('input', (e) => {
+                this.updateJournalCharacterCount(e.target.value);
+            });
+            journalEntry.setAttribute('data-listener-added', 'true');
+        }
+    }
+
+    updateJournalCharacterCount(text) {
+        const countElement = document.getElementById('characterCount');
+        if (countElement) {
+            countElement.textContent = text.length;
+        }
+    }
+
+    async handleJournalingEntry() {
+        if (!this.currentUser) return;
+
+        const entryText = document.getElementById('journalEntry').value.trim();
+        
+        if (!entryText) {
+            this.showMessage('Please enter some text for your journal entry.', 'error');
+            return;
+        }
+
+        try {
+            const response = await APIUtils.saveJournalEntry({
+                userId: this.currentUser.id,
+                entry: entryText
+            });
+
+            if (response.success) {
+                this.hideJournalingEncouragementModal();
+                this.showMessage('Journal entry saved successfully!', 'success');
+                
+                // Update journal display
+                if (this.currentUser.user_type === 'student') {
+                    this.updateStudentJournalList();
+                } else if (this.currentUser.user_type === 'teacher') {
+                    this.updateTeacherJournalList();
+                }
+            } else {
+                this.showMessage('Failed to save journal entry. Please try again.', 'error');
+            }
+        } catch (error) {
+            console.error('Journal entry error:', error);
+            this.showMessage('Failed to save journal entry. Please try again.', 'error');
+        }
+    }
+
     updateLocationButtons() {
         document.querySelectorAll('.location-btn').forEach(btn => {
             btn.classList.remove('selected');
@@ -1312,13 +1428,45 @@ class MoodCheckInApp {
 
     selectLocation(location) {
         this.selectedLocation = location;
+        this.selectedReasons = []; // Reset selected reasons
         this.updateLocationButtons();
         
-        // Show/hide other location input
+        // Show/hide reason sections and other location input
+        const schoolReasons = document.getElementById('schoolReasons');
+        const homeReasons = document.getElementById('homeReasons');
         const otherLocationInput = document.getElementById('otherLocationInput');
+        
+        if (schoolReasons) {
+            schoolReasons.style.display = location === 'school' ? 'block' : 'none';
+        }
+        if (homeReasons) {
+            homeReasons.style.display = location === 'home' ? 'block' : 'none';
+        }
         if (otherLocationInput) {
             otherLocationInput.style.display = location === 'other' ? 'block' : 'none';
         }
+        
+        // Clear any previously selected reasons
+        this.clearReasonSelections();
+    }
+
+    clearReasonSelections() {
+        // Clear all reason checkboxes
+        document.querySelectorAll('.reason-toggle input[type="checkbox"]').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        this.selectedReasons = [];
+    }
+
+    selectReason(reason) {
+        if (this.selectedReasons.includes(reason)) {
+            // Remove reason if already selected
+            this.selectedReasons = this.selectedReasons.filter(r => r !== reason);
+        } else {
+            // Add reason if not selected
+            this.selectedReasons.push(reason);
+        }
+        console.log('Selected reasons:', this.selectedReasons);
     }
 
     toggleGhostMode(isEnabled) {
@@ -1407,7 +1555,10 @@ class MoodCheckInApp {
                 userId: this.currentUser.id,
                 mood: this.selectedMood.mood,
                 emoji: this.selectedMood.emoji,
-                notes: notes
+                notes: notes,
+                location: this.selectedLocation,
+                reasons: this.selectedReasons,
+                emotions: this.selectedEmotions
             });
 
             if (response.success) {
@@ -1419,7 +1570,7 @@ class MoodCheckInApp {
                 this.moodHistory.unshift(moodRecord);
                 this.allMoodHistory.unshift(moodRecord);
                 
-                this.hideMoodModal();
+                this.hideLocationModal(); // Hide location modal
                 this.updateStatusDisplay();
                 this.updateHistoryDisplay();
                 
@@ -1430,6 +1581,11 @@ class MoodCheckInApp {
                 }
                 
                 this.showMessage(`Mood recorded: ${this.selectedMood.emoji} ${this.selectedMood.mood}!`, 'success');
+                
+                // Show journaling encouragement modal after successful check-in
+                setTimeout(() => {
+                    this.showJournalingEncouragementModal();
+                }, 1000);
             } else {
                 this.showMessage('Failed to save mood check-in. Please try again.', 'error');
             }
