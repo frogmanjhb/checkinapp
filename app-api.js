@@ -183,6 +183,28 @@ class MoodCheckInApp {
         this.updateTime();
         setInterval(() => this.updateTime(), 1000);
         
+        // Force update student name after a delay to ensure DOM is ready
+        setTimeout(() => {
+            if (this.currentUser && this.currentUser.user_type === 'student') {
+                this.updateStudentName();
+            }
+        }, 1000);
+        
+        // Add a test button for debugging (temporary)
+        setTimeout(() => {
+            const testButton = document.createElement('button');
+            testButton.textContent = 'Test Set Name';
+            testButton.style.position = 'fixed';
+            testButton.style.top = '10px';
+            testButton.style.right = '10px';
+            testButton.style.zIndex = '9999';
+            testButton.onclick = () => {
+                console.log('Manual test - current user:', this.currentUser);
+                this.updateStudentName();
+            };
+            document.body.appendChild(testButton);
+        }, 2000);
+        
         console.log('App initialized successfully');
     }
 
@@ -620,11 +642,14 @@ class MoodCheckInApp {
         document.getElementById('teacherDashboardScreen').classList.remove('active');
         document.getElementById('directorDashboardScreen').classList.remove('active');
         
-        // Update user info immediately and also with a delay as fallback
+        // Update user info with multiple attempts to ensure it gets set
         this.updateStudentName();
         setTimeout(() => {
             this.updateStudentName();
         }, 100);
+        setTimeout(() => {
+            this.updateStudentName();
+        }, 500);
         
         this.updateStatusDisplay();
         this.updateHistoryDisplay();
@@ -641,18 +666,39 @@ class MoodCheckInApp {
         console.log('User name element found:', !!userNameElement); // Debug log
         
         if (this.currentUser) {
-            const fullName = `${this.currentUser.first_name} ${this.currentUser.surname}`;
-            console.log('Full name:', fullName); // Debug log
+            // Check if the user object has the expected properties
+            console.log('User first_name:', this.currentUser.first_name);
+            console.log('User surname:', this.currentUser.surname);
+            
+            const firstName = this.currentUser.first_name || this.currentUser.firstName || '';
+            const surname = this.currentUser.surname || this.currentUser.lastName || '';
+            const fullName = `${firstName} ${surname}`.trim();
+            
+            console.log('Constructed full name:', fullName); // Debug log
             
             if (studentNameElement) {
                 studentNameElement.textContent = fullName;
+                // Fallback to innerHTML if textContent doesn't work
+                if (studentNameElement.textContent !== fullName) {
+                    studentNameElement.innerHTML = fullName;
+                }
                 console.log('Student name set to:', studentNameElement.textContent); // Debug log
+            } else {
+                console.error('Student name element not found!');
             }
             
             if (userNameElement) {
                 userNameElement.textContent = fullName;
+                // Fallback to innerHTML if textContent doesn't work
+                if (userNameElement.textContent !== fullName) {
+                    userNameElement.innerHTML = fullName;
+                }
                 console.log('User name set to:', userNameElement.textContent); // Debug log
+            } else {
+                console.error('User name element not found!');
             }
+        } else {
+            console.error('No current user found!');
         }
     }
 
