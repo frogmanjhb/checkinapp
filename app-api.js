@@ -172,6 +172,7 @@ class MoodCheckInApp {
         const savedUser = localStorage.getItem('checkinUser');
         if (savedUser) {
             this.currentUser = JSON.parse(savedUser);
+            console.log('User loaded from localStorage:', this.currentUser); // Debug log
             await this.loadUserData();
             this.showDashboard();
         } else {
@@ -384,6 +385,7 @@ class MoodCheckInApp {
             
             if (response.success) {
                 this.currentUser = response.user;
+                console.log('User logged in:', this.currentUser); // Debug log
                 localStorage.setItem('checkinUser', JSON.stringify(this.currentUser));
                 await this.loadUserData();
                 this.showDashboard();
@@ -618,14 +620,40 @@ class MoodCheckInApp {
         document.getElementById('teacherDashboardScreen').classList.remove('active');
         document.getElementById('directorDashboardScreen').classList.remove('active');
         
-        // Update user info
-        document.getElementById('studentName').textContent = `${this.currentUser.first_name} ${this.currentUser.surname}`;
-        document.getElementById('userName').textContent = `${this.currentUser.first_name} ${this.currentUser.surname}`;
+        // Update user info immediately and also with a delay as fallback
+        this.updateStudentName();
+        setTimeout(() => {
+            this.updateStudentName();
+        }, 100);
         
         this.updateStatusDisplay();
         this.updateHistoryDisplay();
         this.updateStudentAnalytics();
         this.updateStudentJournalList();
+    }
+
+    updateStudentName() {
+        const studentNameElement = document.getElementById('studentName');
+        const userNameElement = document.getElementById('userName');
+        
+        console.log('Updating student name:', this.currentUser); // Debug log
+        console.log('Student name element found:', !!studentNameElement); // Debug log
+        console.log('User name element found:', !!userNameElement); // Debug log
+        
+        if (this.currentUser) {
+            const fullName = `${this.currentUser.first_name} ${this.currentUser.surname}`;
+            console.log('Full name:', fullName); // Debug log
+            
+            if (studentNameElement) {
+                studentNameElement.textContent = fullName;
+                console.log('Student name set to:', studentNameElement.textContent); // Debug log
+            }
+            
+            if (userNameElement) {
+                userNameElement.textContent = fullName;
+                console.log('User name set to:', userNameElement.textContent); // Debug log
+            }
+        }
     }
 
     showTeacherDashboard() {
