@@ -41,6 +41,17 @@ app.use(helmet({
 }));
 app.use(cors());
 app.use(express.json());
+
+// Cache control headers to prevent caching during development
+app.use((req, res, next) => {
+  if (req.url.endsWith('.css') || req.url.endsWith('.js') || req.url.endsWith('.html')) {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+  next();
+});
+
 app.use(express.static('.'));
 
 // Initialize database tables
