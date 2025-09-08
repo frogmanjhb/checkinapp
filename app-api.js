@@ -160,6 +160,7 @@ class MoodCheckInApp {
         this.moodEmojis = ['😊', '🤩', '😌', '😴', '😰', '😢', '😠', '😕'];
         this.currentEmojiIndex = 0;
         this.isGhostMode = false;
+        this.selectedEmotions = [];
         
         this.initializeApp();
         this.setupEventListeners();
@@ -389,6 +390,14 @@ class MoodCheckInApp {
             });
         });
 
+        // Proceed to emotions button
+        const proceedToEmotions = document.getElementById('proceedToEmotions');
+        if (proceedToEmotions) {
+            proceedToEmotions.addEventListener('click', () => {
+                this.showEmotionModal();
+            });
+        }
+
         // Confirm mood check-in
         const confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
         if (confirmMoodCheckin) {
@@ -434,6 +443,59 @@ class MoodCheckInApp {
         if (journalEntryText) {
             journalEntryText.addEventListener('input', (e) => {
                 this.updateJournalCharacterCount(e.target.value);
+            });
+        }
+
+        // Emotion selection
+        document.querySelectorAll('.emotion-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.selectEmotion(e.target.closest('.emotion-btn').dataset.emotion);
+            });
+        });
+
+        // Emotion modal controls
+        const closeEmotionModal = document.getElementById('closeEmotionModal');
+        if (closeEmotionModal) {
+            closeEmotionModal.addEventListener('click', () => {
+                this.hideEmotionModal();
+            });
+        }
+
+        const backToMood = document.getElementById('backToMood');
+        if (backToMood) {
+            backToMood.addEventListener('click', () => {
+                this.hideEmotionModal();
+                this.showMoodModal();
+            });
+        }
+
+        const proceedToLocation = document.getElementById('proceedToLocation');
+        if (proceedToLocation) {
+            proceedToLocation.addEventListener('click', () => {
+                this.showLocationModal();
+            });
+        }
+
+        // Location selection
+        document.querySelectorAll('.location-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.selectLocation(e.target.closest('.location-btn').dataset.location);
+            });
+        });
+
+        // Location modal controls
+        const closeLocationModal = document.getElementById('closeLocationModal');
+        if (closeLocationModal) {
+            closeLocationModal.addEventListener('click', () => {
+                this.hideLocationModal();
+            });
+        }
+
+        const backToEmotions = document.getElementById('backToEmotions');
+        if (backToEmotions) {
+            backToEmotions.addEventListener('click', () => {
+                this.hideLocationModal();
+                this.showEmotionModal();
             });
         }
 
@@ -1079,6 +1141,88 @@ class MoodCheckInApp {
         document.getElementById('moodModal').classList.remove('active');
     }
 
+    showEmotionModal() {
+        // Hide mood modal
+        document.getElementById('moodModal').classList.remove('active');
+        
+        // Show emotion modal
+        document.getElementById('emotionModal').classList.add('active');
+        
+        // Update ghost mode indicator
+        const ghostModeEmotionIndicator = document.getElementById('ghostModeEmotionIndicator');
+        if (ghostModeEmotionIndicator) {
+            ghostModeEmotionIndicator.style.display = this.isGhostMode ? 'block' : 'none';
+        }
+        
+        // Initialize emotion selection
+        this.selectedEmotions = [];
+        this.updateEmotionButtons();
+        
+        // Disable proceed button initially
+        const proceedToLocation = document.getElementById('proceedToLocation');
+        if (proceedToLocation) {
+            proceedToLocation.disabled = true;
+        }
+    }
+
+    hideEmotionModal() {
+        document.getElementById('emotionModal').classList.remove('active');
+    }
+
+    showLocationModal() {
+        // Hide emotion modal
+        document.getElementById('emotionModal').classList.remove('active');
+        
+        // Show location modal
+        document.getElementById('locationModal').classList.add('active');
+        
+        // Update ghost mode indicator
+        const ghostModeLocationIndicator = document.getElementById('ghostModeLocationIndicator');
+        if (ghostModeLocationIndicator) {
+            ghostModeLocationIndicator.style.display = this.isGhostMode ? 'block' : 'none';
+        }
+        
+        // Initialize location selection
+        this.selectedLocation = null;
+        this.updateLocationButtons();
+        
+        // Disable confirm button initially
+        const confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
+        if (confirmMoodCheckin) {
+            confirmMoodCheckin.disabled = true;
+        }
+    }
+
+    hideLocationModal() {
+        document.getElementById('locationModal').classList.remove('active');
+    }
+
+    updateLocationButtons() {
+        document.querySelectorAll('.location-btn').forEach(btn => {
+            btn.classList.remove('selected');
+            if (btn.dataset.location === this.selectedLocation) {
+                btn.classList.add('selected');
+            }
+        });
+        
+        // Enable/disable confirm button based on selection
+        const confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
+        if (confirmMoodCheckin) {
+            confirmMoodCheckin.disabled = !this.selectedLocation;
+        }
+    }
+
+    selectLocation(location) {
+        this.selectedLocation = location;
+        this.updateLocationButtons();
+        
+        // Show/hide other location input
+        const otherLocationInput = document.getElementById('otherLocationInput');
+        if (otherLocationInput) {
+            otherLocationInput.style.display = location === 'other' ? 'block' : 'none';
+        }
+    }
+
     toggleGhostMode(isEnabled) {
         console.log('Ghost mode toggled:', isEnabled);
         
@@ -1123,6 +1267,36 @@ class MoodCheckInApp {
                 btn.classList.add('selected');
             }
         });
+    }
+
+    updateEmotionButtons() {
+        document.querySelectorAll('.emotion-btn').forEach(btn => {
+            btn.classList.remove('selected');
+            if (this.selectedEmotions.includes(btn.dataset.emotion)) {
+                btn.classList.add('selected');
+            }
+        });
+        
+        // Enable/disable proceed button based on selection
+        const proceedToLocation = document.getElementById('proceedToLocation');
+        if (proceedToLocation) {
+            proceedToLocation.disabled = this.selectedEmotions.length === 0;
+        }
+    }
+
+    selectEmotion(emotion) {
+        if (!this.selectedEmotions) {
+            this.selectedEmotions = [];
+        }
+        
+        const index = this.selectedEmotions.indexOf(emotion);
+        if (index > -1) {
+            this.selectedEmotions.splice(index, 1);
+        } else {
+            this.selectedEmotions.push(emotion);
+        }
+        
+        this.updateEmotionButtons();
     }
 
     async handleMoodCheckIn() {
