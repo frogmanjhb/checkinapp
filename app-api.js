@@ -1667,21 +1667,111 @@ class MoodCheckInApp {
         
         recentHistory.forEach(record => {
             const historyItem = document.createElement('div');
-            historyItem.className = 'history-item';
+            historyItem.className = 'history-item-enhanced';
             
             const time = record.timestamp.toLocaleString();
             const mood = record.mood.charAt(0).toUpperCase() + record.mood.slice(1);
             
+            // Format emotions array
+            const emotionsDisplay = record.emotions && record.emotions.length > 0 
+                ? record.emotions.map(emotion => this.getEmotionDisplay(emotion)).join(', ')
+                : 'No emotions selected';
+            
+            // Format reasons array
+            const reasonsDisplay = record.reasons && record.reasons.length > 0 
+                ? record.reasons.map(reason => this.getReasonDisplay(reason)).join(', ')
+                : 'No reasons selected';
+            
+            // Format location
+            const locationDisplay = record.location 
+                ? this.getLocationDisplay(record.location)
+                : 'No location specified';
+            
             historyItem.innerHTML = `
-                <div>
-                    <div class="history-time">${record.emoji} Mood: ${mood}</div>
-                    <div class="history-location">${record.notes || 'No additional notes'}</div>
+                <div class="history-header">
+                    <div class="history-mood">
+                        <span class="mood-emoji">${record.emoji}</span>
+                        <span class="mood-text">${mood}</span>
+                    </div>
+                    <div class="history-time">${time}</div>
                 </div>
-                <div class="history-time">${time}</div>
+                
+                <div class="history-details">
+                    <div class="history-section">
+                        <div class="history-label">📍 Location:</div>
+                        <div class="history-value">${locationDisplay}</div>
+                    </div>
+                    
+                    <div class="history-section">
+                        <div class="history-label">😊 Emotions:</div>
+                        <div class="history-value">${emotionsDisplay}</div>
+                    </div>
+                    
+                    <div class="history-section">
+                        <div class="history-label">💭 Reasons:</div>
+                        <div class="history-value">${reasonsDisplay}</div>
+                    </div>
+                    
+                    ${record.notes ? `
+                    <div class="history-section">
+                        <div class="history-label">📝 Notes:</div>
+                        <div class="history-value">${record.notes}</div>
+                    </div>
+                    ` : ''}
+                </div>
             `;
             
             historyList.appendChild(historyItem);
         });
+    }
+
+    getEmotionDisplay(emotion) {
+        const emotionMap = {
+            'excited': '😃 Excited',
+            'grateful': '🙏 Grateful', 
+            'confident': '💪 Confident',
+            'peaceful': '😌 Peaceful',
+            'hopeful': '🌟 Hopeful',
+            'proud': '🏆 Proud',
+            'anxious': '😰 Anxious',
+            'frustrated': '😤 Frustrated',
+            'overwhelmed': '😵 Overwhelmed',
+            'lonely': '😔 Lonely',
+            'angry': '😠 Angry',
+            'sad': '😢 Sad',
+            'tired': '😴 Tired',
+            'confused': '😕 Confused',
+            'worried': '😟 Worried',
+            'disappointed': '😞 Disappointed'
+        };
+        return emotionMap[emotion] || `😊 ${emotion.charAt(0).toUpperCase() + emotion.slice(1)}`;
+    }
+
+    getReasonDisplay(reason) {
+        const reasonMap = {
+            'friends': '👥 Friends',
+            'teacher': '👨‍🏫 Teacher',
+            'schoolwork': '📚 School Work',
+            'tests': '📝 Tests',
+            'sports': '⚽ Sports',
+            'classmates': '👫 Classmates',
+            'parents': '👨‍👩‍👧‍👦 Parents',
+            'siblings': '👫 Siblings',
+            'family': '👨‍👩‍👧‍👦 Family',
+            'sleep': '😴 Sleep',
+            'food': '🍕 Food',
+            'health': '🏥 Health'
+        };
+        return reasonMap[reason] || `📍 ${reason.charAt(0).toUpperCase() + reason.slice(1)}`;
+    }
+
+    getLocationDisplay(location) {
+        const locationMap = {
+            'school': '🏫 School',
+            'home': '🏠 Home',
+            'other': '📍 Other'
+        };
+        return locationMap[location] || `📍 ${location.charAt(0).toUpperCase() + location.slice(1)}`;
     }
 
     updateTime() {
@@ -1713,30 +1803,60 @@ class MoodCheckInApp {
         }, 5000);
     }
 
-    updateStudentAnalytics() {
+    async updateStudentAnalytics() {
         const analyticsContent = document.getElementById('studentAnalytics');
         if (!analyticsContent) return;
 
         const activeTab = document.querySelector('.analytics-tab.active');
         const period = activeTab ? activeTab.dataset.period : 'daily';
 
-        const filteredHistory = this.getFilteredHistory(period);
-        const moodCounts = this.getMoodCounts(filteredHistory);
-
-        analyticsContent.innerHTML = this.generateAnalyticsHTML(moodCounts, period);
+        try {
+            // Fetch fresh data from database
+            const response = await APIUtils.getMoodHistory(this.currentUser.id, period);
+            if (response.success) {
+                const moodCounts = this.getMoodCounts(response.checkins);
+                analyticsContent.innerHTML = this.generateAnalyticsHTML(moodCounts, period);
+            } else {
+                // Fallback to local data if database fails
+                const filteredHistory = this.getFilteredHistory(period);
+                const moodCounts = this.getMoodCounts(filteredHistory);
+                analyticsContent.innerHTML = this.generateAnalyticsHTML(moodCounts, period);
+            }
+        } catch (error) {
+            console.error('Analytics error:', error);
+            // Fallback to local data
+            const filteredHistory = this.getFilteredHistory(period);
+            const moodCounts = this.getMoodCounts(filteredHistory);
+            analyticsContent.innerHTML = this.generateAnalyticsHTML(moodCounts, period);
+        }
     }
 
-    updateTeacherAnalytics() {
+    async updateTeacherAnalytics() {
         const analyticsContent = document.getElementById('teacherAnalytics');
         if (!analyticsContent) return;
 
         const activeTab = document.querySelector('.analytics-tab.active');
         const period = activeTab ? activeTab.dataset.period : 'daily';
 
-        const filteredHistory = this.getFilteredHistory(period, true);
-        const moodCounts = this.getMoodCounts(filteredHistory);
-
-        analyticsContent.innerHTML = this.generateAnalyticsHTML(moodCounts, period);
+        try {
+            // Fetch fresh data from database for all users
+            const response = await APIUtils.getAllMoodCheckins(period);
+            if (response.success) {
+                const moodCounts = this.getMoodCounts(response.checkins);
+                analyticsContent.innerHTML = this.generateAnalyticsHTML(moodCounts, period);
+            } else {
+                // Fallback to local data if database fails
+                const filteredHistory = this.getFilteredHistory(period, true);
+                const moodCounts = this.getMoodCounts(filteredHistory);
+                analyticsContent.innerHTML = this.generateAnalyticsHTML(moodCounts, period);
+            }
+        } catch (error) {
+            console.error('Teacher analytics error:', error);
+            // Fallback to local data
+            const filteredHistory = this.getFilteredHistory(period, true);
+            const moodCounts = this.getMoodCounts(filteredHistory);
+            analyticsContent.innerHTML = this.generateAnalyticsHTML(moodCounts, period);
+        }
     }
 
     getFilteredHistory(period, allUsers = false) {
@@ -1809,7 +1929,7 @@ class MoodCheckInApp {
         return html;
     }
 
-    switchAnalyticsTab(period) {
+    async switchAnalyticsTab(period) {
         // Update tab states
         document.querySelectorAll('.analytics-tab').forEach(tab => {
             tab.classList.remove('active');
@@ -1818,9 +1938,9 @@ class MoodCheckInApp {
 
         // Update analytics
         if (this.currentUser.user_type === 'student') {
-            this.updateStudentAnalytics();
+            await this.updateStudentAnalytics();
         } else {
-            this.updateTeacherAnalytics();
+            await this.updateTeacherAnalytics();
         }
     }
 
