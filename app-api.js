@@ -473,15 +473,7 @@ class MoodCheckInApp {
             });
         });
 
-        // Reason toggles
-        document.querySelectorAll('.reason-toggle').forEach(toggle => {
-            toggle.addEventListener('click', (e) => {
-                const checkbox = toggle.querySelector('input[type="checkbox"]');
-                const reason = checkbox.value;
-                checkbox.checked = !checkbox.checked;
-                this.selectReason(reason);
-            });
-        });
+        // Reason toggles will be set up when location modal is shown
 
         // Location modal controls
         const closeLocationModal = document.getElementById('closeLocationModal');
@@ -1456,6 +1448,9 @@ class MoodCheckInApp {
         // Clear any previously selected reasons
         this.clearReasonSelections();
         
+        // Set up reason toggle event listeners for the visible section
+        this.setupReasonToggleListeners();
+        
         console.log('Location selection complete. selectedLocation:', this.selectedLocation);
     }
 
@@ -1465,6 +1460,24 @@ class MoodCheckInApp {
             checkbox.checked = false;
         });
         this.selectedReasons = [];
+    }
+
+    setupReasonToggleListeners() {
+        // Remove existing listeners to avoid duplicates
+        document.querySelectorAll('.reason-toggle').forEach(toggle => {
+            const newToggle = toggle.cloneNode(true);
+            toggle.parentNode.replaceChild(newToggle, toggle);
+        });
+
+        // Add event listeners to reason toggles
+        document.querySelectorAll('.reason-toggle').forEach(toggle => {
+            toggle.addEventListener('click', (e) => {
+                const checkbox = toggle.querySelector('input[type="checkbox"]');
+                const reason = checkbox.value;
+                checkbox.checked = !checkbox.checked;
+                this.selectReason(reason);
+            });
+        });
     }
 
     selectReason(reason) {
@@ -1590,6 +1603,8 @@ class MoodCheckInApp {
             }
             
             console.log('Sending mood data:', moodData);
+            console.log('Selected reasons array:', this.selectedReasons);
+            console.log('Selected emotions array:', this.selectedEmotions);
             
             const response = await APIUtils.saveMoodCheckin(moodData);
 
@@ -1698,24 +1713,24 @@ class MoodCheckInApp {
                 
                 <div class="history-details">
                     <div class="history-section">
-                        <div class="history-label">📍 Location:</div>
-                        <div class="history-value">${locationDisplay}</div>
+                        <span class="history-label">📍 Location</span>
+                        <span class="history-value">${locationDisplay}</span>
                     </div>
                     
                     <div class="history-section">
-                        <div class="history-label">😊 Emotions:</div>
-                        <div class="history-value">${emotionsDisplay}</div>
+                        <span class="history-label">😊 Emotions</span>
+                        <span class="history-value">${emotionsDisplay}</span>
                     </div>
                     
                     <div class="history-section">
-                        <div class="history-label">💭 Reasons:</div>
-                        <div class="history-value">${reasonsDisplay}</div>
+                        <span class="history-label">💭 Reasons</span>
+                        <span class="history-value">${reasonsDisplay}</span>
                     </div>
                     
                     ${record.notes ? `
                     <div class="history-section">
-                        <div class="history-label">📝 Notes:</div>
-                        <div class="history-value">${record.notes}</div>
+                        <span class="history-label">📝 Notes</span>
+                        <span class="history-value">${record.notes}</span>
                     </div>
                     ` : ''}
                 </div>
