@@ -446,12 +446,7 @@ class MoodCheckInApp {
             });
         }
 
-        // Emotion selection
-        document.querySelectorAll('.emotion-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                this.selectEmotion(e.target.closest('.emotion-btn').dataset.emotion);
-            });
-        });
+        // Emotion selection is handled dynamically in populateEmotionOptions()
 
         // Emotion modal controls
         const closeEmotionModal = document.getElementById('closeEmotionModal');
@@ -1154,6 +1149,9 @@ class MoodCheckInApp {
             ghostModeEmotionIndicator.style.display = this.isGhostMode ? 'block' : 'none';
         }
         
+        // Populate emotion options based on selected mood
+        this.populateEmotionOptions();
+        
         // Initialize emotion selection
         this.selectedEmotions = [];
         this.updateEmotionButtons();
@@ -1163,6 +1161,106 @@ class MoodCheckInApp {
         if (proceedToLocation) {
             proceedToLocation.disabled = true;
         }
+    }
+
+    populateEmotionOptions() {
+        const emotionOptions = document.getElementById('emotionOptions');
+        if (!emotionOptions) return;
+
+        // Define emotions for each mood
+        const moodEmotions = {
+            happy: [
+                { emotion: 'joyful', emoji: '😄', label: 'Joyful' },
+                { emotion: 'excited', emoji: '🤩', label: 'Excited' },
+                { emotion: 'grateful', emoji: '🙏', label: 'Grateful' },
+                { emotion: 'proud', emoji: '😊', label: 'Proud' },
+                { emotion: 'content', emoji: '😌', label: 'Content' },
+                { emotion: 'hopeful', emoji: '✨', label: 'Hopeful' }
+            ],
+            excited: [
+                { emotion: 'thrilled', emoji: '🤩', label: 'Thrilled' },
+                { emotion: 'energetic', emoji: '⚡', label: 'Energetic' },
+                { emotion: 'enthusiastic', emoji: '🎉', label: 'Enthusiastic' },
+                { emotion: 'motivated', emoji: '💪', label: 'Motivated' },
+                { emotion: 'curious', emoji: '🤔', label: 'Curious' },
+                { emotion: 'adventurous', emoji: '🗺️', label: 'Adventurous' }
+            ],
+            calm: [
+                { emotion: 'peaceful', emoji: '☮️', label: 'Peaceful' },
+                { emotion: 'relaxed', emoji: '🧘', label: 'Relaxed' },
+                { emotion: 'centered', emoji: '⚖️', label: 'Centered' },
+                { emotion: 'serene', emoji: '🌅', label: 'Serene' },
+                { emotion: 'balanced', emoji: '⚖️', label: 'Balanced' },
+                { emotion: 'mindful', emoji: '🧠', label: 'Mindful' }
+            ],
+            tired: [
+                { emotion: 'exhausted', emoji: '😴', label: 'Exhausted' },
+                { emotion: 'drained', emoji: '🔋', label: 'Drained' },
+                { emotion: 'weary', emoji: '😔', label: 'Weary' },
+                { emotion: 'overwhelmed', emoji: '😵', label: 'Overwhelmed' },
+                { emotion: 'stressed', emoji: '😰', label: 'Stressed' },
+                { emotion: 'burnt-out', emoji: '🔥', label: 'Burnt Out' }
+            ],
+            anxious: [
+                { emotion: 'worried', emoji: '😟', label: 'Worried' },
+                { emotion: 'nervous', emoji: '😰', label: 'Nervous' },
+                { emotion: 'restless', emoji: '😵', label: 'Restless' },
+                { emotion: 'uneasy', emoji: '😕', label: 'Uneasy' },
+                { emotion: 'panicked', emoji: '😱', label: 'Panicked' },
+                { emotion: 'overwhelmed', emoji: '🌊', label: 'Overwhelmed' }
+            ],
+            sad: [
+                { emotion: 'disappointed', emoji: '😞', label: 'Disappointed' },
+                { emotion: 'lonely', emoji: '😢', label: 'Lonely' },
+                { emotion: 'hurt', emoji: '💔', label: 'Hurt' },
+                { emotion: 'grief', emoji: '🕊️', label: 'Grief' },
+                { emotion: 'hopeless', emoji: '😔', label: 'Hopeless' },
+                { emotion: 'empty', emoji: '🕳️', label: 'Empty' }
+            ],
+            angry: [
+                { emotion: 'frustrated', emoji: '😤', label: 'Frustrated' },
+                { emotion: 'irritated', emoji: '😠', label: 'Irritated' },
+                { emotion: 'annoyed', emoji: '😒', label: 'Annoyed' },
+                { emotion: 'furious', emoji: '😡', label: 'Furious' },
+                { emotion: 'resentful', emoji: '😤', label: 'Resentful' },
+                { emotion: 'betrayed', emoji: '🗡️', label: 'Betrayed' }
+            ],
+            confused: [
+                { emotion: 'uncertain', emoji: '🤔', label: 'Uncertain' },
+                { emotion: 'lost', emoji: '🧭', label: 'Lost' },
+                { emotion: 'bewildered', emoji: '😵', label: 'Bewildered' },
+                { emotion: 'conflicted', emoji: '⚔️', label: 'Conflicted' },
+                { emotion: 'unsure', emoji: '❓', label: 'Unsure' },
+                { emotion: 'disoriented', emoji: '🌀', label: 'Disoriented' }
+            ]
+        };
+
+        // Get emotions for the selected mood
+        const selectedMood = this.selectedMood?.mood || 'happy';
+        const emotions = moodEmotions[selectedMood] || moodEmotions.happy;
+
+        // Clear existing options
+        emotionOptions.innerHTML = '';
+
+        // Create emotion buttons
+        emotions.forEach(emotion => {
+            const button = document.createElement('button');
+            button.className = 'emotion-btn';
+            button.dataset.emotion = emotion.emotion;
+            button.innerHTML = `
+                <span class="emotion-emoji">${emotion.emoji}</span>
+                <span class="emotion-label">${emotion.label}</span>
+            `;
+            
+            // Add click event listener
+            button.addEventListener('click', (e) => {
+                this.selectEmotion(e.target.closest('.emotion-btn').dataset.emotion);
+            });
+            
+            emotionOptions.appendChild(button);
+        });
+
+        console.log(`Populated ${emotions.length} emotions for mood: ${selectedMood}`);
     }
 
     hideEmotionModal() {
