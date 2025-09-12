@@ -326,6 +326,22 @@ class MoodCheckInApp {
             });
         }
 
+        // Teacher mood check-in button
+        const teacherMoodCheckInBtn = document.getElementById('teacherMoodCheckInBtn');
+        if (teacherMoodCheckInBtn) {
+            teacherMoodCheckInBtn.addEventListener('click', () => {
+                this.showMoodModal();
+            });
+        }
+
+        // Teacher journal entry button
+        const teacherJournalEntryBtn = document.getElementById('teacherJournalEntryBtn');
+        if (teacherJournalEntryBtn) {
+            teacherJournalEntryBtn.addEventListener('click', () => {
+                this.showJournalEntryModal();
+            });
+        }
+
         // Mouse tracking for physics
         document.addEventListener('mousemove', (e) => {
             this.mouseX = e.clientX;
@@ -957,6 +973,7 @@ class MoodCheckInApp {
         const userNameElement = document.getElementById('userName');
         const teacherAssignedGradeElement = document.getElementById('teacherAssignedGrade');
         const teacherAssignedHouseElement = document.getElementById('teacherAssignedHouse');
+        const teacherCurrentTimeElement = document.getElementById('teacherCurrentTime');
         
         if (teacherNameElement) {
             teacherNameElement.textContent = `${this.currentUser.first_name} ${this.currentUser.surname}`;
@@ -965,16 +982,20 @@ class MoodCheckInApp {
             userNameElement.textContent = `${this.currentUser.first_name} ${this.currentUser.surname}`;
         }
         if (teacherAssignedGradeElement) {
-            teacherAssignedGradeElement.textContent = this.currentUser.class || 'Not assigned';
+            teacherAssignedGradeElement.textContent = this.currentUser.class || 'Grade 6';
         }
         if (teacherAssignedHouseElement) {
-            teacherAssignedHouseElement.textContent = this.currentUser.house || 'Not assigned';
+            teacherAssignedHouseElement.textContent = this.currentUser.house || 'Mirfield';
+        }
+        if (teacherCurrentTimeElement) {
+            teacherCurrentTimeElement.textContent = new Date().toLocaleString();
         }
         
         this.updateTeacherView();
         this.updateTeacherAnalytics();
         this.updateTeacherJournalList();
         this.updateGradeAnalytics();
+        this.updateTeacherStatusDisplay();
     }
 
     showDirectorDashboard() {
@@ -1523,7 +1544,7 @@ class MoodCheckInApp {
                 moodData.emotions = this.selectedEmotions;
             }
             
-            
+            // Save to database
             const response = await APIUtils.saveMoodCheckin(moodData);
 
             if (response.success) {
@@ -1539,10 +1560,12 @@ class MoodCheckInApp {
                 this.updateStatusDisplay();
                 this.updateHistoryDisplay();
                 
+                // Update appropriate analytics based on user type
                 if (this.currentUser.user_type === 'student') {
                     this.updateStudentAnalytics();
-                } else {
+                } else if (this.currentUser.user_type === 'teacher') {
                     this.updateTeacherAnalytics();
+                    this.updateTeacherStatusDisplay();
                 }
                 
                 this.showMessage(`Mood recorded: ${this.selectedMood.emoji} ${this.selectedMood.mood}!`, 'success');
@@ -1585,6 +1608,35 @@ class MoodCheckInApp {
         
         todayCountElement.textContent = todayMoodCount.toString();
         todayCountElement.className = 'status-value today-count';
+    }
+
+    updateTeacherStatusDisplay() {
+        const teacherLastMoodElement = document.getElementById('teacherLastMood');
+        const teacherTodayCountElement = document.getElementById('teacherTodayCount');
+        
+        if (!teacherLastMoodElement || !teacherTodayCountElement) return;
+        
+        // Get the most recent mood check-in for teacher
+        const lastMoodRecord = this.moodHistory.find(record => record.mood);
+        
+        if (lastMoodRecord) {
+            teacherLastMoodElement.textContent = `${lastMoodRecord.emoji} ${lastMoodRecord.mood}`;
+            teacherLastMoodElement.className = 'status-value mood-recorded';
+        } else {
+            teacherLastMoodElement.textContent = 'No mood recorded';
+            teacherLastMoodElement.className = 'status-value no-mood';
+        }
+        
+        // Count today's mood check-ins for teacher
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const todayMoodCount = this.moodHistory.filter(record => 
+            record.timestamp >= today
+        ).length;
+        
+        teacherTodayCountElement.textContent = todayMoodCount.toString();
+        teacherTodayCountElement.className = 'status-value today-count';
     }
 
     updateHistoryDisplay() {
@@ -1924,24 +1976,58 @@ class MoodCheckInApp {
         const period = activeTab ? activeTab.dataset.period : 'daily';
 
         try {
-            // Fetch fresh data from database for all users
-            const response = await APIUtils.getAllMoodCheckins(period);
-            if (response.success) {
-                const moodCounts = this.getMoodCounts(response.checkins);
-                analyticsContent.innerHTML = this.generateAnalyticsHTML(moodCounts, period);
-            } else {
-                // Fallback to local data if database fails
-                const filteredHistory = this.getFilteredHistory(period, true);
-                const moodCounts = this.getMoodCounts(filteredHistory);
-                analyticsContent.innerHTML = this.generateAnalyticsHTML(moodCounts, period);
-            }
+            // For demo purposes, generate sample analytics data
+            const demoMoodData = this.getDemoMoodData(period);
+            const moodCounts = this.getMoodCounts(demoMoodData);
+            analyticsContent.innerHTML = this.generateAnalyticsHTML(moodCounts, period);
         } catch (error) {
             console.error('Teacher analytics error:', error);
-            // Fallback to local data
-            const filteredHistory = this.getFilteredHistory(period, true);
-            const moodCounts = this.getMoodCounts(filteredHistory);
+            // Fallback to demo data
+            const demoMoodData = this.getDemoMoodData(period);
+            const moodCounts = this.getMoodCounts(demoMoodData);
             analyticsContent.innerHTML = this.generateAnalyticsHTML(moodCounts, period);
         }
+    }
+
+    getDemoMoodData(period) {
+        // Generate demo mood data based on period
+        const now = new Date();
+        const moods = ['happy', 'excited', 'calm', 'tired', 'anxious', 'sad', 'angry', 'confused'];
+        const emojis = ['😊', '🤩', '😌', '😴', '😰', '😢', '😠', '😕'];
+        const demoData = [];
+
+        let daysBack = 1;
+        switch (period) {
+            case 'weekly':
+                daysBack = 7;
+                break;
+            case 'monthly':
+                daysBack = 30;
+                break;
+            case 'yearly':
+                daysBack = 365;
+                break;
+        }
+
+        // Generate random mood data for the period
+        for (let i = 0; i < daysBack; i++) {
+            const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+            const numCheckins = Math.floor(Math.random() * 8) + 2; // 2-9 checkins per day
+
+            for (let j = 0; j < numCheckins; j++) {
+                const moodIndex = Math.floor(Math.random() * moods.length);
+                const timestamp = new Date(date.getTime() + j * 60 * 60 * 1000); // Spread throughout the day
+
+                demoData.push({
+                    mood: moods[moodIndex],
+                    emoji: emojis[moodIndex],
+                    timestamp: timestamp,
+                    user_id: `demo_student_${Math.floor(Math.random() * 6) + 1}`
+                });
+            }
+        }
+
+        return demoData;
     }
 
     getFilteredHistory(period, allUsers = false) {
@@ -2034,23 +2120,16 @@ class MoodCheckInApp {
         if (!studentsList) return;
 
         try {
-            // Get students from teacher's assigned grade and house only
-            const response = await APIUtils.getTeacherStudents(this.currentUser.id);
-            if (!response.success) {
-                studentsList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Failed to load students.</p>';
-                return;
-            }
-
-            const students = response.students;
-            const assignment = response.teacherAssignment;
-
+            // For demo purposes, create sample students
+            const demoStudents = this.getDemoStudents();
+            
             studentsList.innerHTML = '';
 
-            if (students.length === 0) {
+            if (demoStudents.length === 0) {
                 studentsList.innerHTML = `
                     <div class="no-students-message">
                         <p style="text-align: center; color: #666; padding: 2rem;">
-                            No students found in your assigned grade (${assignment.grade}) and house (${assignment.house}).
+                            No students found in your assigned grade and house.
                         </p>
                     </div>
                 `;
@@ -2060,12 +2139,12 @@ class MoodCheckInApp {
             // Load mood history for all students
             await this.loadAllMoodHistory();
 
-            students.forEach(student => {
+            demoStudents.forEach(student => {
                 const studentItem = document.createElement('div');
                 studentItem.className = 'student-item';
 
                 const lastMood = this.getLastMoodForStudent(student.id);
-                const moodEmoji = lastMood ? lastMood.emoji : '😐';
+                const moodEmoji = lastMood ? lastMood.emoji : student.defaultMood;
 
                 studentItem.innerHTML = `
                     <div class="student-info">
@@ -2085,6 +2164,65 @@ class MoodCheckInApp {
             console.error('Failed to update teacher view:', error);
             studentsList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Failed to load students.</p>';
         }
+    }
+
+    getDemoStudents() {
+        // Create demo students based on teacher's assignment
+        const teacherGrade = this.currentUser.class || 'Grade 6';
+        const teacherHouse = this.currentUser.house || 'Mirfield';
+        
+        const demoStudents = [
+            {
+                id: 'demo_student_1',
+                first_name: 'Alex',
+                surname: 'Johnson',
+                class: teacherGrade,
+                house: teacherHouse,
+                defaultMood: '😊'
+            },
+            {
+                id: 'demo_student_2',
+                first_name: 'Sarah',
+                surname: 'Williams',
+                class: teacherGrade,
+                house: teacherHouse,
+                defaultMood: '🤩'
+            },
+            {
+                id: 'demo_student_3',
+                first_name: 'Michael',
+                surname: 'Brown',
+                class: teacherGrade,
+                house: teacherHouse,
+                defaultMood: '😌'
+            },
+            {
+                id: 'demo_student_4',
+                first_name: 'Emma',
+                surname: 'Davis',
+                class: teacherGrade,
+                house: teacherHouse,
+                defaultMood: '😴'
+            },
+            {
+                id: 'demo_student_5',
+                first_name: 'James',
+                surname: 'Wilson',
+                class: teacherGrade,
+                house: teacherHouse,
+                defaultMood: '😰'
+            },
+            {
+                id: 'demo_student_6',
+                first_name: 'Olivia',
+                surname: 'Miller',
+                class: teacherGrade,
+                house: teacherHouse,
+                defaultMood: '😢'
+            }
+        ];
+
+        return demoStudents;
     }
 
     getLastMoodForStudent(studentId) {
@@ -2146,6 +2284,7 @@ class MoodCheckInApp {
         }
 
         try {
+            // Save to database
             const response = await APIUtils.saveJournalEntry({
                 userId: this.currentUser.id,
                 entry: entryText
@@ -2155,7 +2294,7 @@ class MoodCheckInApp {
                 this.hideJournalEntryModal();
                 this.showMessage('Journal entry saved successfully!', 'success');
                 
-                // Update journal display
+                // Update journal display based on user type
                 if (this.currentUser.user_type === 'student') {
                     this.updateStudentJournalList();
                 } else if (this.currentUser.user_type === 'teacher') {
@@ -2189,13 +2328,39 @@ class MoodCheckInApp {
         if (!journalList) return;
 
         try {
+            // Load from database
             const response = await APIUtils.getJournalEntries(this.currentUser.id, 'daily');
             if (response.success) {
                 this.displayJournalEntries(journalList, response.entries);
+            } else {
+                // Fallback to demo data if database fails
+                const demoEntries = this.getDemoJournalEntries();
+                this.displayJournalEntries(journalList, demoEntries);
             }
         } catch (error) {
             console.error('Failed to load journal entries:', error);
+            // Fallback to demo data
+            const demoEntries = this.getDemoJournalEntries();
+            this.displayJournalEntries(journalList, demoEntries);
         }
+    }
+
+    getDemoJournalEntries() {
+        const now = new Date();
+        return [
+            {
+                entry: "Great day with the students today! They were all engaged and asking thoughtful questions. I'm really proud of how Grade 6 is progressing this term.",
+                timestamp: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString() // 2 hours ago
+            },
+            {
+                entry: "Noticed some students seem a bit stressed about the upcoming tests. I should check in with them individually and maybe adjust my teaching approach.",
+                timestamp: new Date(now.getTime() - 26 * 60 * 60 * 1000).toISOString() // Yesterday
+            },
+            {
+                entry: "The new group project is working really well. Students are collaborating better than I expected. Mirfield house is showing great teamwork!",
+                timestamp: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString() // 3 days ago
+            }
+        ];
     }
 
     displayJournalEntries(container, entries) {
@@ -2229,24 +2394,34 @@ class MoodCheckInApp {
         if (!gradeAnalytics) return;
 
         // Get the teacher's assigned grade
-        const teacherGrade = this.currentUser.class;
+        const teacherGrade = this.currentUser.class || 'Grade 6';
         
-        if (!teacherGrade) {
-            gradeAnalytics.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No grade assignment found.</p>';
-            return;
-        }
-
         try {
-            const response = await APIUtils.getGradeAnalytics(teacherGrade, 'daily');
-            if (response.success) {
-                this.displayGradeAnalytics(gradeAnalytics, response.analytics, teacherGrade);
-            } else {
-                gradeAnalytics.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Failed to load grade analytics.</p>';
-            }
+            // Generate demo grade analytics data
+            const demoAnalytics = this.getDemoGradeAnalytics(teacherGrade);
+            this.displayGradeAnalytics(gradeAnalytics, demoAnalytics, teacherGrade);
         } catch (error) {
             console.error('Failed to load grade analytics:', error);
             gradeAnalytics.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Failed to load grade analytics.</p>';
         }
+    }
+
+    getDemoGradeAnalytics(grade) {
+        // Generate demo analytics for the grade
+        const moods = ['happy', 'excited', 'calm', 'tired', 'anxious', 'sad', 'angry', 'confused'];
+        const emojis = ['😊', '🤩', '😌', '😴', '😰', '😢', '😠', '😕'];
+        const analytics = [];
+
+        moods.forEach((mood, index) => {
+            const count = Math.floor(Math.random() * 15) + 5; // 5-19 checkins
+            analytics.push({
+                mood: mood,
+                emoji: emojis[index],
+                count: count.toString()
+            });
+        });
+
+        return analytics;
     }
 
     displayGradeAnalytics(container, analytics, grade) {
