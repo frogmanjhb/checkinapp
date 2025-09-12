@@ -300,14 +300,18 @@ body {
     background: linear-gradient(135deg, #FF6B6B, #FF8E8E);
     color: white;
     border: none;
-    padding: 1.5rem 2rem;
+    padding: 0;
     border-radius: 15px;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
     width: 100%;
-    margin-bottom: 1rem;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
 }
 
 .btn-mood-checkin:hover {
@@ -315,24 +319,9 @@ body {
     box-shadow: 0 15px 30px rgba(255, 107, 107, 0.3);
 }
 
-.btn-journal-entry {
-    background: linear-gradient(135deg, #4ECDC4, #44A08D);
-    color: white;
-    border: none;
-    padding: 1.5rem 2rem;
-    border-radius: 15px;
-    font-size: 1.2rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    width: 100%;
-    margin-top: 1rem;
-}
+/* Old journal entry style removed - using teacher-specific style above */
 
-.btn-journal-entry:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 15px 30px rgba(78, 205, 196, 0.3);
-}
+/* Old hover effect removed - using teacher-specific hover above */
 
 /* Journal Entry Items */
 .journal-entry-item {
@@ -1171,6 +1160,329 @@ body {
 .filter-controls select:focus {
     outline: none;
     border-color: #2196F3;
+}
+
+/* Teacher Dashboard Specific Styles */
+.teacher-students-info {
+    margin-bottom: 2rem;
+}
+
+.teacher-checkin-section {
+    margin-bottom: 2rem;
+}
+
+/* Teacher Dashboard Layout */
+#teacherDashboardScreen .dashboard-container {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: 1fr;
+}
+
+#teacherDashboardScreen .welcome-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+#teacherDashboardScreen .welcome-section h2 {
+    color: #2196F3;
+    margin-bottom: 0.5rem;
+    font-size: 2rem;
+}
+
+#teacherDashboardScreen .current-time {
+    color: #666;
+    font-size: 1.1rem;
+}
+
+.teacher-checkin-section .checkin-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1rem;
+}
+
+.teacher-checkin-section .checkin-card h3 {
+    color: #333;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.teacher-checkin-section .action-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+    width: 100%;
+    align-items: stretch;
+    justify-content: space-between;
+}
+
+.teacher-checkin-section .action-buttons button {
+    flex: 1;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+/* Override any conflicting button styles */
+.teacher-checkin-section .action-buttons .btn-mood-checkin,
+.teacher-checkin-section .action-buttons .btn-journal-entry {
+    flex: 1 !important;
+    height: 60px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: auto !important;
+}
+
+.btn-journal-entry {
+    background: linear-gradient(135deg, #9C27B0, #7B1FA2);
+    color: white;
+    border: none;
+    padding: 0;
+    border-radius: 15px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.btn-journal-entry:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 30px rgba(156, 39, 176, 0.3);
+}
+
+.students-info-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    border-left: 5px solid #2196F3;
+}
+
+.students-info-card h3 {
+    color: #333;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.students-info-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.students-info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.students-info-label {
+    font-weight: 600;
+    color: #333;
+}
+
+.students-info-value {
+    background: #2196F3;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.students-info-note {
+    color: #666;
+    font-size: 0.9rem;
+    font-style: italic;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #e3f2fd;
+    border-radius: 10px;
+    border-left: 3px solid #2196F3;
+}
+
+/* Students Section */
+.students-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.students-section h3 {
+    color: #333;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.demo-notice {
+    background: #e3f2fd;
+    border: 1px solid #2196f3;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: #1976d2;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.students-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.student-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 15px;
+    border-left: 4px solid #2196F3;
+    transition: all 0.3s ease;
+}
+
+.student-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(33, 150, 243, 0.2);
+}
+
+.student-info h4 {
+    color: #333;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.student-details {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.student-mood {
+    font-size: 2rem;
+    min-width: 60px;
+    text-align: center;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Grade Analytics */
+.grade-analytics {
+    background: white;
+    padding: 2rem;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.grade-analytics h3 {
+    color: #333;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.grade-analytics-content {
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.grade-analytics-summary {
+    width: 100%;
+}
+
+.grade-analytics-summary h4 {
+    color: #333;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+}
+
+.grade-analytics-summary p {
+    color: #666;
+    margin-bottom: 1.5rem;
+}
+
+.mood-breakdown {
+    display: grid;
+    gap: 1rem;
+}
+
+.mood-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.mood-stat:hover {
+    background: #e3f2fd;
+    transform: translateX(5px);
+}
+
+.mood-emoji {
+    font-size: 1.5rem;
+    margin-right: 0.5rem;
+}
+
+.mood-name {
+    font-weight: 600;
+    color: #333;
+    flex-grow: 1;
+    margin-left: 0.5rem;
+}
+
+.mood-count {
+    color: #666;
+    font-size: 0.9rem;
 }
 
 /* Students Section */

@@ -308,21 +308,47 @@
                         <p class="current-time" id="teacherCurrentTime"></p>
                     </div>
 
-                    <!-- Teacher Assignment Info -->
-                    <div class="teacher-assignment-info">
-                        <div class="assignment-card">
-                            <h3>📋 Your Assignment</h3>
-                            <div class="assignment-details">
-                                <div class="assignment-item">
-                                    <span class="assignment-label">Grade:</span>
-                                    <span class="assignment-value" id="teacherAssignedGrade">-</span>
+                    <!-- Teacher Students Info -->
+                    <div class="teacher-students-info">
+                        <div class="students-info-card">
+                            <h3>👥 Your Students</h3>
+                            <div class="students-info-details">
+                                <div class="students-info-item">
+                                    <span class="students-info-label">Grade:</span>
+                                    <span class="students-info-value" id="teacherAssignedGrade">-</span>
                                 </div>
-                                <div class="assignment-item">
-                                    <span class="assignment-label">House:</span>
-                                    <span class="assignment-value" id="teacherAssignedHouse">-</span>
+                                <div class="students-info-item">
+                                    <span class="students-info-label">House:</span>
+                                    <span class="students-info-value" id="teacherAssignedHouse">-</span>
                                 </div>
                             </div>
-                            <p class="assignment-note">You can only view data from your assigned grade and house.</p>
+                            <p class="students-info-note">You can only view data from your assigned grade and house.</p>
+                        </div>
+                    </div>
+
+                    <!-- Teacher Mood Check-In -->
+                    <div class="teacher-checkin-section">
+                        <div class="checkin-card">
+                            <h3>😊 Your Mood Check-In</h3>
+                            <div class="status-display" id="teacherStatusDisplay">
+                                <div class="status-item">
+                                    <span class="status-label">Last Mood:</span>
+                                    <span class="status-value" id="teacherLastMood">No mood recorded</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">Today's Check-ins:</span>
+                                    <span class="status-value" id="teacherTodayCount">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="action-buttons">
+                            <button id="teacherMoodCheckInBtn" class="btn-mood-checkin">
+                                😊 How are you feeling?
+                            </button>
+                            <button id="teacherJournalEntryBtn" class="btn-journal-entry">
+                                📝 Journal Entry
+                            </button>
                         </div>
                     </div>
 
