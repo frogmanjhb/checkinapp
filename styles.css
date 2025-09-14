@@ -3279,3 +3279,521 @@ body {
         margin-right: 0.5rem;
     }
 }
+
+/* ===== DIRECTOR DASHBOARD MODAL CARDS ===== */
+
+/* Director Dashboard Container */
+.director-dashboard-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1rem;
+    min-height: calc(100vh - 200px);
+}
+
+/* Director Header */
+.director-header {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e1e5e9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.director-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin: 0;
+}
+
+/* Director Modal Cards Grid */
+.director-modal-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+/* Director Modal Card */
+.director-modal-card {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e1e5e9;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border: 2px solid #e9ecef;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+}
+
+.director-modal-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+    border-color: #2196f3;
+}
+
+.director-modal-card:hover h3 {
+    color: #1976d2;
+    transform: translateY(-2px);
+}
+
+.director-modal-card:hover .mood-emoji-large {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.director-modal-card:hover .mood-label {
+    color: #1976d2;
+    font-weight: 600;
+}
+
+.director-modal-card:hover .mood-value {
+    color: #0d47a1;
+    font-weight: 700;
+}
+
+.director-modal-card .card-click-indicator {
+    display: none;
+}
+
+.director-modal-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(156, 39, 176, 0.05) 100%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    z-index: 1;
+}
+
+.director-modal-card:hover::before {
+    opacity: 1;
+}
+
+.director-modal-card::after {
+    content: '👆';
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    font-size: 20px;
+    opacity: 0;
+    transform: scale(0.8) rotate(-10deg);
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    z-index: 2;
+}
+
+.director-modal-card:hover::after {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+}
+
+/* Ensure content stays above the overlay */
+.director-modal-card > * {
+    position: relative;
+    z-index: 3;
+}
+
+/* Modal Card Header */
+.modal-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.modal-card-header h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Modal Card Content */
+.modal-card-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Top Mood Display */
+.top-mood-display {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+}
+
+.top-mood-display .mood-emoji-large {
+    font-size: 3rem;
+    animation: moodPulse 2s infinite;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.top-mood-display .mood-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.top-mood-display .mood-label {
+    font-size: 0.9rem;
+    color: #666;
+    font-weight: 500;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.top-mood-display .mood-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Student/Teacher Count */
+.student-count, .teacher-count {
+    text-align: center;
+    padding: 0.75rem;
+    background: #e3f2fd;
+    border-radius: 8px;
+    font-weight: 600;
+    color: #1976d2;
+    font-size: 1rem;
+}
+
+/* Director Modal Large */
+.director-modal-large {
+    width: 95%;
+    max-width: 900px;
+    max-height: 90vh;
+}
+
+/* Ensure director modals have higher z-index */
+#directorGroupDetailModal,
+#directorStudentDetailModal {
+    z-index: 3000 !important;
+}
+
+/* Director Group Detail Content */
+.director-group-detail-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.director-group-summary {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+}
+
+.director-group-summary .group-emoji {
+    font-size: 4rem;
+}
+
+.director-group-info h4 {
+    font-size: 1.8rem;
+    color: #2c3e50;
+    margin: 0 0 0.5rem 0;
+    font-weight: 600;
+}
+
+.director-group-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.director-stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.director-stat-label {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 0.5rem;
+}
+
+.director-stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+/* Students List in Modal */
+.director-students-list {
+    max-height: 400px;
+    overflow-y: auto;
+    display: grid;
+    gap: 1rem;
+}
+
+.director-student-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.director-student-item:hover {
+    background: #e3f2fd;
+    border-color: #2196F3;
+    transform: translateX(4px);
+}
+
+.director-student-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2196F3, #1976D2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 1.2rem;
+    margin-right: 1rem;
+    flex-shrink: 0;
+}
+
+.director-student-info {
+    flex: 1;
+}
+
+.director-student-name {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.25rem;
+    font-size: 1.1rem;
+}
+
+.director-student-details {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.director-student-mood {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.director-mood-emoji-small {
+    font-size: 1.5rem;
+}
+
+/* Director Student Detail Content */
+.director-student-detail-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.director-student-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+}
+
+.director-student-header .student-avatar-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2196F3, #1976D2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.director-student-info h4 {
+    font-size: 1.8rem;
+    color: #2c3e50;
+    margin: 0 0 0.5rem 0;
+    font-weight: 600;
+}
+
+.director-student-details {
+    font-size: 1rem;
+    color: #666;
+}
+
+/* Student Check-ins and Journal Sections */
+.director-student-checkins, .director-student-journal {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid #e9ecef;
+}
+
+.director-student-checkins h5, .director-student-journal h5 {
+    font-size: 1.3rem;
+    color: #2c3e50;
+    margin: 0 0 1rem 0;
+    font-weight: 600;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 0.5rem;
+}
+
+.director-checkin-item, .director-journal-item {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.director-checkin-item:last-child, .director-journal-item:last-child {
+    margin-bottom: 0;
+}
+
+.director-checkin-header, .director-journal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.director-checkin-mood, .director-journal-mood {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.director-checkin-date, .director-journal-date {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.director-checkin-content, .director-journal-content {
+    font-size: 0.95rem;
+    color: #555;
+    line-height: 1.5;
+}
+
+/* Responsive Design for Director Dashboard */
+@media (max-width: 1200px) {
+    .director-modal-cards-grid {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .director-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .header-info {
+        align-items: center;
+    }
+    
+    .director-modal-cards-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .director-modal-card {
+        min-height: 180px;
+    }
+    
+    .top-mood-display {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+    }
+    
+    .top-mood-display .mood-emoji-large {
+        font-size: 2.5rem;
+    }
+    
+    .director-group-summary {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .director-group-summary .group-emoji {
+        font-size: 3rem;
+    }
+    
+    .director-student-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .director-student-header .student-avatar-large {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .director-dashboard-container {
+        padding: 0.5rem;
+    }
+    
+    .director-header {
+        padding: 1.5rem;
+    }
+    
+    .director-header h1 {
+        font-size: 2rem;
+    }
+    
+    .director-modal-card {
+        padding: 1.5rem;
+        min-height: 160px;
+    }
+    
+    .modal-card-header h3 {
+        font-size: 1.3rem;
+    }
+    
+    .top-mood-display .mood-emoji-large {
+        font-size: 2rem;
+    }
+}
