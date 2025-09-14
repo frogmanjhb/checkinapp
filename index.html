@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Its OK">
-    <link rel="stylesheet" href="styles.css?v=2.0">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="app">
@@ -140,14 +140,25 @@
                                 <input type="text" id="teacherSurname" required placeholder="Enter your surname">
                             </div>
                             <div class="form-group">
-                                <label for="teacherGrade">Grade Assignment</label>
-                                <select id="teacherGrade" required>
-                                    <option value="">Select your assigned grade</option>
-                                    <option value="Grade 5">Grade 5</option>
-                                    <option value="Grade 6">Grade 6</option>
-                                    <option value="Grade 7">Grade 7</option>
-                                </select>
-                                <small class="form-hint">You will only be able to view data from this grade</small>
+                                <label for="teacherGrades">Grade Assignments</label>
+                                <div class="checkbox-group" id="teacherGrades">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="teacherGrade" value="Grade 5">
+                                        <span class="checkmark"></span>
+                                        Grade 5
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="teacherGrade" value="Grade 6">
+                                        <span class="checkmark"></span>
+                                        Grade 6
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="teacherGrade" value="Grade 7">
+                                        <span class="checkmark"></span>
+                                        Grade 7
+                                    </label>
+                                </div>
+                                <small class="form-hint">Select all grades you teach (you can select multiple)</small>
                             </div>
                             <div class="form-group">
                                 <label for="teacherHouse">House Assignment</label>
@@ -302,94 +313,154 @@
 
             <!-- Teacher Dashboard Screen -->
             <div id="teacherDashboardScreen" class="screen">
-                <div class="dashboard-container">
-                    <div class="welcome-section">
-                        <h2>Welcome, <span id="teacherName"></span>! 👨‍🏫</h2>
-                        <p class="current-time" id="teacherCurrentTime"></p>
+                <div class="teacher-dashboard-container">
+                    <!-- Header Section -->
+                    <div class="teacher-header">
+                        <h1>Welcome, <span id="teacherName"></span>! 👨‍🏫</h1>
+                        <div class="header-info">
+                            <span class="header-date" id="teacherCurrentDate"></span>
+                            <span class="header-time" id="teacherCurrentTime"></span>
+                        </div>
                     </div>
 
-                    <!-- Teacher Students Info -->
-                    <div class="teacher-students-info">
-                        <div class="students-info-card">
-                            <h3>👥 Your Students</h3>
-                            <div class="students-info-details">
-                                <div class="students-info-item">
-                                    <span class="students-info-label">Grade:</span>
-                                    <span class="students-info-value" id="teacherAssignedGrade">-</span>
+                    <!-- Main Dashboard Grid -->
+                    <div class="teacher-dashboard-grid">
+                        <!-- Teacher Mood Check-In Section -->
+                        <div class="teacher-mood-section">
+                            <div class="mood-checkin-card">
+                                <h3>Your Mood Check-in</h3>
+                                <div class="mood-status-grid">
+                                    <div class="mood-status-item clickable" id="lastMoodItem">
+                                        <span class="mood-label">Last mood</span>
+                                        <span class="mood-value" id="teacherLastMood">No mood recorded</span>
+                                        <span class="click-indicator">👆</span>
+                                    </div>
+                                    <div class="mood-status-item">
+                                        <span class="mood-label">Today's Check in</span>
+                                        <span class="mood-value" id="teacherTodayCount">0</span>
+                                    </div>
+                                    <div class="mood-status-item clickable" id="journalCountItem">
+                                        <span class="mood-label">Journal Entries</span>
+                                        <span class="mood-value" id="teacherJournalCount">0</span>
+                                        <span class="click-indicator">👆</span>
+                                    </div>
+                                    <div class="mood-status-item clickable" id="checkInHistoryItem">
+                                        <span class="mood-label">Check-in history</span>
+                                        <span class="mood-value" id="teacherCheckInCount">0</span>
+                                        <span class="click-indicator">👆</span>
+                                    </div>
                                 </div>
-                                <div class="students-info-item">
-                                    <span class="students-info-label">House:</span>
-                                    <span class="students-info-value" id="teacherAssignedHouse">-</span>
+                                <div class="mood-input-section">
+                                    <button class="mood-action-button" id="teacherMoodButton">
+                                        <span class="mood-button-icon">😊</span>
+                                        <span class="mood-button-text">How are you feeling?</span>
+                                        <span class="mood-button-arrow">→</span>
+                                    </button>
+                                    <button class="mood-action-button" id="teacherJournalButton">
+                                        <span class="mood-button-icon">📝</span>
+                                        <span class="mood-button-text">Journal Entry</span>
+                                        <span class="mood-button-arrow">→</span>
+                                    </button>
+                                </div> 
+                            </div>
+                        </div>
+
+                        <!-- Your Students Section -->
+                        <div class="student-filters-section">
+                            <div class="filters-card">
+                                <h3>Your Students</h3>
+                                <div class="student-info-display">
+                                    <button class="student-info-button" id="houseButton">
+                                        <span id="teacherHouseDisplay">House: Loading...</span>
+                                        <span class="button-arrow">▼</span>
+                                    </button>
+                                    <div id="gradeButtonsContainer">
+                                        <!-- Grade buttons will be dynamically created here -->
+                                    </div>
+                                </div>
+                                <div class="student-list-container" id="studentListContainer" style="display: none;">
+                                    <div class="student-list-header">
+                                        <h4 id="studentListTitle">Students</h4>
+                                        <button class="close-student-list" id="closeStudentList">&times;</button>
+                                    </div>
+                                    <div class="student-list" id="studentListContent">
+                                        <!-- Student list will be populated here -->
+                                    </div>
                                 </div>
                             </div>
-                            <p class="students-info-note">You can only view data from your assigned grade and house.</p>
                         </div>
-                    </div>
 
-                    <!-- Teacher Mood Check-In -->
-                    <div class="teacher-checkin-section">
-                        <div class="checkin-card">
-                            <h3>😊 Your Mood Check-In</h3>
-                            <div class="status-display" id="teacherStatusDisplay">
-                                <div class="status-item">
-                                    <span class="status-label">Last Mood:</span>
-                                    <span class="status-value" id="teacherLastMood">No mood recorded</span>
+                        <!-- Student Analytics Section -->
+                        <div class="student-analytics-section">
+                            <div class="analytics-card clickable" id="studentAnalyticsCard">
+                                <h3>Student Analytics</h3>
+                                <div class="analytics-mood-display">
+                                    <div class="mood-emoji-large">😊</div>
+                                    <div class="mood-info">
+                                        <span class="mood-label">Top mood</span>
+                                        <span class="mood-value" id="studentHighestMood">Happy</span>
+                                    </div>
                                 </div>
-                                <div class="status-item">
-                                    <span class="status-label">Today's Check-ins:</span>
-                                    <span class="status-value" id="teacherTodayCount">0</span>
+                                <div class="analytics-content" id="studentAnalyticsContent">
+                                    <!-- Student analytics will be populated here -->
                                 </div>
                             </div>
                         </div>
 
-                        <div class="action-buttons">
-                            <button id="teacherMoodCheckInBtn" class="btn-mood-checkin">
-                                😊 How are you feeling?
-                            </button>
-                            <button id="teacherJournalEntryBtn" class="btn-journal-entry">
-                                📝 Journal Entry
-                            </button>
+                        <!-- Grade Analytics Section -->
+                        <div class="grade-analytics-section">
+                            <div class="analytics-card clickable" id="gradeAnalyticsCard">
+                                <h3>Grade Analytics</h3>
+                                <div class="analytics-mood-display">
+                                    <div class="mood-emoji-large">😊</div>
+                                    <div class="mood-info">
+                                        <span class="mood-label">Top mood</span>
+                                        <span class="mood-value" id="gradeHighestMood">Happy</span>
+                                    </div>
+                                </div>
+                                <div class="analytics-content" id="gradeAnalyticsContent">
+                                    <!-- Grade analytics will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- House Analytics Section -->
+                        <div class="house-analytics-section">
+                            <div class="analytics-card clickable" id="houseAnalyticsCard">
+                                <h3>House Analytics</h3>
+                                <div class="analytics-mood-display">
+                                    <div class="mood-emoji-large">😊</div>
+                                    <div class="mood-info">
+                                        <span class="mood-label">Top mood</span>
+                                        <span class="mood-value" id="houseHighestMood">Happy</span>
+                                    </div>
+                                </div>
+                                <div class="analytics-content" id="houseAnalyticsContent">
+                                    <!-- House analytics will be populated here -->
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Teacher Analytics -->
-                    <div class="teacher-analytics">
-                        <h3>📊 Student Analytics</h3>
-                        <div class="analytics-tabs">
-                            <button class="analytics-tab active" data-period="daily">Daily</button>
-                            <button class="analytics-tab" data-period="weekly">Weekly</button>
-                            <button class="analytics-tab" data-period="monthly">Monthly</button>
-                            <button class="analytics-tab" data-period="yearly">Yearly</button>
+                    <!-- Hidden sections for detailed views (expandable) -->
+                    <div class="detailed-sections" id="detailedSections" style="display: none;">
+                        <!-- Teacher Journal Entry -->
+                        <div class="teacher-journal-section">
+                            <h3>📝 Your Journal Entries</h3>
+                            <div class="teacher-journal-list" id="teacherJournalList">
+                                <!-- Teacher journal entries will be populated here -->
+                            </div>
                         </div>
-                        <div class="analytics-content" id="teacherAnalytics">
-                            <!-- Teacher analytics will be populated here -->
-                        </div>
-                    </div>
 
-                    <!-- Grade Analytics (No Names) -->
-                    <div class="grade-analytics">
-                        <h3>📊 Grade Analytics (Anonymous)</h3>
-                        <div class="grade-analytics-content" id="gradeAnalytics">
-                            <p style="text-align: center; color: #666; padding: 2rem;">Loading your assigned grade analytics...</p>
-                        </div>
-                    </div>
-
-                    <!-- Teacher Journal Entry -->
-                    <div class="teacher-journal-section">
-                        <h3>📝 Your Journal Entries</h3>
-                        <div class="teacher-journal-list" id="teacherJournalList">
-                            <!-- Teacher journal entries will be populated here -->
-                        </div>
-                    </div>
-
-                    <!-- Student List -->
-                    <div class="students-section">
-                        <h3>👥 Students</h3>
-                        <div class="demo-notice" style="background: #e3f2fd; border: 1px solid #2196f3; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 14px; color: #1976d2;">
-                            <strong>📱 Demo Mode:</strong> Showing demo students for testing. In production, this would show all students from your school's database.
-                        </div>
-                        <div class="students-list" id="studentsList">
-                            <!-- Student list will be populated here -->
+                        <!-- Student List -->
+                        <div class="students-section">
+                            <h3>👥 Students</h3>
+                            <div class="demo-notice" style="background: #e3f2fd; border: 1px solid #2196f3; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 14px; color: #1976d2;">
+                                <strong>📱 Demo Mode:</strong> Showing demo students for testing. In production, this would show all students from your school's database.
+                            </div>
+                            <div class="students-list" id="studentsList">
+                                <!-- Student list will be populated here -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -739,6 +810,84 @@
         </footer>
     </div>
 
-    <script src="app-api.js?v=2.0"></script>
+    <!-- Mood Details Modal -->
+    <div id="moodDetailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Last Mood Check-in Details</h3>
+                <button class="modal-close" id="closeMoodDetailsModal">&times;</button>
+            </div>
+            <div class="modal-body" id="moodDetailsContent">
+                <!-- Mood details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Journal History Modal -->
+    <div id="journalHistoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Journal Entries</h3>
+                <button class="modal-close" id="closeJournalHistoryModal">&times;</button>
+            </div>
+            <div class="modal-body" id="journalHistoryContent">
+                <!-- Journal history will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Check-In History Modal -->
+    <div id="checkInHistoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Check-In History</h3>
+                <button class="modal-close" id="closeCheckInHistoryModal">&times;</button>
+            </div>
+            <div class="modal-body" id="checkInHistoryContent">
+                <!-- Check-in history will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Analytics History Modal -->
+    <div id="studentAnalyticsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Student Mood Check-in History</h3>
+                <button class="modal-close" id="closeStudentAnalyticsModal">&times;</button>
+            </div>
+            <div class="modal-body" id="studentAnalyticsHistoryContent">
+                <!-- Student mood history will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Grade Analytics History Modal -->
+    <div id="gradeAnalyticsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Grade Mood Check-in History</h3>
+                <button class="modal-close" id="closeGradeAnalyticsModal">&times;</button>
+            </div>
+            <div class="modal-body" id="gradeAnalyticsHistoryContent">
+                <!-- Grade mood history will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- House Analytics History Modal -->
+    <div id="houseAnalyticsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>House Mood Check-in History</h3>
+                <button class="modal-close" id="closeHouseAnalyticsModal">&times;</button>
+            </div>
+            <div class="modal-body" id="houseAnalyticsHistoryContent">
+                <!-- House mood history will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="app-api.js"></script>
 </body>
 </html>

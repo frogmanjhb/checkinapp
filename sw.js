@@ -1,13 +1,12 @@
 // Service Worker for REACT Check-In App
-const CACHE_NAME = 'react-checkin-v1';
+const CACHE_NAME = 'react-checkin-v2'; // Updated version number
 const urlsToCache = [
   '/',
   '/index.html',
-  '/styles.css',
-  '/app.js',
   '/manifest.json',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png'
+  // Removed styles.css and app.js from cache to prevent caching issues
 ];
 
 // Install event - cache resources
@@ -23,6 +22,18 @@ self.addEventListener('install', (event) => {
 
 // Fetch event - serve cached content when offline
 self.addEventListener('fetch', (event) => {
+  // Don't cache CSS and JS files to prevent caching issues
+  if (event.request.url.includes('.css') || event.request.url.includes('.js')) {
+    event.respondWith(
+      fetch(event.request)
+        .catch(() => {
+          // If network fails, try cache as fallback
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -45,6 +56,9 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
+    }).then(() => {
+      // Force update of all clients
+      return self.clients.claim();
     })
   );
 });
