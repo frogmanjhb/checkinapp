@@ -12,6 +12,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Its OK">
     <link rel="stylesheet" href="styles.css">
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div id="app">
@@ -639,6 +641,41 @@
                                     </div>
                                 </div>
                                 <div class="teacher-count" id="teachersCount">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Analytics Charts Section -->
+                    <div class="director-charts-section">
+                        <div class="charts-header">
+                            <h2>📊 Analytics Dashboard</h2>
+                            <div class="chart-controls">
+                                <button class="chart-export-btn" id="exportChartsBtn">📥 Export Data</button>
+                                <select class="chart-period-select" id="chartPeriodSelect">
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="charts-grid">
+                            <!-- Houses Mood Distribution Chart -->
+                            <div class="chart-container mood-distribution-large">
+                                <div class="chart-header">
+                                    <h3>Mood Distribution by House</h3>
+                                    <div class="chart-legend" id="housesMoodChartLegend"></div>
+                                </div>
+                                <canvas id="housesMoodDistributionChart"></canvas>
+                            </div>
+
+                            <!-- Grades Mood Distribution Chart -->
+                            <div class="chart-container mood-distribution-large">
+                                <div class="chart-header">
+                                    <h3>Mood Distribution by Grade</h3>
+                                    <div class="chart-legend" id="gradesMoodChartLegend"></div>
+                                </div>
+                                <canvas id="gradesMoodDistributionChart"></canvas>
                             </div>
                         </div>
                     </div>
