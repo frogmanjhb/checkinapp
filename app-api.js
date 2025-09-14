@@ -154,6 +154,7 @@ class MoodCheckInApp {
     constructor() {
         this.currentUser = null;
         this.moodHistory = [];
+        this.journalEntries = [];
         this.selectedMood = null;
         this.allUsers = [];
         this.allMoodHistory = [];
@@ -341,6 +342,14 @@ class MoodCheckInApp {
                 this.showJournalEntryModal();
             });
         }
+
+        // New Teacher UI elements
+        initializeTeacherUI();
+        
+        // Initialize teacher filters immediately
+        setTimeout(() => {
+            updateTeacherFilters();
+        }, 500);
 
         // Mouse tracking for physics
         document.addEventListener('mousemove', (e) => {
@@ -630,18 +639,18 @@ class MoodCheckInApp {
         await new Promise(resolve => setTimeout(resolve, 100));
 
         // Try to get elements with retry mechanism
-        let firstNameElement, surnameElement, gradeElement, houseElement, emailElement, passwordElement, confirmPasswordElement;
+        let firstNameElement, surnameElement, gradeCheckboxes, houseElement, emailElement, passwordElement, confirmPasswordElement;
         
         for (let i = 0; i < 3; i++) {
             firstNameElement = document.getElementById('teacherFirstName');
             surnameElement = document.getElementById('teacherSurname');
-            gradeElement = document.getElementById('teacherGrade');
+            gradeCheckboxes = document.querySelectorAll('input[name="teacherGrade"]:checked');
             houseElement = document.getElementById('teacherHouse');
             emailElement = document.getElementById('teacherEmail');
             passwordElement = document.getElementById('teacherPassword');
             confirmPasswordElement = document.getElementById('teacherConfirmPassword');
             
-            if (firstNameElement && surnameElement && gradeElement && houseElement && 
+            if (firstNameElement && surnameElement && gradeCheckboxes.length > 0 && houseElement && 
                 emailElement && passwordElement && confirmPasswordElement) {
                 break;
             }
@@ -651,7 +660,7 @@ class MoodCheckInApp {
             }
         }
         
-        if (!firstNameElement || !surnameElement || !gradeElement || !houseElement || 
+        if (!firstNameElement || !surnameElement || gradeCheckboxes.length === 0 || !houseElement || 
             !emailElement || !passwordElement || !confirmPasswordElement) {
             console.error('Teacher registration form elements not found in DOM');
             
@@ -661,7 +670,7 @@ class MoodCheckInApp {
         
         const firstName = SecurityUtils.sanitizeInput(firstNameElement.value);
         const surname = SecurityUtils.sanitizeInput(surnameElement.value);
-        const grade = gradeElement.value;
+        const grades = Array.from(gradeCheckboxes).map(checkbox => checkbox.value);
         const house = houseElement.value;
         const email = SecurityUtils.sanitizeInput(emailElement.value);
         const password = passwordElement.value;
@@ -673,8 +682,8 @@ class MoodCheckInApp {
             return;
         }
 
-        if (!grade || !house) {
-            this.showMessage('Please select both grade and house assignments.', 'error');
+        if (grades.length === 0 || !house) {
+            this.showMessage('Please select at least one grade and house assignment.', 'error');
             return;
         }
 
@@ -696,12 +705,13 @@ class MoodCheckInApp {
                 email,
                 password,
                 userType: 'teacher',
-                grade,
+                grades,
                 house
             });
 
             if (response.success) {
-                this.showMessage(`Teacher account created successfully! You are assigned to ${grade} - ${house}. Password strength: ${passwordValidation.strength}. Please login.`, 'success');
+                const gradesText = grades.join(', ');
+                this.showMessage(`Teacher account created successfully! You are assigned to grades: ${gradesText} - ${house}. Password strength: ${passwordValidation.strength}. Please login.`, 'success');
                 this.showLoginScreen();
             } else {
                 this.showMessage(response.error || 'Registration failed. Please try again.', 'error');
@@ -971,9 +981,8 @@ class MoodCheckInApp {
         // Update user info
         const teacherNameElement = document.getElementById('teacherName');
         const userNameElement = document.getElementById('userName');
-        const teacherAssignedGradeElement = document.getElementById('teacherAssignedGrade');
-        const teacherAssignedHouseElement = document.getElementById('teacherAssignedHouse');
         const teacherCurrentTimeElement = document.getElementById('teacherCurrentTime');
+        const teacherCurrentDateElement = document.getElementById('teacherCurrentDate');
         
         if (teacherNameElement) {
             teacherNameElement.textContent = `${this.currentUser.first_name} ${this.currentUser.surname}`;
@@ -981,14 +990,11 @@ class MoodCheckInApp {
         if (userNameElement) {
             userNameElement.textContent = `${this.currentUser.first_name} ${this.currentUser.surname}`;
         }
-        if (teacherAssignedGradeElement) {
-            teacherAssignedGradeElement.textContent = this.currentUser.class || 'Grade 6';
-        }
-        if (teacherAssignedHouseElement) {
-            teacherAssignedHouseElement.textContent = this.currentUser.house || 'Mirfield';
-        }
         if (teacherCurrentTimeElement) {
-            teacherCurrentTimeElement.textContent = new Date().toLocaleString();
+            teacherCurrentTimeElement.textContent = new Date().toLocaleTimeString();
+        }
+        if (teacherCurrentDateElement) {
+            teacherCurrentDateElement.textContent = new Date().toLocaleDateString();
         }
         
         this.updateTeacherView();
@@ -996,6 +1002,11 @@ class MoodCheckInApp {
         this.updateTeacherJournalList();
         this.updateGradeAnalytics();
         this.updateTeacherStatusDisplay();
+        
+        // Update teacher filters with a delay to ensure DOM is ready
+        setTimeout(() => {
+            updateTeacherFilters();
+        }, 200);
     }
 
     showDirectorDashboard() {
@@ -1338,6 +1349,16 @@ class MoodCheckInApp {
             });
 
             if (response.success) {
+                // Add new entry to journalEntries array
+                const newEntry = {
+                    id: Date.now(), // Simple ID generation
+                    title: entryText.substring(0, 50) + (entryText.length > 50 ? '...' : ''),
+                    content: entryText,
+                    timestamp: new Date().toLocaleString(),
+                    mood: 'Reflective'
+                };
+                this.journalEntries.push(newEntry);
+                
                 this.hideJournalingEncouragementModal();
                 this.showMessage('Journal entry saved successfully!', 'success');
                 
@@ -1346,6 +1367,7 @@ class MoodCheckInApp {
                     this.updateStudentJournalList();
                 } else if (this.currentUser.user_type === 'teacher') {
                     this.updateTeacherJournalList();
+                    this.updateTeacherStatusDisplay(); // Update the journal counter
                 }
             } else {
                 this.showMessage('Failed to save journal entry. Please try again.', 'error');
@@ -1613,8 +1635,10 @@ class MoodCheckInApp {
     updateTeacherStatusDisplay() {
         const teacherLastMoodElement = document.getElementById('teacherLastMood');
         const teacherTodayCountElement = document.getElementById('teacherTodayCount');
+        const teacherJournalCountElement = document.getElementById('teacherJournalCount');
+        const teacherCheckInCountElement = document.getElementById('teacherCheckInCount');
         
-        if (!teacherLastMoodElement || !teacherTodayCountElement) return;
+        if (!teacherLastMoodElement || !teacherTodayCountElement || !teacherJournalCountElement || !teacherCheckInCountElement) return;
         
         // Get the most recent mood check-in for teacher
         const lastMoodRecord = this.moodHistory.find(record => record.mood);
@@ -1637,6 +1661,25 @@ class MoodCheckInApp {
         
         teacherTodayCountElement.textContent = todayMoodCount.toString();
         teacherTodayCountElement.className = 'status-value today-count';
+        
+        // Count journal entries for teacher (standalone + mood check-in notes)
+        let journalCount = this.journalEntries ? this.journalEntries.length : 0;
+        
+        // Add journal entries from mood check-ins (notes field)
+        if (this.moodHistory && this.moodHistory.length > 0) {
+            const moodJournalCount = this.moodHistory.filter(record => 
+                record.notes && record.notes.trim() !== ''
+            ).length;
+            journalCount += moodJournalCount;
+        }
+        
+        teacherJournalCountElement.textContent = journalCount.toString();
+        teacherJournalCountElement.className = 'status-value journal-count';
+        
+        // Count total check-ins for teacher
+        const totalCheckIns = this.moodHistory ? this.moodHistory.length : 0;
+        teacherCheckInCountElement.textContent = totalCheckIns.toString();
+        teacherCheckInCountElement.className = 'status-value checkin-count';
     }
 
     updateHistoryDisplay() {
@@ -2291,6 +2334,16 @@ class MoodCheckInApp {
             });
 
             if (response.success) {
+                // Add new entry to journalEntries array
+                const newEntry = {
+                    id: Date.now(), // Simple ID generation
+                    title: entryText.substring(0, 50) + (entryText.length > 50 ? '...' : ''),
+                    content: entryText,
+                    timestamp: new Date().toLocaleString(),
+                    mood: 'Reflective'
+                };
+                this.journalEntries.push(newEntry);
+                
                 this.hideJournalEntryModal();
                 this.showMessage('Journal entry saved successfully!', 'success');
                 
@@ -2299,6 +2352,7 @@ class MoodCheckInApp {
                     this.updateStudentJournalList();
                 } else if (this.currentUser.user_type === 'teacher') {
                     this.updateTeacherJournalList();
+                    this.updateTeacherStatusDisplay(); // Update the journal counter
                 }
             } else {
                 this.showMessage('Failed to save journal entry. Please try again.', 'error');
@@ -2643,7 +2697,1026 @@ window.showTeacherForm = function() {
             });
         }, 100);
     }
-};
+}
+
+// Initialize Teacher UI elements
+function initializeTeacherUI() {
+    // Teacher mood button click handler
+    const teacherMoodButton = document.getElementById('teacherMoodButton');
+    if (teacherMoodButton) {
+        teacherMoodButton.addEventListener('click', () => {
+            if (window.moodApp) {
+                window.moodApp.showMoodModal();
+            }
+        });
+    }
+
+    // Teacher journal button click handler
+    const teacherJournalButton = document.getElementById('teacherJournalButton');
+    if (teacherJournalButton) {
+        teacherJournalButton.addEventListener('click', () => {
+            if (window.moodApp) {
+                window.moodApp.showJournalEntryModal();
+            }
+        });
+    }
+
+    // Last mood click handler
+    const lastMoodItem = document.getElementById('lastMoodItem');
+    if (lastMoodItem) {
+        lastMoodItem.addEventListener('click', () => {
+            showMoodDetailsModal();
+        });
+    }
+
+    // Journal count click handler
+    const journalCountItem = document.getElementById('journalCountItem');
+    if (journalCountItem) {
+        journalCountItem.addEventListener('click', () => {
+            showJournalHistoryModal();
+        });
+    }
+
+    // Check-in history click handler
+    const checkInHistoryItem = document.getElementById('checkInHistoryItem');
+    if (checkInHistoryItem) {
+        checkInHistoryItem.addEventListener('click', () => {
+            showCheckInHistoryModal();
+        });
+    }
+    
+    // Analytics cards click handlers
+    const studentAnalyticsCard = document.getElementById('studentAnalyticsCard');
+    const gradeAnalyticsCard = document.getElementById('gradeAnalyticsCard');
+    const houseAnalyticsCard = document.getElementById('houseAnalyticsCard');
+    
+    if (studentAnalyticsCard) {
+        studentAnalyticsCard.addEventListener('click', () => {
+            showAnalyticsModal('student');
+        });
+    }
+    
+    if (gradeAnalyticsCard) {
+        gradeAnalyticsCard.addEventListener('click', () => {
+            showAnalyticsModal('grade');
+        });
+    }
+    
+    if (houseAnalyticsCard) {
+        houseAnalyticsCard.addEventListener('click', () => {
+            showAnalyticsModal('house');
+        });
+    }
+
+    // Modal close handlers
+    const closeMoodDetailsModal = document.getElementById('closeMoodDetailsModal');
+    if (closeMoodDetailsModal) {
+        closeMoodDetailsModal.addEventListener('click', () => {
+            hideMoodDetailsModal();
+        });
+    }
+
+    const closeJournalHistoryModal = document.getElementById('closeJournalHistoryModal');
+    if (closeJournalHistoryModal) {
+        closeJournalHistoryModal.addEventListener('click', () => {
+            hideJournalHistoryModal();
+        });
+    }
+
+    const closeCheckInHistoryModal = document.getElementById('closeCheckInHistoryModal');
+    if (closeCheckInHistoryModal) {
+        closeCheckInHistoryModal.addEventListener('click', () => {
+            hideCheckInHistoryModal();
+        });
+    }
+    
+    // Analytics modals close handlers
+    const closeStudentAnalyticsModal = document.getElementById('closeStudentAnalyticsModal');
+    const closeGradeAnalyticsModal = document.getElementById('closeGradeAnalyticsModal');
+    const closeHouseAnalyticsModal = document.getElementById('closeHouseAnalyticsModal');
+    
+    if (closeStudentAnalyticsModal) {
+        closeStudentAnalyticsModal.addEventListener('click', () => {
+            hideAnalyticsModal('student');
+        });
+    }
+    
+    if (closeGradeAnalyticsModal) {
+        closeGradeAnalyticsModal.addEventListener('click', () => {
+            hideAnalyticsModal('grade');
+        });
+    }
+    
+    if (closeHouseAnalyticsModal) {
+        closeHouseAnalyticsModal.addEventListener('click', () => {
+            hideAnalyticsModal('house');
+        });
+    }
+
+    // Filter dropdown handlers
+    initializeFilterDropdowns();
+    
+    // Initialize teacher filters display with a small delay to ensure data is available
+    setTimeout(() => {
+        updateTeacherFilters();
+    }, 100);
+}
+
+// Initialize student info buttons
+function initializeFilterDropdowns() {
+    const houseButton = document.getElementById('houseButton');
+    const gradeButton = document.getElementById('gradeButton');
+    const studentListContainer = document.getElementById('studentListContainer');
+    const closeStudentList = document.getElementById('closeStudentList');
+
+    if (houseButton) {
+        houseButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleStudentList('house');
+        });
+    }
+
+    if (gradeButton) {
+        gradeButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleStudentList('grade');
+        });
+    }
+
+    if (closeStudentList) {
+        closeStudentList.addEventListener('click', (e) => {
+            e.stopPropagation();
+            hideStudentList();
+        });
+    }
+
+    // Close student list when clicking outside
+    document.addEventListener('click', (e) => {
+        if (studentListContainer && !studentListContainer.contains(e.target) && 
+            !houseButton.contains(e.target) && !gradeButton.contains(e.target)) {
+            hideStudentList();
+        }
+    });
+}
+
+// Toggle student list (show if hidden, hide if shown)
+function toggleStudentList(type, grade = null) {
+    const studentListContainer = document.getElementById('studentListContainer');
+    
+    if (studentListContainer.style.display === 'block') {
+        // If already showing, hide it
+        hideStudentList();
+    } else {
+        // If hidden, show it
+        showStudentList(type, grade);
+    }
+}
+
+// Show student list based on house or grade
+async function showStudentList(type, grade = null) {
+    const studentListContainer = document.getElementById('studentListContainer');
+    const studentListTitle = document.getElementById('studentListTitle');
+    const studentListContent = document.getElementById('studentListContent');
+    const houseButton = document.getElementById('houseButton');
+    const gradeButtons = document.querySelectorAll('.grade-button');
+
+    if (!studentListContainer || !studentListTitle || !studentListContent) return;
+
+    // Update button states
+    if (type === 'house') {
+        if (houseButton) houseButton.classList.add('active');
+        gradeButtons.forEach(btn => btn.classList.remove('active'));
+    } else if (type === 'grade' && grade) {
+        gradeButtons.forEach(btn => {
+            if (btn.dataset.grade === grade) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        if (houseButton) houseButton.classList.remove('active');
+    }
+
+    // Show loading state
+    studentListContent.innerHTML = '<div class="no-students">Loading students...</div>';
+    studentListContainer.style.display = 'block';
+
+    try {
+        // Get teacher's assigned house and grade
+        const teacher = window.moodApp ? window.moodApp.currentUser : null;
+        if (!teacher) {
+            studentListContent.innerHTML = '<div class="no-students">No teacher data available</div>';
+            return;
+        }
+
+        // Set title
+        if (type === 'house') {
+            studentListTitle.textContent = `Students in ${teacher.house || 'Your House'}`;
+        } else if (type === 'grade' && grade) {
+            studentListTitle.textContent = `Students in ${grade}`;
+        } else {
+            studentListTitle.textContent = `Students in ${teacher.class || 'Your Grade'}`;
+        }
+
+        // Get students based on type
+        const students = await getStudentsForTeacher(teacher, type, grade);
+        
+        if (students.length === 0) {
+            studentListContent.innerHTML = '<div class="no-students">No students found</div>';
+            return;
+        }
+
+        // Display students
+        displayStudents(studentListContent, students);
+
+    } catch (error) {
+        console.error('Error loading students:', error);
+        studentListContent.innerHTML = '<div class="no-students">Error loading students</div>';
+    }
+}
+
+// Hide student list
+function hideStudentList() {
+    const studentListContainer = document.getElementById('studentListContainer');
+    const houseButton = document.getElementById('houseButton');
+    const gradeButtons = document.querySelectorAll('.grade-button');
+
+    if (studentListContainer) {
+        studentListContainer.style.display = 'none';
+    }
+    if (houseButton) {
+        houseButton.classList.remove('active');
+    }
+    gradeButtons.forEach(btn => btn.classList.remove('active'));
+}
+
+// Show mood details modal
+function showMoodDetailsModal() {
+    const modal = document.getElementById('moodDetailsModal');
+    const content = document.getElementById('moodDetailsContent');
+    
+    if (!modal || !content) return;
+    
+    // Get the last mood check-in data from the actual mood history
+    let lastMoodData = null;
+    if (window.moodApp && window.moodApp.moodHistory && window.moodApp.moodHistory.length > 0) {
+        // Find the most recent mood record
+        lastMoodData = window.moodApp.moodHistory.find(record => record.mood);
+    }
+    
+    // If no real data, show mock data for demo
+    if (!lastMoodData) {
+        lastMoodData = {
+            mood: 'Happy',
+            emoji: '😊',
+            timestamp: new Date().toLocaleString(),
+            emotions: ['Excited', 'Grateful', 'Confident'],
+            location: 'Classroom',
+            reasons: ['Great lesson with students', 'Positive feedback from parents', 'Team collaboration went well']
+        };
+    }
+    
+    // Ensure we have the required fields with fallbacks
+    const emotions = lastMoodData.emotions || ['Content', 'Peaceful'];
+    const location = lastMoodData.location || 'School';
+    const reasons = lastMoodData.reasons || ['Feeling good today'];
+    
+    content.innerHTML = `
+        <div class="mood-details">
+            <div class="mood-detail-header">
+                <div class="mood-emoji-large">${lastMoodData.emoji}</div>
+                <div class="mood-info">
+                    <h4>${lastMoodData.mood}</h4>
+                    <p class="mood-timestamp">${lastMoodData.timestamp}</p>
+                </div>
+            </div>
+            <div class="mood-detail-content">
+                <div class="mood-detail-section">
+                    <h5 class="section-title">Emotions</h5>
+                    <div class="emotion-tags">
+                        ${emotions.map(emotion => `<span class="emotion-tag">${emotion}</span>`).join('')}
+                    </div>
+                </div>
+                <div class="mood-detail-section">
+                    <h5 class="section-title">Location</h5>
+                    <div class="location-info">
+                        <span class="location-icon">📍</span>
+                        <span class="location-text">${location}</span>
+                    </div>
+                </div>
+                <div class="mood-detail-section">
+                    <h5 class="section-title">Reasons</h5>
+                    <ul class="reasons-list">
+                        ${reasons.map(reason => `<li class="reason-item">${reason}</li>`).join('')}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    modal.style.display = 'block';
+}
+
+// Hide mood details modal
+function hideMoodDetailsModal() {
+    const modal = document.getElementById('moodDetailsModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Show journal history modal
+function showJournalHistoryModal() {
+    const modal = document.getElementById('journalHistoryModal');
+    const content = document.getElementById('journalHistoryContent');
+    
+    if (!modal || !content) return;
+    
+    // Get journal history data from multiple sources
+    let journalEntries = [];
+    
+    // Get standalone journal entries
+    if (window.moodApp && window.moodApp.journalEntries && window.moodApp.journalEntries.length > 0) {
+        journalEntries = [...window.moodApp.journalEntries];
+    }
+    
+    // Get journal entries from mood check-ins (notes field)
+    if (window.moodApp && window.moodApp.moodHistory && window.moodApp.moodHistory.length > 0) {
+        const moodJournalEntries = window.moodApp.moodHistory
+            .filter(record => record.notes && record.notes.trim() !== '')
+            .map(record => ({
+                id: `mood-${record.id || Date.now()}`,
+                title: `Mood Check-in - ${record.mood ? record.mood.charAt(0).toUpperCase() + record.mood.slice(1) : 'Unknown'}`,
+                content: record.notes,
+                timestamp: new Date(record.timestamp).toLocaleString(),
+                mood: record.mood ? record.mood.charAt(0).toUpperCase() + record.mood.slice(1) : 'Unknown',
+                type: 'mood-checkin'
+            }));
+        
+        journalEntries = [...journalEntries, ...moodJournalEntries];
+    }
+    
+    // Sort by timestamp (newest first)
+    journalEntries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    // If no entries, show mock data for demo
+    if (journalEntries.length === 0) {
+        journalEntries = [
+            {
+                id: 1,
+                title: 'Great day at work',
+                content: 'Had a productive day teaching Grade 5. The students were really engaged in today\'s lesson.',
+                timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toLocaleString(),
+                mood: 'Happy'
+            },
+            {
+                id: 2,
+                title: 'Challenging morning',
+                content: 'Some students were having difficulty with the math concepts. Need to review the lesson plan.',
+                timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toLocaleString(),
+                mood: 'Concerned'
+            },
+            {
+                id: 3,
+                title: 'Team meeting',
+                content: 'Great collaboration with other teachers on the new curriculum. Excited about the changes.',
+                timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toLocaleString(),
+                mood: 'Excited'
+            }
+        ];
+    }
+    
+    if (journalEntries.length === 0) {
+        content.innerHTML = '<div class="no-entries">No journal entries found.</div>';
+    } else {
+        content.innerHTML = `
+            <div class="journal-entries">
+                ${journalEntries.map(entry => `
+                    <div class="journal-entry">
+                        <div class="journal-entry-header">
+                            <h4>${entry.title}</h4>
+                            <span class="journal-mood">${entry.mood}</span>
+                        </div>
+                        <div class="journal-entry-content">
+                            <p>${entry.content}</p>
+                        </div>
+                        <div class="journal-entry-footer">
+                            <span class="journal-timestamp">${entry.timestamp}</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    modal.style.display = 'block';
+}
+
+// Hide journal history modal
+function hideJournalHistoryModal() {
+    const modal = document.getElementById('journalHistoryModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Show check-in history modal
+function showCheckInHistoryModal() {
+    const modal = document.getElementById('checkInHistoryModal');
+    const content = document.getElementById('checkInHistoryContent');
+    
+    if (!modal || !content) return;
+    
+    // Get check-in history data from actual moodHistory array
+    let checkIns = [];
+    if (window.moodApp && window.moodApp.moodHistory && window.moodApp.moodHistory.length > 0) {
+        checkIns = window.moodApp.moodHistory;
+    } else {
+        // Mock data for demo
+        checkIns = [
+            {
+                id: 1,
+                mood: 'happy',
+                emoji: '😊',
+                emotions: ['joy', 'gratitude'],
+                location: 'school',
+                reasons: 'Had a great day teaching my students!',
+                journal: 'The students were so engaged today. It made me feel really proud.',
+                timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+            },
+            {
+                id: 2,
+                mood: 'calm',
+                emoji: '😌',
+                emotions: ['peace', 'contentment'],
+                location: 'home',
+                reasons: 'Finished all my lesson planning for the week.',
+                journal: 'Feeling organized and ready for the upcoming week.',
+                timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
+            },
+            {
+                id: 3,
+                mood: 'excited',
+                emoji: '🤩',
+                emotions: ['enthusiasm', 'anticipation'],
+                location: 'school',
+                reasons: 'New teaching materials arrived!',
+                journal: 'Can\'t wait to try out these new resources with my class.',
+                timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+            }
+        ];
+    }
+    
+    // Update the count display
+    const countElement = document.getElementById('teacherCheckInCount');
+    if (countElement) {
+        countElement.textContent = checkIns.length;
+    }
+    
+    // Generate HTML for check-in history
+    let html = '<div class="check-in-history">';
+    
+    if (checkIns.length === 0) {
+        html += '<div class="no-checkins">No check-ins yet. Start by checking in with your mood!</div>';
+    } else {
+        checkIns.forEach((checkIn, index) => {
+            const date = new Date(checkIn.timestamp);
+            const formattedDate = date.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            const formattedTime = date.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            html += `
+                <div class="check-in-item">
+                    <div class="check-in-header">
+                        <div class="check-in-mood">
+                            <span class="mood-emoji">${checkIn.emoji}</span>
+                            <span class="mood-text">${checkIn.mood.charAt(0).toUpperCase() + checkIn.mood.slice(1)}</span>
+                        </div>
+                        <div class="check-in-date">
+                            <div class="date">${formattedDate}</div>
+                            <div class="time">${formattedTime}</div>
+                        </div>
+                    </div>
+                    <div class="check-in-details">
+                        <div class="detail-section">
+                            <strong>Emotions:</strong> ${checkIn.emotions.map(e => e.charAt(0).toUpperCase() + e.slice(1)).join(', ')}
+                        </div>
+                        <div class="detail-section">
+                            <strong>Location:</strong> ${checkIn.location.charAt(0).toUpperCase() + checkIn.location.slice(1)}
+                        </div>
+                        ${checkIn.reasons ? `<div class="detail-section"><strong>Reasons:</strong> ${checkIn.reasons}</div>` : ''}
+                        ${checkIn.journal ? `<div class="detail-section"><strong>Journal:</strong> ${checkIn.journal}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    html += '</div>';
+    content.innerHTML = html;
+    
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+// Hide check-in history modal
+function hideCheckInHistoryModal() {
+    const modal = document.getElementById('checkInHistoryModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Analytics Modal Functions
+function showAnalyticsModal(type) {
+    const modalId = `${type}AnalyticsModal`;
+    const contentId = `${type}AnalyticsHistoryContent`;
+    const modal = document.getElementById(modalId);
+    const content = document.getElementById(contentId);
+    
+    if (!modal || !content) {
+        console.error(`Modal or content not found for type: ${type}`);
+        return;
+    }
+    
+    // Get mood check-in history based on type
+    const moodHistory = getAnalyticsMoodHistory(type);
+    
+    if (moodHistory.length === 0) {
+        content.innerHTML = `
+            <div class="no-checkins">
+                <p>No mood check-ins found for this ${type}.</p>
+            </div>
+        `;
+    } else {
+        content.innerHTML = `
+            <div class="check-in-history">
+                ${moodHistory.map(checkIn => `
+                    <div class="check-in-item">
+                        <div class="check-in-header">
+                            <div class="check-in-mood">
+                                <span class="mood-emoji">${checkIn.emoji}</span>
+                                <span class="mood-text">${checkIn.mood}</span>
+                            </div>
+                            <div class="check-in-date">
+                                <div class="date">${checkIn.date}</div>
+                                <div class="time">${checkIn.time}</div>
+                            </div>
+                        </div>
+                        <div class="check-in-details">
+                            ${checkIn.emotions ? `
+                                <div class="detail-section">
+                                    <strong>Emotions:</strong>
+                                    <span>${checkIn.emotions.join(', ')}</span>
+                                </div>
+                            ` : ''}
+                            ${checkIn.location ? `
+                                <div class="detail-section">
+                                    <strong>Location:</strong>
+                                    <span>${checkIn.location}</span>
+                                </div>
+                            ` : ''}
+                            ${checkIn.reasons && checkIn.reasons.length > 0 ? `
+                                <div class="detail-section">
+                                    <strong>Reasons:</strong>
+                                    <span>${checkIn.reasons.join(', ')}</span>
+                                </div>
+                            ` : ''}
+                            ${checkIn.notes ? `
+                                <div class="detail-section">
+                                    <strong>Notes:</strong>
+                                    <span>${checkIn.notes}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    modal.style.display = 'block';
+}
+
+function hideAnalyticsModal(type) {
+    const modalId = `${type}AnalyticsModal`;
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function getAnalyticsMoodHistory(type) {
+    // Get current user data
+    const currentUser = window.moodApp?.currentUser;
+    if (!currentUser) {
+        console.error('No current user found');
+        return [];
+    }
+    
+    // Mock mood history data for different analytics types
+    const mockMoodHistory = {
+        student: [
+            {
+                mood: 'Happy',
+                emoji: '😊',
+                emotions: ['Excited', 'Confident'],
+                location: 'School',
+                reasons: ['Friends', 'School Work'],
+                notes: 'Great day at school!',
+                date: '2024-01-15',
+                time: '09:30 AM'
+            },
+            {
+                mood: 'Calm',
+                emoji: '😌',
+                emotions: ['Peaceful', 'Content'],
+                location: 'Home',
+                reasons: ['Family', 'Sleep'],
+                notes: 'Relaxing evening at home',
+                date: '2024-01-14',
+                time: '07:45 PM'
+            },
+            {
+                mood: 'Excited',
+                emoji: '🤩',
+                emotions: ['Energetic', 'Optimistic'],
+                location: 'School',
+                reasons: ['Sports', 'Friends'],
+                notes: 'Won the basketball game!',
+                date: '2024-01-13',
+                time: '03:20 PM'
+            }
+        ],
+        grade: [
+            {
+                mood: 'Happy',
+                emoji: '😊',
+                emotions: ['Excited', 'Confident'],
+                location: 'School',
+                reasons: ['Friends', 'School Work'],
+                notes: 'Grade 5 student - Great day!',
+                date: '2024-01-15',
+                time: '09:30 AM'
+            },
+            {
+                mood: 'Tired',
+                emoji: '😴',
+                emotions: ['Exhausted', 'Sleepy'],
+                location: 'School',
+                reasons: ['Tests', 'School Work'],
+                notes: 'Grade 6 student - Long day of tests',
+                date: '2024-01-15',
+                time: '02:15 PM'
+            },
+            {
+                mood: 'Anxious',
+                emoji: '😰',
+                emotions: ['Worried', 'Nervous'],
+                location: 'School',
+                reasons: ['Tests', 'Teacher'],
+                notes: 'Grade 7 student - Math test tomorrow',
+                date: '2024-01-14',
+                time: '11:45 AM'
+            }
+        ],
+        house: [
+            {
+                mood: 'Happy',
+                emoji: '😊',
+                emotions: ['Excited', 'Proud'],
+                location: 'School',
+                reasons: ['Sports', 'Friends'],
+                notes: 'Mirfield house - Won the house competition!',
+                date: '2024-01-15',
+                time: '04:00 PM'
+            },
+            {
+                mood: 'Calm',
+                emoji: '😌',
+                emotions: ['Peaceful', 'Focused'],
+                location: 'School',
+                reasons: ['School Work', 'Teacher'],
+                notes: 'Sage house - Productive study session',
+                date: '2024-01-15',
+                time: '10:30 AM'
+            },
+            {
+                mood: 'Excited',
+                emoji: '🤩',
+                emotions: ['Energetic', 'Enthusiastic'],
+                location: 'School',
+                reasons: ['Sports', 'Classmates'],
+                notes: 'Bavin house - Great teamwork in PE',
+                date: '2024-01-14',
+                time: '01:20 PM'
+            }
+        ]
+    };
+    
+    return mockMoodHistory[type] || [];
+}
+
+// Get students for teacher based on house or grade
+async function getStudentsForTeacher(teacher, type, specificGrade = null) {
+    // This would normally make an API call, but for demo purposes we'll return mock data
+    const mockStudents = [
+        // Mirfield House Students (all grades 3-7)
+        { id: 1, first_name: 'Alice', surname: 'Johnson', house: 'Mirfield', class: 'Grade 3', last_mood: 'Happy', mood_emoji: '😊' },
+        { id: 2, first_name: 'Bob', surname: 'Smith', house: 'Mirfield', class: 'Grade 4', last_mood: 'Excited', mood_emoji: '🤩' },
+        { id: 3, first_name: 'Charlie', surname: 'Brown', house: 'Mirfield', class: 'Grade 5', last_mood: 'Calm', mood_emoji: '😌' },
+        { id: 4, first_name: 'David', surname: 'Lee', house: 'Mirfield', class: 'Grade 5', last_mood: 'Tired', mood_emoji: '😴' },
+        { id: 5, first_name: 'Emma', surname: 'Wilson', house: 'Mirfield', class: 'Grade 6', last_mood: 'Happy', mood_emoji: '😊' },
+        { id: 6, first_name: 'Frank', surname: 'Miller', house: 'Mirfield', class: 'Grade 6', last_mood: 'Anxious', mood_emoji: '😰' },
+        { id: 7, first_name: 'Grace', surname: 'Moore', house: 'Mirfield', class: 'Grade 7', last_mood: 'Sad', mood_emoji: '😢' },
+        { id: 8, first_name: 'Henry', surname: 'Taylor', house: 'Mirfield', class: 'Grade 7', last_mood: 'Angry', mood_emoji: '😠' },
+        
+        // Grade 5 Students from ALL Houses (for grade filtering demo)
+        { id: 9, first_name: 'Ivy', surname: 'Anderson', house: 'Bavin', class: 'Grade 5', last_mood: 'Confused', mood_emoji: '😕' },
+        { id: 10, first_name: 'Jack', surname: 'Thomas', house: 'Sage', class: 'Grade 5', last_mood: 'Happy', mood_emoji: '😊' },
+        { id: 11, first_name: 'Kate', surname: 'Jackson', house: 'Dodson', class: 'Grade 5', last_mood: 'Excited', mood_emoji: '🤩' },
+        { id: 12, first_name: 'Liam', surname: 'Davis', house: 'Bishops', class: 'Grade 5', last_mood: 'Tired', mood_emoji: '😴' },
+        
+        // Grade 6 Students from ALL Houses
+        { id: 13, first_name: 'Mia', surname: 'Garcia', house: 'Bavin', class: 'Grade 6', last_mood: 'Calm', mood_emoji: '😌' },
+        { id: 14, first_name: 'Noah', surname: 'Martinez', house: 'Sage', class: 'Grade 6', last_mood: 'Happy', mood_emoji: '😊' },
+        { id: 15, first_name: 'Olivia', surname: 'Rodriguez', house: 'Dodson', class: 'Grade 6', last_mood: 'Anxious', mood_emoji: '😰' },
+        { id: 16, first_name: 'Peter', surname: 'White', house: 'Bishops', class: 'Grade 6', last_mood: 'Sad', mood_emoji: '😢' },
+        
+        // Grade 7 Students from ALL Houses
+        { id: 17, first_name: 'Quinn', surname: 'Harris', house: 'Bavin', class: 'Grade 7', last_mood: 'Angry', mood_emoji: '😠' },
+        { id: 18, first_name: 'Ruby', surname: 'Clark', house: 'Sage', class: 'Grade 7', last_mood: 'Confused', mood_emoji: '😕' },
+        { id: 19, first_name: 'Sam', surname: 'Lewis', house: 'Dodson', class: 'Grade 7', last_mood: 'Happy', mood_emoji: '😊' },
+        { id: 20, first_name: 'Tina', surname: 'Walker', house: 'Bishops', class: 'Grade 7', last_mood: 'Excited', mood_emoji: '🤩' }
+    ];
+
+    // Filter students based on teacher's assignment and type
+    let filteredStudents = mockStudents;
+    
+    if (type === 'house' && teacher.house) {
+        // Show ALL students in the teacher's house (all grades 3-7)
+        filteredStudents = mockStudents.filter(student => 
+            student.house === teacher.house && 
+            ['Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7'].includes(student.class)
+        );
+    } else if (type === 'grade') {
+        if (specificGrade) {
+            // Show ALL students in the specific grade (all houses)
+            filteredStudents = mockStudents.filter(student => student.class === specificGrade);
+        } else {
+            // Fallback: get teacher's assigned grades
+            const assignments = await fetchTeacherAssignments(teacher.id);
+            if (assignments.length > 0) {
+                const teacherGrades = [...new Set(assignments.map(a => a.grade))];
+                filteredStudents = mockStudents.filter(student => teacherGrades.includes(student.class));
+            } else {
+                // Fallback to single grade from teacher data
+                if (teacher.class) {
+                    filteredStudents = mockStudents.filter(student => student.class === teacher.class);
+                }
+            }
+        }
+    }
+
+    return filteredStudents;
+}
+
+// Display students in the list
+function displayStudents(container, students) {
+    container.innerHTML = students.map(student => `
+        <div class="student-item">
+            <div class="student-avatar">
+                ${student.first_name.charAt(0)}${student.surname.charAt(0)}
+            </div>
+            <div class="student-details">
+                <div class="student-name">${student.first_name} ${student.surname}</div>
+                <div class="student-info">
+                    ${student.house} • ${student.class}
+                </div>
+            </div>
+            <div class="student-mood">
+                <span class="mood-emoji-small">${student.mood_emoji}</span>
+                <span>${student.last_mood}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Fetch teacher assignments from backend
+async function fetchTeacherAssignments(teacherId) {
+    try {
+        const response = await fetch(`/api/teacher/assignments/${teacherId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.assignments;
+        } else {
+            console.error('Failed to fetch teacher assignments:', data.error);
+            return [];
+        }
+    } catch (error) {
+        console.error('Error fetching teacher assignments:', error);
+        return [];
+    }
+}
+
+// Update teacher filters display
+async function updateTeacherFilters() {
+    console.log('updateTeacherFilters called');
+    
+    const teacherHouseDisplay = document.getElementById('teacherHouseDisplay');
+    const gradeButtonsContainer = document.getElementById('gradeButtonsContainer');
+    
+    console.log('Elements found:', { 
+        teacherHouseDisplay: !!teacherHouseDisplay, 
+        gradeButtonsContainer: !!gradeButtonsContainer 
+    });
+    
+    if (!teacherHouseDisplay || !gradeButtonsContainer) {
+        console.log('Teacher filter elements not found');
+        return;
+    }
+    
+    // Set default values based on teacher's assigned grade and house
+    if (window.moodApp && window.moodApp.currentUser) {
+        console.log('Current user found:', window.moodApp.currentUser);
+        const houseName = window.moodApp.currentUser.house || 'Unknown';
+        
+        // For demo purposes, let's use mock data instead of API call
+        // Demo teacher is from Mirfield (blue), but let's show how other houses would look
+        const mockAssignments = [
+            { grade: 'Grade 5', house: houseName },
+            { grade: 'Grade 6', house: houseName },
+            { grade: 'Grade 7', house: houseName }
+        ];
+        
+        // Get unique grades from assignments
+        const grades = [...new Set(mockAssignments.map(a => a.grade))];
+        
+        teacherHouseDisplay.textContent = `House: ${houseName}`;
+        
+        // Update house button color
+        const houseButton = document.getElementById('houseButton');
+        if (houseButton) {
+            houseButton.className = `student-info-button house-${houseName.toLowerCase()}`;
+        }
+        
+        // Create grade buttons dynamically
+        gradeButtonsContainer.innerHTML = '';
+        grades.forEach(grade => {
+            const gradeButton = document.createElement('button');
+            gradeButton.className = `student-info-button grade-button house-${houseName.toLowerCase()}`;
+            gradeButton.innerHTML = `
+                <span>Grade: ${grade}</span>
+                <span class="button-arrow">▼</span>
+            `;
+            gradeButton.dataset.grade = grade;
+            gradeButton.addEventListener('click', () => toggleStudentList('grade', grade));
+            gradeButtonsContainer.appendChild(gradeButton);
+        });
+        
+        console.log('Updated teacher filters with mock data:', { houseName, grades });
+    } else {
+        console.log('No teacher data available, showing default buttons');
+        // Set default values if no teacher data
+        teacherHouseDisplay.textContent = 'House: Mirfield';
+        
+        // Update house button color
+        const houseButton = document.getElementById('houseButton');
+        if (houseButton) {
+            houseButton.className = 'student-info-button house-mirfield';
+        }
+        
+        // Create default grade buttons for demo
+        const defaultGrades = ['Grade 5', 'Grade 6', 'Grade 7'];
+        gradeButtonsContainer.innerHTML = '';
+        defaultGrades.forEach(grade => {
+            const gradeButton = document.createElement('button');
+            gradeButton.className = 'student-info-button grade-button house-mirfield';
+            gradeButton.innerHTML = `
+                <span>Grade: ${grade}</span>
+                <span class="button-arrow">▼</span>
+            `;
+            gradeButton.dataset.grade = grade;
+            gradeButton.addEventListener('click', () => toggleStudentList('grade', grade));
+            gradeButtonsContainer.appendChild(gradeButton);
+        });
+    }
+}
+
+// Update teacher analytics with filters
+async function updateTeacherAnalyticsWithFilters(houseFilter, gradeFilter) {
+    try {
+        // Update student analytics
+        const studentAnalyticsContent = document.getElementById('studentAnalyticsContent');
+        if (studentAnalyticsContent) {
+            studentAnalyticsContent.innerHTML = `
+                <div style="text-align: center; color: #666;">
+                    <p>Filtered by: ${houseFilter} | ${gradeFilter}</p>
+                    <p>Loading analytics...</p>
+                </div>
+            `;
+        }
+
+        // Update grade analytics
+        const gradeAnalyticsContent = document.getElementById('gradeAnalyticsContent');
+        if (gradeAnalyticsContent) {
+            gradeAnalyticsContent.innerHTML = `
+                <div style="text-align: center; color: #666;">
+                    <p>Grade: ${gradeFilter}</p>
+                    <p>Loading analytics...</p>
+                </div>
+            `;
+        }
+
+        // Update house analytics
+        const houseAnalyticsContent = document.getElementById('houseAnalyticsContent');
+        if (houseAnalyticsContent) {
+            houseAnalyticsContent.innerHTML = `
+                <div style="text-align: center; color: #666;">
+                    <p>House: ${houseFilter}</p>
+                    <p>Loading analytics...</p>
+                </div>
+            `;
+        }
+
+        // Simulate loading analytics (replace with actual API calls)
+        setTimeout(() => {
+            updateAnalyticsDisplays(houseFilter, gradeFilter);
+        }, 1000);
+
+    } catch (error) {
+        console.error('Error updating teacher analytics with filters:', error);
+    }
+}
+
+// Update analytics displays with mock data
+function updateAnalyticsDisplays(houseFilter, gradeFilter) {
+    const moods = ['Happy', 'Excited', 'Calm', 'Tired', 'Anxious', 'Sad', 'Angry', 'Confused'];
+    const randomMood = moods[Math.floor(Math.random() * moods.length)];
+    const moodEmojis = {
+        'Happy': '😊', 'Excited': '🤩', 'Calm': '😌', 'Tired': '😴',
+        'Anxious': '😰', 'Sad': '😢', 'Angry': '😠', 'Confused': '😕'
+    };
+
+    // Update student analytics
+    const studentHighestMood = document.getElementById('studentHighestMood');
+    const studentAnalyticsContent = document.getElementById('studentAnalyticsContent');
+    if (studentHighestMood) {
+        studentHighestMood.textContent = randomMood;
+    }
+    if (studentAnalyticsContent) {
+        studentAnalyticsContent.innerHTML = `
+            <div style="text-align: center; color: #666;">
+                <p>Total students: ${Math.floor(Math.random() * 50) + 20}</p>
+                <p>Check-ins today: ${Math.floor(Math.random() * 30) + 10}</p>
+            </div>
+        `;
+    }
+
+    // Update grade analytics
+    const gradeHighestMood = document.getElementById('gradeHighestMood');
+    const gradeAnalyticsContent = document.getElementById('gradeAnalyticsContent');
+    if (gradeHighestMood) {
+        gradeHighestMood.textContent = randomMood;
+    }
+    if (gradeAnalyticsContent) {
+        gradeAnalyticsContent.innerHTML = `
+            <div style="text-align: center; color: #666;">
+                <p>Grade: ${gradeFilter}</p>
+                <p>Average mood: ${randomMood}</p>
+            </div>
+        `;
+    }
+
+    // Update house analytics
+    const houseHighestMood = document.getElementById('houseHighestMood');
+    const houseAnalyticsContent = document.getElementById('houseAnalyticsContent');
+    if (houseHighestMood) {
+        houseHighestMood.textContent = randomMood;
+    }
+    if (houseAnalyticsContent) {
+        houseAnalyticsContent.innerHTML = `
+            <div style="text-align: center; color: #666;">
+                <p>House: ${houseFilter}</p>
+                <p>Average mood: ${randomMood}</p>
+            </div>
+        `;
+    }
+
+    // Update mood emojis
+    const moodEmojiElements = document.querySelectorAll('.mood-emoji-large');
+    moodEmojiElements.forEach(element => {
+        element.textContent = moodEmojis[randomMood] || '😊';
+    });
+}
 
 // Initialize the app when the page loads
 document.addEventListener('DOMContentLoaded', () => {
@@ -2657,15 +3730,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Service Worker Registration for PWA
+// Service Worker Registration for PWA - DISABLED FOR DEVELOPMENT
+// Unregister any existing service workers to prevent caching issues
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then((registration) => {
-                console.log('SW registered: ', registration);
-            })
-            .catch((registrationError) => {
-                console.log('SW registration failed: ', registrationError);
-            });
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+            console.log('Unregistering service worker:', registration);
+            registration.unregister();
+        }
     });
 }
+
+// if ('serviceWorker' in navigator) {
+//     window.addEventListener('load', () => {
+//         navigator.serviceWorker.register('/sw.js')
+//             .then((registration) => {
+//                 console.log('SW registered: ', registration);
+//             })
+//             .catch((registrationError) => {
+//                 console.log('SW registration failed: ', registrationError);
+//             });
+//     });
+// }
