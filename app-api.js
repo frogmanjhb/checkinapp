@@ -3777,27 +3777,80 @@ class MoodCheckInApp {
     exportChartData() {
         try {
             const period = document.getElementById('chartPeriodSelect')?.value || 'daily';
-            const exportData = {
-                period: period,
-                timestamp: new Date().toISOString(),
-                charts: {
-                    housesMoodDistribution: this.housesMoodDistributionChart?.data,
-                    gradesMoodDistribution: this.gradesMoodDistributionChart?.data
-                }
-            };
-
-            // Create and download JSON file
-            const dataStr = JSON.stringify(exportData, null, 2);
-            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const timestamp = new Date().toISOString().split('T')[0];
+            
+            // Get chart data
+            const housesData = this.housesMoodDistributionChart?.data;
+            const gradesData = this.gradesMoodDistributionChart?.data;
+            
+            if (!housesData || !gradesData) {
+                this.showMessage('No chart data available to export', 'error');
+                return;
+            }
+            
+            // Create CSV content
+            let csvContent = '';
+            
+            // Add metadata
+            csvContent += `Mood Analytics Export\n`;
+            csvContent += `Period: ${period}\n`;
+            csvContent += `Export Date: ${timestamp}\n\n`;
+            
+            // Houses data
+            csvContent += `HOUSES MOOD DISTRIBUTION\n`;
+            csvContent += `House,`;
+            
+            // Add mood headers
+            housesData.datasets.forEach((dataset, index) => {
+                csvContent += dataset.label;
+                if (index < housesData.datasets.length - 1) csvContent += ',';
+            });
+            csvContent += '\n';
+            
+            // Add house data rows
+            housesData.labels.forEach((house, houseIndex) => {
+                csvContent += `${house},`;
+                housesData.datasets.forEach((dataset, datasetIndex) => {
+                    csvContent += dataset.data[houseIndex] || 0;
+                    if (datasetIndex < housesData.datasets.length - 1) csvContent += ',';
+                });
+                csvContent += '\n';
+            });
+            
+            csvContent += '\n';
+            
+            // Grades data
+            csvContent += `GRADES MOOD DISTRIBUTION\n`;
+            csvContent += `Grade,`;
+            
+            // Add mood headers
+            gradesData.datasets.forEach((dataset, index) => {
+                csvContent += dataset.label;
+                if (index < gradesData.datasets.length - 1) csvContent += ',';
+            });
+            csvContent += '\n';
+            
+            // Add grade data rows
+            gradesData.labels.forEach((grade, gradeIndex) => {
+                csvContent += `${grade},`;
+                gradesData.datasets.forEach((dataset, datasetIndex) => {
+                    csvContent += dataset.data[gradeIndex] || 0;
+                    if (datasetIndex < gradesData.datasets.length - 1) csvContent += ',';
+                });
+                csvContent += '\n';
+            });
+            
+            // Create and download CSV file
+            const dataBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(dataBlob);
             
             const link = document.createElement('a');
             link.href = url;
-            link.download = `mood-analytics-${period}-${new Date().toISOString().split('T')[0]}.json`;
+            link.download = `mood-analytics-${period}-${timestamp}.csv`;
             link.click();
             
             URL.revokeObjectURL(url);
-            this.showMessage('Chart data exported successfully!', 'success');
+            this.showMessage('Chart data exported as CSV successfully!', 'success');
         } catch (error) {
             console.error('Failed to export chart data:', error);
             this.showMessage('Failed to export chart data', 'error');
