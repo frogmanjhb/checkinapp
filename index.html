@@ -308,16 +308,18 @@
                     </div>
 
                     <!-- Teacher Mood Check-In Section -->
-                    <div class="teacher-checkin-section">
+                    <div class="checkin-section">
                         <div class="checkin-card">
-                            <h3>😊 Teacher Mood Check-In</h3>
+                            <h3>😊 Mood Check-In</h3>
                             
                             <div class="status-display" id="teacherStatusDisplay">
-                                <p class="status-message">How are you feeling today?</p>
+                                <div class="status-message">
+                                    <p>Ready to check in!</p>
+                                </div>
                             </div>
                             
                             <div class="checkin-buttons">
-                                <button id="teacherMoodBtn" class="btn-mood-checkin">
+                                <button id="teacherMoodCheckinBtn" class="btn-primary">
                                     😊 How are you feeling?
                                 </button>
                                 <button id="teacherJournalEntryBtn" class="btn-journal-entry">
@@ -588,64 +590,9 @@
                                 <input type="text" id="otherLocationText" placeholder="Enter location...">
                             </div>
                         </div>
-                        <div class="notes-section">
-                            <label for="moodNotes">Additional notes (optional):</label>
-                            <textarea id="moodNotes" placeholder="Tell us more about how you're feeling..."></textarea>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <div class="step-indicator">
-                            <span class="step completed">1</span>
-                            <span class="step completed">2</span>
-                            <span class="step active">3</span>
-                        </div>
-                        <div class="modal-footer-buttons">
-                            <button id="backToEmotions" class="btn-secondary">Back to Emotions</button>
-                            <button id="confirmMoodCheckin" class="btn-primary" disabled>Complete Check-In</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Journaling Modal -->
-            <div id="journalingModal" class="modal">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>📝 Quick Journal Entry</h3>
-                        <div id="ghostModeJournalingIndicator" class="ghost-mode-modal-indicator" style="display: none;">
-                            👻 Anonymous Mode
-                        </div>
-                        <button class="close-btn" id="closeJournalingModal">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="journaling-section">
-                            <h4>How are you feeling right now? Share a thought or two:</h4>
-                            <p class="journaling-hint">Write 1-2 sentences about your current thoughts or feelings. This is optional but can help you reflect on your day.</p>
-                            <textarea id="journalEntry" placeholder="I'm feeling... Today I... I'm grateful for... I'm looking forward to..." rows="4"></textarea>
-                            <div class="character-count">
-                                <span id="characterCount">0</span> characters
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <div class="modal-footer-buttons">
-                            <button id="skipJournaling" class="btn-secondary">Skip Journaling</button>
-                            <button id="saveJournalEntry" class="btn-primary">Save & Finish</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Emotional Context Modal (Teachers Only) -->
-            <div id="emotionalContextModal" class="modal">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>Why are you feeling this way?</h3>
-                        <button class="close-btn" id="closeEmotionalContextModal">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="emotional-context-selection">
-                            <h4>Select the main reason for your current emotions:</h4>
+                        <!-- Emotional Context Reasons (for teachers) -->
+                        <div class="emotional-context-section" id="emotionalContextSection" style="display: none;">
+                            <h4>Why are you feeling this way?</h4>
                             <div class="emotional-context-options">
                                 <button class="emotional-context-btn" data-context="academic">
                                     <span class="context-emoji">📚</span>
@@ -689,21 +636,50 @@
                                 </button>
                             </div>
                         </div>
+                        
                         <div class="notes-section">
-                            <label for="emotionalContextNotes">Additional notes (optional):</label>
-                            <textarea id="emotionalContextNotes" placeholder="Tell us more about what's affecting your mood..."></textarea>
+                            <label for="moodNotes">Additional notes (optional):</label>
+                            <textarea id="moodNotes" placeholder="Tell us more about how you're feeling..."></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <div class="step-indicator">
                             <span class="step completed">1</span>
                             <span class="step completed">2</span>
-                            <span class="step completed">3</span>
-                            <span class="step active">4</span>
+                            <span class="step active">3</span>
                         </div>
                         <div class="modal-footer-buttons">
-                            <button id="backToLocation" class="btn-secondary">Back to Location</button>
-                            <button id="confirmTeacherMoodCheckin" class="btn-primary" disabled>Complete Check-In</button>
+                            <button id="backToEmotions" class="btn-secondary">Back to Emotions</button>
+                            <button id="confirmMoodCheckin" class="btn-primary" disabled>Complete Check-In</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Journaling Modal -->
+            <div id="journalingModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>📝 Quick Journal Entry</h3>
+                        <div id="ghostModeJournalingIndicator" class="ghost-mode-modal-indicator" style="display: none;">
+                            👻 Anonymous Mode
+                        </div>
+                        <button class="close-btn" id="closeJournalingModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="journaling-section">
+                            <h4>How are you feeling right now? Share a thought or two:</h4>
+                            <p class="journaling-hint">Write 1-2 sentences about your current thoughts or feelings. This is optional but can help you reflect on your day.</p>
+                            <textarea id="journalEntry" placeholder="I'm feeling... Today I... I'm grateful for... I'm looking forward to..." rows="4"></textarea>
+                            <div class="character-count">
+                                <span id="characterCount">0</span> characters
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="modal-footer-buttons">
+                            <button id="skipJournaling" class="btn-secondary">Skip Journaling</button>
+                            <button id="saveJournalEntry" class="btn-primary">Save & Finish</button>
                         </div>
                     </div>
                 </div>
