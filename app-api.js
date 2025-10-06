@@ -365,6 +365,22 @@ class MoodCheckInApp {
             });
         }
 
+        // Teacher mood check-in button
+        const teacherMoodBtn = document.getElementById('teacherMoodBtn');
+        if (teacherMoodBtn) {
+            teacherMoodBtn.addEventListener('click', () => {
+                this.showTeacherMoodModal();
+            });
+        }
+
+        // Teacher journal entry button
+        const teacherJournalEntryBtn = document.getElementById('teacherJournalEntryBtn');
+        if (teacherJournalEntryBtn) {
+            teacherJournalEntryBtn.addEventListener('click', () => {
+                this.showJournalEntryModal();
+            });
+        }
+
         // Modal controls
         const closeMoodModal = document.getElementById('closeMoodModal');
         if (closeMoodModal) {
@@ -397,6 +413,74 @@ class MoodCheckInApp {
                 }
             });
         }
+
+        // Location modal controls
+        const proceedToLocation = document.getElementById('proceedToLocation');
+        if (proceedToLocation) {
+            proceedToLocation.addEventListener('click', () => {
+                this.showLocationModal();
+            });
+        }
+
+        const backToEmotions = document.getElementById('backToEmotions');
+        if (backToEmotions) {
+            backToEmotions.addEventListener('click', () => {
+                this.showMoodModal();
+                this.hideLocationModal();
+            });
+        }
+
+        const closeLocationModal = document.getElementById('closeLocationModal');
+        if (closeLocationModal) {
+            closeLocationModal.addEventListener('click', () => {
+                this.hideLocationModal();
+            });
+        }
+
+        // Location selection
+        document.querySelectorAll('.location-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.selectLocation(e.target.closest('.location-btn').dataset.location);
+            });
+        });
+
+        // Other location input
+        const otherLocationText = document.getElementById('otherLocationText');
+        if (otherLocationText) {
+            otherLocationText.addEventListener('input', (e) => {
+                this.updateLocationSelection();
+            });
+        }
+
+        // Emotional context modal controls (Teachers only)
+        const closeEmotionalContextModal = document.getElementById('closeEmotionalContextModal');
+        if (closeEmotionalContextModal) {
+            closeEmotionalContextModal.addEventListener('click', () => {
+                this.hideEmotionalContextModal();
+            });
+        }
+
+        const backToLocation = document.getElementById('backToLocation');
+        if (backToLocation) {
+            backToLocation.addEventListener('click', () => {
+                this.showLocationModal();
+                this.hideEmotionalContextModal();
+            });
+        }
+
+        const confirmTeacherMoodCheckin = document.getElementById('confirmTeacherMoodCheckin');
+        if (confirmTeacherMoodCheckin) {
+            confirmTeacherMoodCheckin.addEventListener('click', () => {
+                this.handleTeacherMoodCheckIn();
+            });
+        }
+
+        // Emotional context selection
+        document.querySelectorAll('.emotional-context-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.selectEmotionalContext(e.target.closest('.emotional-context-btn').dataset.context);
+            });
+        });
 
         // Journal entry modal controls
         const closeJournalEntryModal = document.getElementById('closeJournalEntryModal');
@@ -887,6 +971,9 @@ class MoodCheckInApp {
             teacherAssignedHouseElement.textContent = this.currentUser.house || 'Not assigned';
         }
         
+        // Update teacher status display
+        this.updateTeacherStatusDisplay();
+        
         this.updateTeacherView();
         this.updateTeacherAnalytics();
         this.updateTeacherJournalList();
@@ -964,6 +1051,8 @@ class MoodCheckInApp {
     showMoodModal() {
         document.getElementById('moodModal').classList.add('active');
         this.selectedMood = null;
+        this.selectedLocation = null;
+        this.selectedEmotionalContext = null;
         this.updateMoodButtons();
         document.getElementById('confirmMoodCheckin').disabled = true;
         document.getElementById('moodNotes').value = '';
@@ -977,6 +1066,12 @@ class MoodCheckInApp {
         this.selectedMood = { mood, emoji };
         this.updateMoodButtons();
         document.getElementById('confirmMoodCheckin').disabled = false;
+        
+        // For teachers, proceed to location modal after mood selection
+        if (this.currentUser.user_type === 'teacher') {
+            this.hideMoodModal();
+            this.showLocationModal();
+        }
     }
 
     updateMoodButtons() {
@@ -991,15 +1086,34 @@ class MoodCheckInApp {
     async handleMoodCheckIn() {
         if (!this.selectedMood || !this.currentUser) return;
 
+        // Check if location is required
+        if (!this.selectedLocation) {
+            this.showLocationModal();
+            return;
+        }
+
         const notes = document.getElementById('moodNotes').value;
+        const otherLocationText = document.getElementById('otherLocationText');
+        const location = this.selectedLocation === 'other' && otherLocationText ? 
+            otherLocationText.value.trim() : this.selectedLocation;
         
         try {
-            const response = await APIUtils.saveMoodCheckin({
+            const moodData = {
                 userId: this.currentUser.id,
                 mood: this.selectedMood.mood,
                 emoji: this.selectedMood.emoji,
-                notes: notes
-            });
+                notes: notes,
+                location: location
+            };
+
+            // Add emotional context for teachers
+            if (this.currentUser.user_type === 'teacher' && this.selectedEmotionalContext) {
+                moodData.emotional_context = this.selectedEmotionalContext;
+                const emotionalContextNotes = document.getElementById('emotionalContextNotes');
+                moodData.emotional_context_notes = emotionalContextNotes ? emotionalContextNotes.value : '';
+            }
+
+            const response = await APIUtils.saveMoodCheckin(moodData);
 
             if (response.success) {
                 const moodRecord = {
@@ -1010,6 +1124,7 @@ class MoodCheckInApp {
                 this.moodHistory.unshift(moodRecord);
                 this.allMoodHistory.unshift(moodRecord);
                 
+                this.hideLocationModal();
                 this.hideMoodModal();
                 this.updateStatusDisplay();
                 this.updateHistoryDisplay();
@@ -1018,6 +1133,7 @@ class MoodCheckInApp {
                     this.updateStudentAnalytics();
                 } else {
                     this.updateTeacherAnalytics();
+                    this.updateTeacherStatusDisplay();
                 }
                 
                 this.showMessage(`Mood recorded: ${this.selectedMood.emoji} ${this.selectedMood.mood}!`, 'success');
@@ -1138,8 +1254,105 @@ class MoodCheckInApp {
 
         const filteredHistory = this.getFilteredHistory(period, true);
         const moodCounts = this.getMoodCounts(filteredHistory);
+        
+        // Get emotional context data for teachers
+        const emotionalContextData = this.getEmotionalContextData(filteredHistory);
 
-        analyticsContent.innerHTML = this.generateAnalyticsHTML(moodCounts, period);
+        analyticsContent.innerHTML = this.generateTeacherAnalyticsHTML(moodCounts, emotionalContextData, period);
+    }
+
+    getEmotionalContextData(filteredHistory) {
+        const teacherEntries = filteredHistory.filter(entry => entry.user_type === 'teacher');
+        const contextCounts = {};
+        
+        teacherEntries.forEach(entry => {
+            if (entry.emotional_context) {
+                contextCounts[entry.emotional_context] = (contextCounts[entry.emotional_context] || 0) + 1;
+            }
+        });
+        
+        return contextCounts;
+    }
+
+    generateTeacherAnalyticsHTML(moodCounts, emotionalContextData, period) {
+        const totalEntries = Object.values(moodCounts).reduce((sum, count) => sum + count, 0);
+        
+        if (totalEntries === 0) {
+            return `
+                <div class="analytics-empty">
+                    <p>No mood data available for ${period} period.</p>
+                </div>
+            `;
+        }
+
+        const moodChart = Object.entries(moodCounts)
+            .map(([mood, count]) => {
+                const percentage = Math.round((count / totalEntries) * 100);
+                return `
+                    <div class="mood-bar">
+                        <span class="mood-emoji">${this.getMoodEmoji(mood)}</span>
+                        <span class="mood-label">${mood}</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${percentage}%"></div>
+                        </div>
+                        <span class="mood-count">${count} (${percentage}%)</span>
+                    </div>
+                `;
+            })
+            .join('');
+
+        const emotionalContextChart = Object.keys(emotionalContextData).length > 0 ? 
+            Object.entries(emotionalContextData)
+                .map(([context, count]) => {
+                    const percentage = Math.round((count / Object.values(emotionalContextData).reduce((sum, c) => sum + c, 0)) * 100);
+                    const contextInfo = this.getEmotionalContextInfo(context);
+                    return `
+                        <div class="context-bar">
+                            <span class="context-emoji">${contextInfo.emoji}</span>
+                            <span class="context-label">${contextInfo.label}</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${percentage}%"></div>
+                            </div>
+                            <span class="context-count">${count} (${percentage}%)</span>
+                        </div>
+                    `;
+                })
+                .join('') : '<p class="no-data">No emotional context data available</p>';
+
+        return `
+            <div class="analytics-summary">
+                <h4>Mood Distribution - ${period.charAt(0).toUpperCase() + period.slice(1)}</h4>
+                <div class="mood-chart">
+                    ${moodChart}
+                </div>
+                
+                <h4>Emotional Context Analysis</h4>
+                <div class="emotional-context-chart">
+                    ${emotionalContextChart}
+                </div>
+                
+                <div class="analytics-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Total Check-ins:</span>
+                        <span class="stat-value">${totalEntries}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    getEmotionalContextInfo(context) {
+        const contextMap = {
+            'academic': { emoji: '📚', label: 'Academic Pressure' },
+            'social': { emoji: '👥', label: 'Social Relationships' },
+            'home': { emoji: '🏠', label: 'Home Life' },
+            'health': { emoji: '💪', label: 'Health & Wellness' },
+            'future': { emoji: '🎯', label: 'Future Concerns' },
+            'financial': { emoji: '💰', label: 'Financial Stress' },
+            'physical': { emoji: '🏃', label: 'Physical Activity' },
+            'basic': { emoji: '🍽️', label: 'Basic Needs' }
+        };
+        return contextMap[context] || { emoji: '❓', label: context };
     }
 
     getFilteredHistory(period, allUsers = false) {
@@ -1636,6 +1849,188 @@ class MoodCheckInApp {
                 </p>
             </div>
         `;
+    }
+
+    // Teacher Mood Check-In Functions
+    showTeacherMoodModal() {
+        document.getElementById('moodModal').classList.add('active');
+        this.selectedMood = null;
+        this.selectedLocation = null;
+        this.selectedEmotionalContext = null;
+        this.updateMoodButtons();
+        document.getElementById('confirmMoodCheckin').disabled = true;
+        document.getElementById('moodNotes').value = '';
+    }
+
+    updateTeacherStatusDisplay() {
+        const teacherStatusDisplay = document.getElementById('teacherStatusDisplay');
+        if (!teacherStatusDisplay) return;
+
+        const today = new Date().toDateString();
+        const todayMood = this.moodHistory.find(entry => 
+            new Date(entry.timestamp).toDateString() === today && 
+            entry.user_type === 'teacher'
+        );
+
+        if (todayMood) {
+            teacherStatusDisplay.innerHTML = `
+                <p class="status-message">Today's mood: ${todayMood.emoji} ${todayMood.mood}</p>
+                <p class="status-time">Checked in at ${new Date(todayMood.timestamp).toLocaleTimeString()}</p>
+            `;
+        } else {
+            teacherStatusDisplay.innerHTML = `
+                <p class="status-message">How are you feeling today?</p>
+                <p class="status-time">No check-in yet today</p>
+            `;
+        }
+    }
+
+    showLocationModal() {
+        document.getElementById('locationModal').classList.add('active');
+        this.selectedLocation = null;
+        this.updateLocationButtons();
+        document.getElementById('confirmMoodCheckin').disabled = true;
+        document.getElementById('otherLocationInput').style.display = 'none';
+        document.getElementById('otherLocationText').value = '';
+    }
+
+    hideLocationModal() {
+        document.getElementById('locationModal').classList.remove('active');
+    }
+
+    selectLocation(location) {
+        this.selectedLocation = location;
+        this.updateLocationButtons();
+        
+        // Show/hide other location input
+        const otherLocationInput = document.getElementById('otherLocationInput');
+        if (location === 'other') {
+            otherLocationInput.style.display = 'block';
+        } else {
+            otherLocationInput.style.display = 'none';
+            this.updateLocationSelection();
+        }
+    }
+
+    updateLocationButtons() {
+        document.querySelectorAll('.location-btn').forEach(btn => {
+            btn.classList.remove('selected');
+            if (btn.dataset.location === this.selectedLocation) {
+                btn.classList.add('selected');
+            }
+        });
+    }
+
+    updateLocationSelection() {
+        const confirmBtn = document.getElementById('confirmMoodCheckin');
+        if (!confirmBtn) return;
+
+        const otherLocationText = document.getElementById('otherLocationText');
+        const hasLocation = this.selectedLocation && 
+            (this.selectedLocation !== 'other' || (otherLocationText && otherLocationText.value.trim()));
+        
+        if (this.currentUser.user_type === 'teacher') {
+            // For teachers, show emotional context modal
+            if (hasLocation) {
+                this.hideLocationModal();
+                this.showEmotionalContextModal();
+            }
+        } else {
+            // For students, enable confirm button
+            confirmBtn.disabled = !hasLocation;
+        }
+    }
+
+    showEmotionalContextModal() {
+        document.getElementById('emotionalContextModal').classList.add('active');
+        this.selectedEmotionalContext = null;
+        this.updateEmotionalContextButtons();
+        document.getElementById('confirmTeacherMoodCheckin').disabled = true;
+        document.getElementById('emotionalContextNotes').value = '';
+    }
+
+    hideEmotionalContextModal() {
+        document.getElementById('emotionalContextModal').classList.remove('active');
+    }
+
+    selectEmotionalContext(context) {
+        this.selectedEmotionalContext = context;
+        this.updateEmotionalContextButtons();
+        document.getElementById('confirmTeacherMoodCheckin').disabled = false;
+    }
+
+    updateEmotionalContextButtons() {
+        document.querySelectorAll('.emotional-context-btn').forEach(btn => {
+            btn.classList.remove('selected');
+            if (btn.dataset.context === this.selectedEmotionalContext) {
+                btn.classList.add('selected');
+            }
+        });
+    }
+
+    handleTeacherMoodCheckIn() {
+        if (!this.selectedMood || !this.selectedLocation || !this.selectedEmotionalContext) {
+            this.showMessage('Please complete all steps in the mood check-in process.', 'error');
+            return;
+        }
+
+        const otherLocationText = document.getElementById('otherLocationText');
+        const location = this.selectedLocation === 'other' && otherLocationText ? 
+            otherLocationText.value.trim() : this.selectedLocation;
+
+        const moodNotes = document.getElementById('moodNotes');
+        const emotionalContextNotes = document.getElementById('emotionalContextNotes');
+
+        const moodEntry = {
+            user_id: this.currentUser.id,
+            user_type: 'teacher',
+            mood: this.selectedMood.mood,
+            emoji: this.selectedMood.emoji,
+            location: location,
+            emotional_context: this.selectedEmotionalContext,
+            notes: moodNotes ? moodNotes.value : '',
+            emotional_context_notes: emotionalContextNotes ? emotionalContextNotes.value : '',
+            timestamp: new Date().toISOString()
+        };
+
+        // Save to database
+        this.saveMoodEntry(moodEntry);
+
+        // Add to local history
+        this.moodHistory.unshift(moodEntry);
+
+        // Update displays
+        this.updateTeacherStatusDisplay();
+        this.updateTeacherAnalytics();
+
+        // Close modals
+        this.hideEmotionalContextModal();
+        this.hideLocationModal();
+        this.hideMoodModal();
+
+        this.showMessage('Mood check-in completed successfully! 😊', 'success');
+    }
+
+    async saveMoodEntry(moodEntry) {
+        try {
+            const response = await fetch('/api/mood-entries', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(moodEntry)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to save mood entry');
+            }
+
+            const result = await response.json();
+            console.log('Mood entry saved:', result);
+        } catch (error) {
+            console.error('Error saving mood entry:', error);
+            this.showMessage('Failed to save mood entry. Please try again.', 'error');
+        }
     }
 }
 
