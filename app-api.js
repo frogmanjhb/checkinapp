@@ -1441,17 +1441,41 @@ class MoodCheckInApp {
         this.selectedReasons = []; // Reset selected reasons
         this.updateLocationButtons();
         
-        // Show/hide reason sections and other location input
+        // Show/hide reason sections and other location input based on user type
+        this.showReasonSectionForLocation(location);
+    }
+
+    showReasonSectionForLocation(location) {
+        const isTeacher = this.currentUser && this.currentUser.user_type === 'teacher';
+        
+        // Get all reason sections
         const schoolReasons = document.getElementById('schoolReasons');
         const homeReasons = document.getElementById('homeReasons');
+        const teacherSchoolReasons = document.getElementById('teacherSchoolReasons');
+        const teacherHomeReasons = document.getElementById('teacherHomeReasons');
         const otherLocationInput = document.getElementById('otherLocationInput');
         
-        if (schoolReasons) {
-            schoolReasons.style.display = location === 'school' ? 'block' : 'none';
+        // Hide all reason sections first
+        [schoolReasons, homeReasons, teacherSchoolReasons, teacherHomeReasons].forEach(section => {
+            if (section) section.style.display = 'none';
+        });
+        
+        // Show appropriate sections based on location and user type
+        if (location === 'school') {
+            if (isTeacher && teacherSchoolReasons) {
+                teacherSchoolReasons.style.display = 'block';
+            } else if (schoolReasons) {
+                schoolReasons.style.display = 'block';
+            }
+        } else if (location === 'home') {
+            if (isTeacher && teacherHomeReasons) {
+                teacherHomeReasons.style.display = 'block';
+            } else if (homeReasons) {
+                homeReasons.style.display = 'block';
+            }
         }
-        if (homeReasons) {
-            homeReasons.style.display = location === 'home' ? 'block' : 'none';
-        }
+        
+        // Show other location input for any user type
         if (otherLocationInput) {
             otherLocationInput.style.display = location === 'other' ? 'block' : 'none';
         }
