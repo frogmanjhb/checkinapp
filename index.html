@@ -307,6 +307,26 @@
                         <p class="current-time" id="teacherCurrentTime"></p>
                     </div>
 
+                    <!-- Teacher Mood Check-In -->
+                    <div class="teacher-checkin-section">
+                        <div class="checkin-card">
+                            <h3>😊 Teacher Mood Check-In</h3>
+                            
+                            <div class="teacher-status-display" id="teacherStatusDisplay">
+                                <p class="status-message">Ready for your daily check-in!</p>
+                            </div>
+                            
+                            <div class="teacher-checkin-buttons">
+                                <button id="teacherMoodCheckinBtn" class="btn-primary">
+                                    😊 How are you feeling?
+                                </button>
+                                <button id="teacherJournalEntryBtn" class="btn-journal-entry">
+                                    📝 Journal Entry
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Teacher Assignment Info -->
                     <div class="teacher-assignment-info">
                         <div class="assignment-card">
@@ -582,6 +602,78 @@
                         <div class="modal-footer-buttons">
                             <button id="backToEmotions" class="btn-secondary">Back to Emotions</button>
                             <button id="confirmMoodCheckin" class="btn-primary" disabled>Complete Check-In</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Teacher Emotional Context Modal -->
+            <div id="teacherEmotionalContextModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Why are you feeling this way?</h3>
+                        <button class="close-btn" id="closeTeacherEmotionalContextModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="emotional-context-selection">
+                            <h4>Select what's influencing your current emotions:</h4>
+                            <div class="emotional-context-options">
+                                <button class="emotional-context-btn" data-context="academic_pressure">
+                                    <span class="context-emoji">📚</span>
+                                    <span class="context-label">Academic Pressure</span>
+                                    <span class="context-description">School work, exams, grades</span>
+                                </button>
+                                <button class="emotional-context-btn" data-context="social_relationships">
+                                    <span class="context-emoji">👥</span>
+                                    <span class="context-label">Social Relationships</span>
+                                    <span class="context-description">Friends, family, peers</span>
+                                </button>
+                                <button class="emotional-context-btn" data-context="home_life">
+                                    <span class="context-emoji">🏠</span>
+                                    <span class="context-label">Home Life</span>
+                                    <span class="context-description">Family dynamics, living situation</span>
+                                </button>
+                                <button class="emotional-context-btn" data-context="health_wellness">
+                                    <span class="context-emoji">💪</span>
+                                    <span class="context-label">Health & Wellness</span>
+                                    <span class="context-description">Physical or mental health</span>
+                                </button>
+                                <button class="emotional-context-btn" data-context="future_concerns">
+                                    <span class="context-emoji">🎯</span>
+                                    <span class="context-label">Future Concerns</span>
+                                    <span class="context-description">Career, college, life decisions</span>
+                                </button>
+                                <button class="emotional-context-btn" data-context="financial_stress">
+                                    <span class="context-emoji">💰</span>
+                                    <span class="context-label">Financial Stress</span>
+                                    <span class="context-description">Money-related worries</span>
+                                </button>
+                                <button class="emotional-context-btn" data-context="physical_activity">
+                                    <span class="context-emoji">🏃</span>
+                                    <span class="context-label">Physical Activity</span>
+                                    <span class="context-description">Exercise, sports, energy levels</span>
+                                </button>
+                                <button class="emotional-context-btn" data-context="basic_needs">
+                                    <span class="context-emoji">🍽️</span>
+                                    <span class="context-label">Basic Needs</span>
+                                    <span class="context-description">Hunger, sleep, comfort</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="notes-section">
+                            <label for="teacherMoodNotes">Additional notes (optional):</label>
+                            <textarea id="teacherMoodNotes" placeholder="Tell us more about how you're feeling..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="step-indicator">
+                            <span class="step completed">1</span>
+                            <span class="step completed">2</span>
+                            <span class="step active">3</span>
+                        </div>
+                        <div class="modal-footer-buttons">
+                            <button id="backToTeacherEmotions" class="btn-secondary">Back to Emotions</button>
+                            <button id="confirmTeacherMoodCheckin" class="btn-primary" disabled>Complete Check-In</button>
                         </div>
                     </div>
                 </div>
