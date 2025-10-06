@@ -12,6 +12,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Its OK">
     <link rel="stylesheet" href="styles.css">
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div id="app">
@@ -51,6 +53,7 @@
                         <div class="demo-credentials">
                             <p><strong>Demo Credentials:</strong></p>
                             <p><strong>Student:</strong> demo@stpeters.co.za / password</p>
+                            <p><strong>Teacher:</strong> teacher@stpeters.co.za / teacher123!</p>
                             <p><strong>Director:</strong> jatlee@stpeters.co.za / director123!</p>
                         </div>
                     </div>
@@ -139,14 +142,25 @@
                                 <input type="text" id="teacherSurname" required placeholder="Enter your surname">
                             </div>
                             <div class="form-group">
-                                <label for="teacherGrade">Grade Assignment</label>
-                                <select id="teacherGrade" required>
-                                    <option value="">Select your assigned grade</option>
-                                    <option value="Grade 5">Grade 5</option>
-                                    <option value="Grade 6">Grade 6</option>
-                                    <option value="Grade 7">Grade 7</option>
-                                </select>
-                                <small class="form-hint">You will only be able to view data from this grade</small>
+                                <label for="teacherGrades">Grade Assignments</label>
+                                <div class="checkbox-group" id="teacherGrades">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="teacherGrade" value="Grade 5">
+                                        <span class="checkmark"></span>
+                                        Grade 5
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="teacherGrade" value="Grade 6">
+                                        <span class="checkmark"></span>
+                                        Grade 6
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="teacherGrade" value="Grade 7">
+                                        <span class="checkmark"></span>
+                                        Grade 7
+                                    </label>
+                                </div>
+                                <small class="form-hint">Select all grades you teach (you can select multiple)</small>
                             </div>
                             <div class="form-group">
                                 <label for="teacherHouse">House Assignment</label>
@@ -301,68 +315,154 @@
 
             <!-- Teacher Dashboard Screen -->
             <div id="teacherDashboardScreen" class="screen">
-                <div class="dashboard-container">
-                    <div class="welcome-section">
-                        <h2>Welcome, <span id="teacherName"></span>! 👨‍🏫</h2>
-                        <p class="current-time" id="teacherCurrentTime"></p>
+                <div class="teacher-dashboard-container">
+                    <!-- Header Section -->
+                    <div class="teacher-header">
+                        <h1>Welcome, <span id="teacherName"></span>! 👨‍🏫</h1>
+                        <div class="header-info">
+                            <span class="header-date" id="teacherCurrentDate"></span>
+                            <span class="header-time" id="teacherCurrentTime"></span>
+                        </div>
                     </div>
 
-                    <!-- Teacher Assignment Info -->
-                    <div class="teacher-assignment-info">
-                        <div class="assignment-card">
-                            <h3>📋 Your Assignment</h3>
-                            <div class="assignment-details">
-                                <div class="assignment-item">
-                                    <span class="assignment-label">Grade:</span>
-                                    <span class="assignment-value" id="teacherAssignedGrade">-</span>
+                    <!-- Main Dashboard Grid -->
+                    <div class="teacher-dashboard-grid">
+                        <!-- Teacher Mood Check-In Section -->
+                        <div class="teacher-mood-section">
+                            <div class="mood-checkin-card">
+                                <h3>Your Mood Check-in</h3>
+                                <div class="mood-status-grid">
+                                    <div class="mood-status-item clickable" id="lastMoodItem">
+                                        <span class="mood-label">Last mood</span>
+                                        <span class="mood-value" id="teacherLastMood">No mood recorded</span>
+                                        <span class="click-indicator">👆</span>
+                                    </div>
+                                    <div class="mood-status-item">
+                                        <span class="mood-label">Today's Check in</span>
+                                        <span class="mood-value" id="teacherTodayCount">0</span>
+                                    </div>
+                                    <div class="mood-status-item clickable" id="journalCountItem">
+                                        <span class="mood-label">Journal Entries</span>
+                                        <span class="mood-value" id="teacherJournalCount">0</span>
+                                        <span class="click-indicator">👆</span>
+                                    </div>
+                                    <div class="mood-status-item clickable" id="checkInHistoryItem">
+                                        <span class="mood-label">Check-in history</span>
+                                        <span class="mood-value" id="teacherCheckInCount">0</span>
+                                        <span class="click-indicator">👆</span>
+                                    </div>
                                 </div>
-                                <div class="assignment-item">
-                                    <span class="assignment-label">House:</span>
-                                    <span class="assignment-value" id="teacherAssignedHouse">-</span>
+                                <div class="mood-input-section">
+                                    <button class="mood-action-button" id="teacherMoodButton">
+                                        <span class="mood-button-icon">😊</span>
+                                        <span class="mood-button-text">How are you feeling?</span>
+                                        <span class="mood-button-arrow">→</span>
+                                    </button>
+                                    <button class="mood-action-button" id="teacherJournalButton">
+                                        <span class="mood-button-icon">📝</span>
+                                        <span class="mood-button-text">Journal Entry</span>
+                                        <span class="mood-button-arrow">→</span>
+                                    </button>
+                                </div> 
+                            </div>
+                        </div>
+
+                        <!-- Your Students Section -->
+                        <div class="student-filters-section">
+                            <div class="filters-card">
+                                <h3>Your Students</h3>
+                                <div class="student-info-display">
+                                    <button class="student-info-button" id="houseButton">
+                                        <span id="teacherHouseDisplay">House: Loading...</span>
+                                        <span class="button-arrow">▼</span>
+                                    </button>
+                                    <div id="gradeButtonsContainer">
+                                        <!-- Grade buttons will be dynamically created here -->
+                                    </div>
+                                </div>
+                                <div class="student-list-container" id="studentListContainer" style="display: none;">
+                                    <div class="student-list-header">
+                                        <h4 id="studentListTitle">Students</h4>
+                                        <button class="close-student-list" id="closeStudentList">&times;</button>
+                                    </div>
+                                    <div class="student-list" id="studentListContent">
+                                        <!-- Student list will be populated here -->
+                                    </div>
                                 </div>
                             </div>
-                            <p class="assignment-note">You can only view data from your assigned grade and house.</p>
+                        </div>
+
+                        <!-- Student Analytics Section -->
+                        <div class="student-analytics-section">
+                            <div class="analytics-card clickable" id="studentAnalyticsCard">
+                                <h3>Student Analytics</h3>
+                                <div class="analytics-mood-display">
+                                    <div class="mood-emoji-large">😊</div>
+                                    <div class="mood-info">
+                                        <span class="mood-label">Top mood</span>
+                                        <span class="mood-value" id="studentHighestMood">Happy</span>
+                                    </div>
+                                </div>
+                                <div class="analytics-content" id="studentAnalyticsContent">
+                                    <!-- Student analytics will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Grade Analytics Section -->
+                        <div class="grade-analytics-section">
+                            <div class="analytics-card clickable" id="gradeAnalyticsCard">
+                                <h3>Grade Analytics</h3>
+                                <div class="analytics-mood-display">
+                                    <div class="mood-emoji-large">😊</div>
+                                    <div class="mood-info">
+                                        <span class="mood-label">Top mood</span>
+                                        <span class="mood-value" id="gradeHighestMood">Happy</span>
+                                    </div>
+                                </div>
+                                <div class="analytics-content" id="gradeAnalyticsContent">
+                                    <!-- Grade analytics will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- House Analytics Section -->
+                        <div class="house-analytics-section">
+                            <div class="analytics-card clickable" id="houseAnalyticsCard">
+                                <h3>House Analytics</h3>
+                                <div class="analytics-mood-display">
+                                    <div class="mood-emoji-large">😊</div>
+                                    <div class="mood-info">
+                                        <span class="mood-label">Top mood</span>
+                                        <span class="mood-value" id="houseHighestMood">Happy</span>
+                                    </div>
+                                </div>
+                                <div class="analytics-content" id="houseAnalyticsContent">
+                                    <!-- House analytics will be populated here -->
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Teacher Analytics -->
-                    <div class="teacher-analytics">
-                        <h3>📊 Student Analytics</h3>
-                        <div class="analytics-tabs">
-                            <button class="analytics-tab active" data-period="daily">Daily</button>
-                            <button class="analytics-tab" data-period="weekly">Weekly</button>
-                            <button class="analytics-tab" data-period="monthly">Monthly</button>
-                            <button class="analytics-tab" data-period="yearly">Yearly</button>
+                    <!-- Hidden sections for detailed views (expandable) -->
+                    <div class="detailed-sections" id="detailedSections" style="display: none;">
+                        <!-- Teacher Journal Entry -->
+                        <div class="teacher-journal-section">
+                            <h3>📝 Your Journal Entries</h3>
+                            <div class="teacher-journal-list" id="teacherJournalList">
+                                <!-- Teacher journal entries will be populated here -->
+                            </div>
                         </div>
-                        <div class="analytics-content" id="teacherAnalytics">
-                            <!-- Teacher analytics will be populated here -->
-                        </div>
-                    </div>
 
-                    <!-- Grade Analytics (No Names) -->
-                    <div class="grade-analytics">
-                        <h3>📊 Grade Analytics (Anonymous)</h3>
-                        <div class="grade-analytics-content" id="gradeAnalytics">
-                            <p style="text-align: center; color: #666; padding: 2rem;">Loading your assigned grade analytics...</p>
-                        </div>
-                    </div>
-
-                    <!-- Teacher Journal Entry -->
-                    <div class="teacher-journal-section">
-                        <h3>📝 Your Journal Entries</h3>
-                        <div class="teacher-journal-list" id="teacherJournalList">
-                            <!-- Teacher journal entries will be populated here -->
-                        </div>
-                    </div>
-
-                    <!-- Student List -->
-                    <div class="students-section">
-                        <h3>👥 Students</h3>
-                        <div class="demo-notice" style="background: #e3f2fd; border: 1px solid #2196f3; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 14px; color: #1976d2;">
-                            <strong>📱 Demo Mode:</strong> Showing demo students for testing. In production, this would show all students from your school's database.
-                        </div>
-                        <div class="students-list" id="studentsList">
-                            <!-- Student list will be populated here -->
+                        <!-- Student List -->
+                        <div class="students-section">
+                            <h3>👥 Students</h3>
+                            <div class="demo-notice" style="background: #e3f2fd; border: 1px solid #2196f3; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 14px; color: #1976d2;">
+                                <strong>📱 Demo Mode:</strong> Showing demo students for testing. In production, this would show all students from your school's database.
+                            </div>
+                            <div class="students-list" id="studentsList">
+                                <!-- Student list will be populated here -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -370,75 +470,213 @@
 
             <!-- Director Dashboard Screen -->
             <div id="directorDashboardScreen" class="screen">
-                <div class="dashboard-container">
-                    <div class="welcome-section">
-                        <h2>Welcome, <span id="directorName"></span>! 👔</h2>
-                        <p class="current-time" id="directorCurrentTime"></p>
+                <div class="director-dashboard-container">
+                    <!-- Header Section -->
+                    <div class="director-header">
+                        <h1>Welcome, <span id="directorName"></span>! 👔</h1>
+                        <div class="header-info">
+                            <span class="header-date" id="directorCurrentDate"></span>
+                            <span class="header-time" id="directorCurrentTime"></span>
+                        </div>
                     </div>
 
-                    <!-- Director Controls -->
-                    <div class="director-controls">
-                        <div class="filter-section">
-                            <h3>🔍 System Overview</h3>
-                            <div class="filter-controls">
-                                <select id="directorUserTypeFilter">
-                                    <option value="">All Users</option>
-                                    <option value="student">Students Only</option>
-                                    <option value="teacher">Teachers Only</option>
-                                </select>
-                                <select id="directorClassFilter">
-                                    <option value="">All Grades</option>
-                                    <option value="Grade 5">Grade 5</option>
-                                    <option value="Grade 6">Grade 6</option>
-                                    <option value="Grade 7">Grade 7</option>
-                                </select>
-                                <select id="directorHouseFilter">
-                                    <option value="">All Houses</option>
-                                    <option value="Mirfield">Mirfield</option>
-                                    <option value="Bavin">Bavin</option>
-                                    <option value="Sage">Sage</option>
-                                    <option value="Bishops">Bishops</option>
-                                    <option value="Dodson">Dodson</option>
-                                </select>
+                    <!-- Modal Cards Grid -->
+                    <div class="director-modal-cards-grid">
+                        <!-- Grade 5 Modal Card -->
+                        <div class="director-modal-card" id="grade5Card">
+                            <div class="modal-card-header">
+                                <h3>🎓 Grade 5</h3>
+                                <span class="card-click-indicator">👆</span>
+                            </div>
+                            <div class="modal-card-content">
+                                <div class="top-mood-display">
+                                    <div class="mood-emoji-large" id="grade5TopMoodEmoji">😊</div>
+                                    <div class="mood-info">
+                                        <span class="mood-label">Top Mood</span>
+                                        <span class="mood-value" id="grade5TopMood">Happy</span>
+                                    </div>
+                                </div>
+                                <div class="student-count" id="grade5StudentCount">Loading...</div>
+                            </div>
+                        </div>
+
+                        <!-- Grade 6 Modal Card -->
+                        <div class="director-modal-card" id="grade6Card">
+                            <div class="modal-card-header">
+                                <h3>🎓 Grade 6</h3>
+                                <span class="card-click-indicator">👆</span>
+                            </div>
+                            <div class="modal-card-content">
+                                <div class="top-mood-display">
+                                    <div class="mood-emoji-large" id="grade6TopMoodEmoji">😊</div>
+                                    <div class="mood-info">
+                                        <span class="mood-label">Top Mood</span>
+                                        <span class="mood-value" id="grade6TopMood">Happy</span>
+                                    </div>
+                                </div>
+                                <div class="student-count" id="grade6StudentCount">Loading...</div>
+                            </div>
+                        </div>
+
+                        <!-- Grade 7 Modal Card -->
+                        <div class="director-modal-card" id="grade7Card">
+                            <div class="modal-card-header">
+                                <h3>🎓 Grade 7</h3>
+                                <span class="card-click-indicator">👆</span>
+                            </div>
+                            <div class="modal-card-content">
+                                <div class="top-mood-display">
+                                    <div class="mood-emoji-large" id="grade7TopMoodEmoji">😊</div>
+                                    <div class="mood-info">
+                                        <span class="mood-label">Top Mood</span>
+                                        <span class="mood-value" id="grade7TopMood">Happy</span>
+                                    </div>
+                                </div>
+                                <div class="student-count" id="grade7StudentCount">Loading...</div>
+                            </div>
+                        </div>
+
+                        <!-- Bavin House Modal Card -->
+                        <div class="director-modal-card" id="bavinCard">
+                            <div class="modal-card-header">
+                                <h3>🏠 Bavin House</h3>
+                                <span class="card-click-indicator">👆</span>
+                            </div>
+                            <div class="modal-card-content">
+                                <div class="top-mood-display">
+                                    <div class="mood-emoji-large" id="bavinTopMoodEmoji">😊</div>
+                                    <div class="mood-info">
+                                        <span class="mood-label">Top Mood</span>
+                                        <span class="mood-value" id="bavinTopMood">Happy</span>
+                                    </div>
+                                </div>
+                                <div class="student-count" id="bavinStudentCount">Loading...</div>
+                            </div>
+                        </div>
+
+                        <!-- Bishops House Modal Card -->
+                        <div class="director-modal-card" id="bishopsCard">
+                            <div class="modal-card-header">
+                                <h3>🏠 Bishops House</h3>
+                                <span class="card-click-indicator">👆</span>
+                            </div>
+                            <div class="modal-card-content">
+                                <div class="top-mood-display">
+                                    <div class="mood-emoji-large" id="bishopsTopMoodEmoji">😊</div>
+                                    <div class="mood-info">
+                                        <span class="mood-label">Top Mood</span>
+                                        <span class="mood-value" id="bishopsTopMood">Happy</span>
+                                    </div>
+                                </div>
+                                <div class="student-count" id="bishopsStudentCount">Loading...</div>
+                            </div>
+                        </div>
+
+                        <!-- Dodson House Modal Card -->
+                        <div class="director-modal-card" id="dodsonCard">
+                            <div class="modal-card-header">
+                                <h3>🏠 Dodson House</h3>
+                                <span class="card-click-indicator">👆</span>
+                            </div>
+                            <div class="modal-card-content">
+                                <div class="top-mood-display">
+                                    <div class="mood-emoji-large" id="dodsonTopMoodEmoji">😊</div>
+                                    <div class="mood-info">
+                                        <span class="mood-label">Top Mood</span>
+                                        <span class="mood-value" id="dodsonTopMood">Happy</span>
+                                    </div>
+                                </div>
+                                <div class="student-count" id="dodsonStudentCount">Loading...</div>
+                            </div>
+                        </div>
+
+                        <!-- Mirfield House Modal Card -->
+                        <div class="director-modal-card" id="mirfieldCard">
+                            <div class="modal-card-header">
+                                <h3>🏠 Mirfield House</h3>
+                                <span class="card-click-indicator">👆</span>
+                            </div>
+                            <div class="modal-card-content">
+                                <div class="top-mood-display">
+                                    <div class="mood-emoji-large" id="mirfieldTopMoodEmoji">😊</div>
+                                    <div class="mood-info">
+                                        <span class="mood-label">Top Mood</span>
+                                        <span class="mood-value" id="mirfieldTopMood">Happy</span>
+                                    </div>
+                                </div>
+                                <div class="student-count" id="mirfieldStudentCount">Loading...</div>
+                            </div>
+                        </div>
+
+                        <!-- Sage House Modal Card -->
+                        <div class="director-modal-card" id="sageCard">
+                            <div class="modal-card-header">
+                                <h3>🏠 Sage House</h3>
+                                <span class="card-click-indicator">👆</span>
+                            </div>
+                            <div class="modal-card-content">
+                                <div class="top-mood-display">
+                                    <div class="mood-emoji-large" id="sageTopMoodEmoji">😊</div>
+                                    <div class="mood-info">
+                                        <span class="mood-label">Top Mood</span>
+                                        <span class="mood-value" id="sageTopMood">Happy</span>
+                                    </div>
+                                </div>
+                                <div class="student-count" id="sageStudentCount">Loading...</div>
+                            </div>
+                        </div>
+
+                        <!-- Teachers Modal Card -->
+                        <div class="director-modal-card" id="teachersCard">
+                            <div class="modal-card-header">
+                                <h3>👨‍🏫 Teachers</h3>
+                                <span class="card-click-indicator">👆</span>
+                            </div>
+                            <div class="modal-card-content">
+                                <div class="top-mood-display">
+                                    <div class="mood-emoji-large" id="teachersTopMoodEmoji">😊</div>
+                                    <div class="mood-info">
+                                        <span class="mood-label">Top Mood</span>
+                                        <span class="mood-value" id="teachersTopMood">Happy</span>
+                                    </div>
+                                </div>
+                                <div class="teacher-count" id="teachersCount">Loading...</div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Director Analytics -->
-                    <div class="director-analytics">
-                        <h3>📊 System Analytics</h3>
-                        <div class="analytics-tabs">
-                            <button class="analytics-tab active" data-period="daily">Daily</button>
-                            <button class="analytics-tab" data-period="weekly">Weekly</button>
-                            <button class="analytics-tab" data-period="monthly">Monthly</button>
-                            <button class="analytics-tab" data-period="yearly">Yearly</button>
+                    <!-- Analytics Charts Section -->
+                    <div class="director-charts-section">
+                        <div class="charts-header">
+                            <h2>📊 Analytics Dashboard</h2>
+                            <div class="chart-controls">
+                                <button class="chart-export-btn" id="exportChartsBtn">📥 Export Data</button>
+                                <select class="chart-period-select" id="chartPeriodSelect">
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="analytics-content" id="directorAnalytics">
-                            <!-- Director analytics will be populated here -->
-                        </div>
-                    </div>
 
-                    <!-- All Users List -->
-                    <div class="users-section">
-                        <h3>👥 All Users</h3>
-                        <div class="users-list" id="allUsersList">
-                            <!-- All users list will be populated here -->
-                        </div>
-                    </div>
+                        <div class="charts-grid">
+                            <!-- Houses Mood Distribution Chart -->
+                            <div class="chart-container mood-distribution-large">
+                                <div class="chart-header">
+                                    <h3>Mood Distribution by House</h3>
+                                    <div class="chart-legend" id="housesMoodChartLegend"></div>
+                                </div>
+                                <canvas id="housesMoodDistributionChart"></canvas>
+                            </div>
 
-                    <!-- All Mood Data -->
-                    <div class="mood-data-section">
-                        <h3>😊 All Mood Check-ins</h3>
-                        <div class="mood-data-list" id="allMoodDataList">
-                            <!-- All mood data will be populated here -->
-                        </div>
-                    </div>
-
-                    <!-- All Journal Entries -->
-                    <div class="journal-entries-section">
-                        <h3>📝 All Journal Entries</h3>
-                        <div class="journal-entries-list" id="allJournalEntriesList">
-                            <!-- All journal entries will be populated here -->
+                            <!-- Grades Mood Distribution Chart -->
+                            <div class="chart-container mood-distribution-large">
+                                <div class="chart-header">
+                                    <h3>Mood Distribution by Grade</h3>
+                                    <div class="chart-legend" id="gradesMoodChartLegend"></div>
+                                </div>
+                                <canvas id="gradesMoodDistributionChart"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -563,6 +801,69 @@
                                     <span class="location-label">Other</span>
                                 </button>
                             </div>
+                            
+                            <!-- School Reasons -->
+                            <div class="reason-selection" id="schoolReasons" style="display: none;">
+                                <h4>What's affecting your mood at school?</h4>
+                                <div class="reason-toggles">
+                                    <label class="reason-toggle">
+                                        <input type="checkbox" value="friends">
+                                        <span class="toggle-text">👥 Friends</span>
+                                    </label>
+                                    <label class="reason-toggle">
+                                        <input type="checkbox" value="teacher">
+                                        <span class="toggle-text">👨‍🏫 Teacher</span>
+                                    </label>
+                                    <label class="reason-toggle">
+                                        <input type="checkbox" value="schoolwork">
+                                        <span class="toggle-text">📚 School Work</span>
+                                    </label>
+                                    <label class="reason-toggle">
+                                        <input type="checkbox" value="tests">
+                                        <span class="toggle-text">📝 Tests</span>
+                                    </label>
+                                    <label class="reason-toggle">
+                                        <input type="checkbox" value="sports">
+                                        <span class="toggle-text">⚽ Sports</span>
+                                    </label>
+                                    <label class="reason-toggle">
+                                        <input type="checkbox" value="classmates">
+                                        <span class="toggle-text">👫 Classmates</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- Home Reasons -->
+                            <div class="reason-selection" id="homeReasons" style="display: none;">
+                                <h4>What's affecting your mood at home?</h4>
+                                <div class="reason-toggles">
+                                    <label class="reason-toggle">
+                                        <input type="checkbox" value="parents">
+                                        <span class="toggle-text">👨‍👩‍👧‍👦 Parents</span>
+                                    </label>
+                                    <label class="reason-toggle">
+                                        <input type="checkbox" value="siblings">
+                                        <span class="toggle-text">👫 Siblings</span>
+                                    </label>
+                                    <label class="reason-toggle">
+                                        <input type="checkbox" value="family">
+                                        <span class="toggle-text">👨‍👩‍👧‍👦 Family</span>
+                                    </label>
+                                    <label class="reason-toggle">
+                                        <input type="checkbox" value="sleep">
+                                        <span class="toggle-text">😴 Sleep</span>
+                                    </label>
+                                    <label class="reason-toggle">
+                                        <input type="checkbox" value="food">
+                                        <span class="toggle-text">🍕 Food</span>
+                                    </label>
+                                    <label class="reason-toggle">
+                                        <input type="checkbox" value="health">
+                                        <span class="toggle-text">🏥 Health</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
                             <div class="other-location-input" id="otherLocationInput" style="display: none;">
                                 <label for="otherLocationText">Please specify:</label>
                                 <input type="text" id="otherLocationText" placeholder="Enter location...">
@@ -647,6 +948,110 @@
         <footer class="footer">
             <p>&copy; 2024 REACT - Mood Check-In System</p>
         </footer>
+    </div>
+
+    <!-- Mood Details Modal -->
+    <div id="moodDetailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Last Mood Check-in Details</h3>
+                <button class="modal-close" id="closeMoodDetailsModal">&times;</button>
+            </div>
+            <div class="modal-body" id="moodDetailsContent">
+                <!-- Mood details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Journal History Modal -->
+    <div id="journalHistoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Journal Entries</h3>
+                <button class="modal-close" id="closeJournalHistoryModal">&times;</button>
+            </div>
+            <div class="modal-body" id="journalHistoryContent">
+                <!-- Journal history will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Check-In History Modal -->
+    <div id="checkInHistoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Check-In History</h3>
+                <button class="modal-close" id="closeCheckInHistoryModal">&times;</button>
+            </div>
+            <div class="modal-body" id="checkInHistoryContent">
+                <!-- Check-in history will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Analytics History Modal -->
+    <div id="studentAnalyticsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Student Mood Check-in History</h3>
+                <button class="modal-close" id="closeStudentAnalyticsModal">&times;</button>
+            </div>
+            <div class="modal-body" id="studentAnalyticsHistoryContent">
+                <!-- Student mood history will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Grade Analytics History Modal -->
+    <div id="gradeAnalyticsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Grade Mood Check-in History</h3>
+                <button class="modal-close" id="closeGradeAnalyticsModal">&times;</button>
+            </div>
+            <div class="modal-body" id="gradeAnalyticsHistoryContent">
+                <!-- Grade mood history will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- House Analytics History Modal -->
+    <div id="houseAnalyticsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>House Mood Check-in History</h3>
+                <button class="modal-close" id="closeHouseAnalyticsModal">&times;</button>
+            </div>
+            <div class="modal-body" id="houseAnalyticsHistoryContent">
+                <!-- House mood history will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Director Group Detail Modal -->
+    <div id="directorGroupDetailModal" class="modal">
+        <div class="modal-content director-modal-large">
+            <div class="modal-header">
+                <h3 id="directorGroupDetailTitle">Group Details</h3>
+                <button class="modal-close" id="closeDirectorGroupDetailModal">&times;</button>
+            </div>
+            <div class="modal-body" id="directorGroupDetailContent">
+                <!-- Group details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Director Student Detail Modal -->
+    <div id="directorStudentDetailModal" class="modal">
+        <div class="modal-content director-modal-large">
+            <div class="modal-header">
+                <h3 id="directorStudentDetailTitle">Student Details</h3>
+                <button class="modal-close" id="closeDirectorStudentDetailModal">&times;</button>
+            </div>
+            <div class="modal-body" id="directorStudentDetailContent">
+                <!-- Student details will be populated here -->
+            </div>
+        </div>
     </div>
 
     <script src="app-api.js"></script>
