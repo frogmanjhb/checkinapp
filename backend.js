@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
@@ -40,6 +41,17 @@ app.use(helmet({
 }));
 app.use(cors());
 app.use(express.json());
+
+// Cache control headers to prevent caching during development
+app.use((req, res, next) => {
+  if (req.url.endsWith('.css') || req.url.endsWith('.js') || req.url.endsWith('.html')) {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+  next();
+});
+
 app.use(express.static('.'));
 
 // Initialize database tables
@@ -66,6 +78,18 @@ async function initializeDatabase() {
       )
     `);
 
+    // Create teacher_assignments table for multiple grade/house assignments
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS teacher_assignments (
+        id SERIAL PRIMARY KEY,
+        teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        grade VARCHAR(20),
+        house VARCHAR(20),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(teacher_id, grade, house)
+      )
+    `);
+
     // Update existing constraint to include 'director' (simple approach that works)
     try {
       await pool.query(`
@@ -88,6 +112,9 @@ async function initializeDatabase() {
         mood VARCHAR(20) NOT NULL,
         emoji VARCHAR(10) NOT NULL,
         notes TEXT,
+        location VARCHAR(50),
+        reasons TEXT[],
+        emotions TEXT[],
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -126,7 +153,7 @@ async function initializeDatabase() {
 
     console.log('✅ Database tables initialized successfully');
 
-    // Add demo user if it doesn't exist
+    // Add demo users if they don't exist
     const demoUserExists = await pool.query('SELECT id FROM users WHERE email = $1', ['demo@stpeters.co.za']);
     if (demoUserExists.rows.length === 0) {
       const hashedPassword = await bcrypt.hash('password', 10);
@@ -135,6 +162,28 @@ async function initializeDatabase() {
         VALUES ($1, $2, $3, $4, $5, $6, $7)
       `, ['Demo', 'Student', 'demo@stpeters.co.za', hashedPassword, 'student', 'Grade 6', 'Mirfield']);
       console.log('✅ Demo user created');
+    }
+
+    // Add additional demo students for Grade 5 and Grade 7
+    const additionalStudents = [
+      { name: 'Alice', surname: 'Johnson', email: 'alice.johnson@stpeters.co.za', grade: 'Grade 5', house: 'Mirfield' },
+      { name: 'Bob', surname: 'Smith', email: 'bob.smith@stpeters.co.za', grade: 'Grade 5', house: 'Mirfield' },
+      { name: 'Charlie', surname: 'Brown', email: 'charlie.brown@stpeters.co.za', grade: 'Grade 5', house: 'Mirfield' },
+      { name: 'Diana', surname: 'Davis', email: 'diana.davis@stpeters.co.za', grade: 'Grade 7', house: 'Mirfield' },
+      { name: 'Eve', surname: 'Wilson', email: 'eve.wilson@stpeters.co.za', grade: 'Grade 7', house: 'Mirfield' },
+      { name: 'Frank', surname: 'Miller', email: 'frank.miller@stpeters.co.za', grade: 'Grade 7', house: 'Mirfield' }
+    ];
+
+    for (const student of additionalStudents) {
+      const studentExists = await pool.query('SELECT id FROM users WHERE email = $1', [student.email]);
+      if (studentExists.rows.length === 0) {
+        const hashedPassword = await bcrypt.hash('password', 10);
+        await pool.query(`
+          INSERT INTO users (first_name, surname, email, password_hash, user_type, class, house)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, [student.name, student.surname, student.email, hashedPassword, 'student', student.grade, student.house]);
+        console.log(`✅ Demo student ${student.name} ${student.surname} (${student.grade}) created`);
+      }
     }
 
     // Add director user if it doesn't exist
@@ -154,6 +203,48 @@ async function initializeDatabase() {
       console.log('✅ Director user already exists');
     }
 
+    // Add demo teacher user if it doesn't exist
+    const teacherExists = await pool.query('SELECT id FROM users WHERE email = $1', ['teacher@stpeters.co.za']);
+    if (teacherExists.rows.length === 0) {
+      try {
+        const hashedPassword = await bcrypt.hash('teacher123!', 10);
+        const teacherResult = await pool.query(`
+          INSERT INTO users (first_name, surname, email, password_hash, user_type, class, house)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          RETURNING id
+        `, ['Demo', 'Teacher', 'teacher@stpeters.co.za', hashedPassword, 'teacher', 'Grade 6', 'Mirfield']);
+        
+        const teacherId = teacherResult.rows[0].id;
+        
+        // Add teacher assignments for multiple grades
+        await pool.query(`
+          INSERT INTO teacher_assignments (teacher_id, grade, house)
+          VALUES ($1, $2, $3), ($1, $4, $5), ($1, $6, $7)
+        `, [teacherId, 'Grade 5', 'Mirfield', 'Grade 6', 'Mirfield', 'Grade 7', 'Mirfield']);
+        
+        console.log('✅ Demo teacher user created with multiple grade assignments');
+      } catch (error) {
+        console.log('⚠️ Demo teacher user creation failed:', error.message);
+      }
+    } else {
+      console.log('✅ Demo teacher user already exists');
+      
+      // Ensure teacher has assignments in the new table
+      const teacherId = teacherExists.rows[0].id;
+      const assignmentsExist = await pool.query('SELECT id FROM teacher_assignments WHERE teacher_id = $1', [teacherId]);
+      if (assignmentsExist.rows.length === 0) {
+        try {
+          await pool.query(`
+            INSERT INTO teacher_assignments (teacher_id, grade, house)
+            VALUES ($1, $2, $3), ($1, $4, $5), ($1, $6, $7)
+          `, [teacherId, 'Grade 5', 'Mirfield', 'Grade 6', 'Mirfield', 'Grade 7', 'Mirfield']);
+          console.log('✅ Added teacher assignments for existing demo teacher');
+        } catch (error) {
+          console.log('⚠️ Failed to add teacher assignments:', error.message);
+        }
+      }
+    }
+
   } catch (error) {
     console.error('❌ Database initialization error:', error);
   }
@@ -168,7 +259,7 @@ app.post('/api/register', async (req, res) => {
   }
   
   try {
-    const { firstName, surname, email, password, userType, class: studentClass, house, grade } = req.body;
+    const { firstName, surname, email, password, userType, class: studentClass, house, grades } = req.body;
     
     // Validate required fields
     if (!firstName || !surname || !email || !password || !userType) {
@@ -181,8 +272,8 @@ app.post('/api/register', async (req, res) => {
     }
 
     // Validate teacher-specific fields
-    if (userType === 'teacher' && (!grade || !house)) {
-      return res.status(400).json({ success: false, error: 'Teachers must specify grade and house assignments' });
+    if (userType === 'teacher' && (!grades || !Array.isArray(grades) || grades.length === 0 || !house)) {
+      return res.status(400).json({ success: false, error: 'Teachers must specify at least one grade and house assignment' });
     }
 
     // Check if user already exists
@@ -195,12 +286,24 @@ app.post('/api/register', async (req, res) => {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
     
-    // Insert user - use grade for teachers, class for students
-    const userClass = userType === 'teacher' ? grade : studentClass;
+    // Insert user - use first grade for teachers, class for students
+    const userClass = userType === 'teacher' ? grades[0] : studentClass;
     const result = await pool.query(
       'INSERT INTO users (first_name, surname, email, password_hash, user_type, class, house) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, first_name, surname, email, user_type, class, house, created_at',
       [firstName, surname, email, passwordHash, userType, userClass, house]
     );
+    
+    const userId = result.rows[0].id;
+    
+    // If teacher, add all grade assignments
+    if (userType === 'teacher') {
+      for (const grade of grades) {
+        await pool.query(
+          'INSERT INTO teacher_assignments (teacher_id, grade, house) VALUES ($1, $2, $3)',
+          [userId, grade, house]
+        );
+      }
+    }
     
     res.status(201).json({ success: true, user: result.rows[0] });
   } catch (error) {
@@ -254,15 +357,16 @@ app.post('/api/login', async (req, res) => {
 // Mood check-in
 app.post('/api/mood-checkin', async (req, res) => {
   try {
-    const { userId, mood, emoji, notes } = req.body;
+    const { userId, mood, emoji, notes, location, reasons, emotions } = req.body;
+    
     
     if (!userId || !mood || !emoji) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
     const result = await pool.query(
-      'INSERT INTO mood_checkins (user_id, mood, emoji, notes) VALUES ($1, $2, $3, $4) RETURNING *',
-      [userId, mood, emoji, notes]
+      'INSERT INTO mood_checkins (user_id, mood, emoji, notes, location, reasons, emotions) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [userId, mood, emoji, notes, location, reasons || [], emotions || []]
     );
     
     res.status(201).json({ success: true, checkin: result.rows[0] });
@@ -364,6 +468,25 @@ app.get('/api/teacher/students/:teacherId', async (req, res) => {
     res.json({ success: true, students: result.rows, teacherAssignment: { grade: teacherGrade, house: teacherHouse } });
   } catch (error) {
     console.error('Teacher students list error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get teacher assignments (multiple grades/houses)
+app.get('/api/teacher/assignments/:teacherId', async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    
+    const result = await pool.query(`
+      SELECT grade, house 
+      FROM teacher_assignments 
+      WHERE teacher_id = $1 
+      ORDER BY grade, house
+    `, [teacherId]);
+    
+    res.json({ success: true, assignments: result.rows });
+  } catch (error) {
+    console.error('Teacher assignments error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
