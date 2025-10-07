@@ -4,9 +4,9 @@
   "description": "Mood check-in app with emoji-based feelings",
   "main": "index.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node backend.js",
     "build": "echo 'Build complete'",
-    "dev": "node server.js"
+    "dev": "node backend.js"
   },
   "keywords": ["mood", "checkin", "feelings", "emoji", "wellness"],
   "author": "Your Name",
