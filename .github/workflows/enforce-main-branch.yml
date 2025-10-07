@@ -1,0 +1,27 @@
+name: Enforce Main Branch Only
+
+on:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  enforce-main-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Enforce main branch only
+        run: |
+          echo "❌ Error: This repository only allows commits to the 'main' branch."
+          echo "   Current branch: ${{ github.ref_name }}"
+          echo "   Please switch to main branch and commit there instead."
+          echo ""
+          echo "   To switch to main: git checkout main"
+          echo "   To merge your changes: git merge ${{ github.ref_name }}"
+          echo "   Then push: git push origin main"
+          exit 1
