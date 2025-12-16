@@ -96,6 +96,11 @@ Create a `.env` file for production:
 ```
 REACT_APP_API_URL=https://your-api.com
 REACT_APP_ENVIRONMENT=production
+
+# Backend (Express + Postgres)
+# If you deploy `backend.js` (Node server), set a Postgres connection string:
+DATABASE_URL=postgresql://user:password@host:port/dbname
+DATABASE_SSL=true
 ```
 
 ## 📋 Pre-Deployment Checklist

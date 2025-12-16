@@ -22,6 +22,10 @@
             <div class="nav-container">
                 <h1 class="nav-title"><span id="moodEmoji" class="mood-emoji-animated">😊</span> REACT</h1>
                 <div class="nav-user" id="navUser" style="display: none;">
+                    <button id="messageCenterBtn" class="btn-message-center">
+                        💬 Message Center
+                        <span class="message-badge" id="navMessageBadge" style="display: none;">0</span>
+                    </button>
                     <span id="userName"></span>
                     <button id="logoutBtn" class="btn-secondary">Logout</button>
                 </div>
@@ -33,6 +37,7 @@
             <!-- Login Screen -->
             <div id="loginScreen" class="screen active">
                 <div class="login-container">
+                    <img src="images/SP Prep Schools Centred Logo-Colour_White txt (2).png" alt="SP Prep Schools Logo" class="login-logo">
                     <div class="login-card">
                         <h2>Welcome to REACT!</h2>
                         <p>The Mood Check-In and Well-Being System for Students and Teachers</p>
@@ -230,79 +235,110 @@
 
             <!-- Student Dashboard Screen -->
             <div id="studentDashboardScreen" class="screen">
-                <div class="dashboard-container">
-                    <div class="welcome-section">
-                        <h2>Welcome back, <span id="studentName"></span>! 👋</h2>
-                        <p class="current-time" id="currentTime"></p>
+                <div class="student-dashboard-container">
+                    <!-- Header -->
+                    <div class="student-header-card">
+                        <div class="student-header-main">
+                            <h2>Welcome back, <span id="studentName"></span>! 👋</h2>
+                            <p class="current-time" id="currentTime"></p>
+                        </div>
                     </div>
 
-                    <div class="checkin-section">
-                        <div class="checkin-card">
-                            <h3>😊 Mood Check-In</h3>
-                            
-                            <!-- Ghost Mode Toggle -->
-                            <div class="ghost-mode-toggle">
-                                <label class="toggle-container">
-                                    <input type="checkbox" id="ghostModeToggle">
-                                    <span class="toggle-slider"></span>
-                                    <span class="toggle-label">👻 Ghost Mode</span>
-                                </label>
-                                <div class="ghost-mode-info" id="ghostModeInfo">
-                                    <small>Your mood will be logged anonymously. Teachers can see the mood data but not your identity.</small>
+                    <!-- Bento Grid -->
+                    <div class="student-bento-grid">
+                        <!-- Check-in (compact) -->
+                        <section class="bento-card bento-checkin">
+                            <div class="bento-card-header">
+                                <h3>😊 Mood Check-In</h3>
+                            </div>
+                            <div class="bento-card-body">
+                                <div class="student-checkin-layout">
+                                    <div class="student-checkin-left">
+                                        <!-- Ghost Mode Toggle -->
+                                        <div class="ghost-mode-toggle">
+                                            <label class="toggle-container">
+                                                <input type="checkbox" id="ghostModeToggle">
+                                                <span class="toggle-slider"></span>
+                                                <span class="toggle-label">👻 Ghost Mode</span>
+                                            </label>
+                                            <div class="ghost-mode-info" id="ghostModeInfo">
+                                                <small>Your mood will be logged anonymously. Teachers can see the mood data but not your identity.</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="status-display" id="statusDisplay">
+                                            <div class="status-item">
+                                                <span class="status-label">Last Mood:</span>
+                                                <span class="status-value" id="lastMood">No mood recorded</span>
+                                            </div>
+                                            <div class="status-item">
+                                                <span class="status-label">Today's Check-ins:</span>
+                                                <span class="status-value" id="todayCount">0</span>
+                                            </div>
+                                            <div class="status-item" id="ghostModeStatus" style="display: none;">
+                                                <span class="status-label">Mode:</span>
+                                                <span class="status-value ghost-mode-indicator">👻 Anonymous</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="student-checkin-right">
+                                        <div class="action-buttons student-action-buttons">
+                                            <button id="moodCheckInBtn" class="btn-mood-checkin">
+                                                😊 How are you feeling?
+                                            </button>
+                                            <button id="journalEntryBtn" class="btn-journal-entry">
+                                                📝 Journal Entry
+                                            </button>
+                                            <button id="talkToTeacherBtn" class="btn-talk-to-teacher">
+                                                💬 Talk to a Teacher
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            
-                            <div class="status-display" id="statusDisplay">
-                                <div class="status-item">
-                                    <span class="status-label">Last Mood:</span>
-                                    <span class="status-value" id="lastMood">No mood recorded</span>
-                                </div>
-                                <div class="status-item">
-                                    <span class="status-label">Today's Check-ins:</span>
-                                    <span class="status-value" id="todayCount">0</span>
-                                </div>
-                                <div class="status-item" id="ghostModeStatus" style="display: none;">
-                                    <span class="status-label">Mode:</span>
-                                    <span class="status-value ghost-mode-indicator">👻 Anonymous</span>
+                        </section>
+
+                        <!-- Analytics -->
+                        <section class="bento-card bento-analytics">
+                            <div class="bento-card-header">
+                                <h3>📊 Your Mood Analytics</h3>
+                                <div class="analytics-tabs">
+                                    <button class="analytics-tab active" data-period="daily">Daily</button>
+                                    <button class="analytics-tab" data-period="weekly">Weekly</button>
+                                    <button class="analytics-tab" data-period="monthly">Monthly</button>
                                 </div>
                             </div>
-                        </div>
+                            <div class="bento-card-body">
+                                <div class="analytics-content" id="studentAnalytics">
+                                    <!-- Analytics will be populated here -->
+                                </div>
+                            </div>
+                        </section>
 
-                        <div class="action-buttons">
-                            <button id="moodCheckInBtn" class="btn-mood-checkin">
-                                😊 How are you feeling?
-                            </button>
-                            <button id="journalEntryBtn" class="btn-journal-entry">
-                                📝 Journal Entry
-                            </button>
-                        </div>
-                    </div>
+                        <!-- Recent Activity -->
+                        <section class="bento-card bento-history">
+                            <div class="bento-card-header">
+                                <h3>📊 Recent Activity</h3>
+                            </div>
+                            <div class="bento-card-body">
+                                <div class="history-list" id="historyList">
+                                    <!-- History items will be populated here -->
+                                </div>
+                            </div>
+                        </section>
 
-                    <!-- Student Analytics -->
-                    <div class="analytics-section">
-                        <h3>📊 Your Mood Analytics</h3>
-                        <div class="analytics-tabs">
-                            <button class="analytics-tab active" data-period="daily">Daily</button>
-                            <button class="analytics-tab" data-period="weekly">Weekly</button>
-                            <button class="analytics-tab" data-period="monthly">Monthly</button>
-                        </div>
-                        <div class="analytics-content" id="studentAnalytics">
-                            <!-- Analytics will be populated here -->
-                        </div>
-                    </div>
-
-                    <div class="history-section">
-                        <h3>📊 Recent Activity</h3>
-                        <div class="history-list" id="historyList">
-                            <!-- History items will be populated here -->
-                        </div>
-                    </div>
-
-                    <div class="journal-section">
-                        <h3>📝 Your Journal Entries</h3>
-                        <div class="journal-list" id="journalList">
-                            <!-- Journal entries will be populated here -->
-                        </div>
+                        <!-- Journal -->
+                        <section class="bento-card bento-journal">
+                            <div class="bento-card-header">
+                                <h3>📝 Your Journal Entries</h3>
+                            </div>
+                            <div class="bento-card-body">
+                                <div class="journal-list" id="journalList">
+                                    <!-- Journal entries will be populated here -->
+                                </div>
+                            </div>
+                        </section>
                     </div>
                 </div>
             </div>
@@ -316,6 +352,14 @@
                         <div class="header-info">
                             <span class="header-date" id="teacherCurrentDate"></span>
                             <span class="header-time" id="teacherCurrentTime"></span>
+                        </div>
+                    </div>
+                    <!-- Messages Notification Banner -->
+                    <div class="messages-notification-banner" id="teacherMessagesBanner" style="display: none;">
+                        <div class="notification-content">
+                            <span class="notification-icon">💬</span>
+                            <span class="notification-text">You have <span id="teacherUnreadCount">0</span> unread message(s)</span>
+                            <button class="notification-action-btn" id="teacherViewMessagesBtn">View Messages</button>
                         </div>
                     </div>
 
@@ -471,6 +515,14 @@
                         <div class="header-info">
                             <span class="header-date" id="directorCurrentDate"></span>
                             <span class="header-time" id="directorCurrentTime"></span>
+                        </div>
+                    </div>
+                    <!-- Messages Notification Banner -->
+                    <div class="messages-notification-banner" id="directorMessagesBanner" style="display: none;">
+                        <div class="notification-content">
+                            <span class="notification-icon">💬</span>
+                            <span class="notification-text">You have <span id="directorUnreadCount">0</span> unread message(s)</span>
+                            <button class="notification-action-btn" id="directorViewMessagesBtn">View Messages</button>
                         </div>
                     </div>
 
@@ -1014,6 +1066,68 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Talk to Teacher Modal -->
+            <div id="talkToTeacherModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>💬 Talk to a Teacher</h3>
+                        <button class="close-btn" id="closeTalkToTeacherModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="teacher-selection-section">
+                            <h4>Select a teacher to message:</h4>
+                            <div class="teacher-list" id="teacherList">
+                                <!-- Teachers will be populated here -->
+                                <p class="loading-text">Loading teachers...</p>
+                            </div>
+                            <div class="message-compose-section" id="messageComposeSection" style="display: none;">
+                                <h4>Your message:</h4>
+                                <textarea id="messageText" placeholder="Type your message here..." rows="5"></textarea>
+                                <div class="character-count">
+                                    <span id="messageCharacterCount">0</span> characters
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="modal-footer-buttons">
+                            <button id="cancelMessage" class="btn-secondary">Cancel</button>
+                            <button id="sendMessageBtn" class="btn-primary" disabled>Send Message</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages Modal (for teachers/directors) -->
+            <div id="messagesModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>💬 Messages</h3>
+                        <button class="close-btn" id="closeMessagesModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="messages-section" id="messagesSection">
+                            <!-- Messages will be populated here -->
+                            <p class="loading-text">Loading messages...</p>
+                        </div>
+                        <div class="message-reply-section" id="messageReplySection" style="display: none;">
+                            <h4>Reply to:</h4>
+                            <div class="message-thread-header" id="messageThreadHeader"></div>
+                            <textarea id="replyText" placeholder="Type your reply..." rows="4"></textarea>
+                            <div class="character-count">
+                                <span id="replyCharacterCount">0</span> characters
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="modal-footer-buttons">
+                            <button id="cancelReply" class="btn-secondary" style="display: none;">Cancel</button>
+                            <button id="sendReplyBtn" class="btn-primary" style="display: none;" disabled>Send Reply</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
 
         <!-- Footer -->
@@ -1122,6 +1236,36 @@
             </div>
             <div class="modal-body" id="directorStudentDetailContent">
                 <!-- Student details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Center Modal -->
+    <div id="messageCenterModal" class="modal">
+        <div class="modal-content message-center-modal">
+            <div class="modal-header">
+                <h3>💬 Message Center</h3>
+                <button class="close-btn" id="closeMessageCenterModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="message-center-container">
+                    <div class="conversations-list" id="conversationsList">
+                        <p class="loading-text">Loading conversations...</p>
+                    </div>
+                    <div class="conversation-view" id="conversationView" style="display: none;">
+                        <div class="conversation-header" id="conversationHeader">
+                            <button class="back-to-conversations-btn" id="backToConversationsBtn">← Back</button>
+                            <h4 id="conversationTitle">Conversation</h4>
+                        </div>
+                        <div class="conversation-messages" id="conversationMessages">
+                            <!-- Messages will be populated here -->
+                        </div>
+                        <div class="conversation-input">
+                            <textarea id="conversationReplyText" placeholder="Type your message..." rows="3"></textarea>
+                            <button id="sendConversationReplyBtn" class="btn-primary">Send</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

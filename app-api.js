@@ -94,6 +94,32 @@ class APIUtils {
     static async getTeacherStudents(teacherId) {
         return this.makeRequest(`/teacher/students/${teacherId}`);
     }
+
+    // Messaging methods
+    static async getTeachers() {
+        return this.makeRequest('/teachers');
+    }
+
+    static async sendMessage(fromUserId, toUserId, message) {
+        return this.makeRequest('/messages', {
+            method: 'POST',
+            body: JSON.stringify({ fromUserId, toUserId, message })
+        });
+    }
+
+    static async getMessages(userId) {
+        return this.makeRequest(`/messages/${userId}`);
+    }
+
+    static async markMessageAsRead(messageId) {
+        return this.makeRequest(`/messages/${messageId}/read`, {
+            method: 'PUT'
+        });
+    }
+
+    static async getUnreadCount(userId) {
+        return this.makeRequest(`/messages/${userId}/unread-count`);
+    }
 }
 
 // Security utility for password validation
@@ -311,6 +337,46 @@ class MoodCheckInApp {
             });
         }
 
+        // Message Center button
+        const messageCenterBtn = document.getElementById('messageCenterBtn');
+        if (messageCenterBtn) {
+            messageCenterBtn.addEventListener('click', () => {
+                this.showMessageCenter();
+            });
+        }
+
+        // Message Center modal controls
+        const closeMessageCenterModal = document.getElementById('closeMessageCenterModal');
+        if (closeMessageCenterModal) {
+            closeMessageCenterModal.addEventListener('click', () => {
+                this.hideMessageCenter();
+            });
+        }
+
+        const backToConversationsBtn = document.getElementById('backToConversationsBtn');
+        if (backToConversationsBtn) {
+            backToConversationsBtn.addEventListener('click', () => {
+                this.showConversationsList();
+            });
+        }
+
+        const sendConversationReplyBtn = document.getElementById('sendConversationReplyBtn');
+        if (sendConversationReplyBtn) {
+            sendConversationReplyBtn.addEventListener('click', () => {
+                this.handleConversationReply();
+            });
+        }
+
+        const conversationReplyText = document.getElementById('conversationReplyText');
+        if (conversationReplyText) {
+            conversationReplyText.addEventListener('input', (e) => {
+                const sendBtn = document.getElementById('sendConversationReplyBtn');
+                if (sendBtn) {
+                    sendBtn.disabled = !e.target.value.trim();
+                }
+            });
+        }
+
         // Mood check-in button
         const moodCheckInBtn = document.getElementById('moodCheckInBtn');
         if (moodCheckInBtn) {
@@ -324,6 +390,14 @@ class MoodCheckInApp {
         if (journalEntryBtn) {
             journalEntryBtn.addEventListener('click', () => {
                 this.showJournalEntryModal();
+            });
+        }
+
+        // Talk to teacher button
+        const talkToTeacherBtn = document.getElementById('talkToTeacherBtn');
+        if (talkToTeacherBtn) {
+            talkToTeacherBtn.addEventListener('click', () => {
+                this.showTalkToTeacherModal();
             });
         }
 
@@ -434,6 +508,85 @@ class MoodCheckInApp {
         if (journalEntryText) {
             journalEntryText.addEventListener('input', (e) => {
                 this.updateJournalCharacterCount(e.target.value);
+            });
+        }
+
+        // Talk to teacher modal controls
+        const closeTalkToTeacherModal = document.getElementById('closeTalkToTeacherModal');
+        if (closeTalkToTeacherModal) {
+            closeTalkToTeacherModal.addEventListener('click', () => {
+                this.hideTalkToTeacherModal();
+            });
+        }
+
+        const cancelMessage = document.getElementById('cancelMessage');
+        if (cancelMessage) {
+            cancelMessage.addEventListener('click', () => {
+                this.hideTalkToTeacherModal();
+            });
+        }
+
+        const sendMessageBtn = document.getElementById('sendMessageBtn');
+        if (sendMessageBtn) {
+            sendMessageBtn.addEventListener('click', () => {
+                this.handleSendMessage();
+            });
+        }
+
+        const messageText = document.getElementById('messageText');
+        if (messageText) {
+            messageText.addEventListener('input', (e) => {
+                const sendBtn = document.getElementById('sendMessageBtn');
+                if (sendBtn) {
+                    sendBtn.disabled = !e.target.value.trim() || !this.selectedTeacherId;
+                }
+            });
+        }
+
+        // Messages modal controls (for teachers/directors)
+        const closeMessagesModal = document.getElementById('closeMessagesModal');
+        if (closeMessagesModal) {
+            closeMessagesModal.addEventListener('click', () => {
+                this.hideMessagesModal();
+            });
+        }
+
+        const teacherViewMessagesBtn = document.getElementById('teacherViewMessagesBtn');
+        if (teacherViewMessagesBtn) {
+            teacherViewMessagesBtn.addEventListener('click', () => {
+                this.showMessagesModal();
+            });
+        }
+
+        const directorViewMessagesBtn = document.getElementById('directorViewMessagesBtn');
+        if (directorViewMessagesBtn) {
+            directorViewMessagesBtn.addEventListener('click', () => {
+                this.showMessagesModal();
+            });
+        }
+
+        const sendReplyBtn = document.getElementById('sendReplyBtn');
+        if (sendReplyBtn) {
+            sendReplyBtn.addEventListener('click', () => {
+                this.handleSendReply();
+            });
+        }
+
+        const cancelReply = document.getElementById('cancelReply');
+        if (cancelReply) {
+            cancelReply.addEventListener('click', () => {
+                document.getElementById('messageReplySection').style.display = 'none';
+                this.replyToUserId = null;
+            });
+        }
+
+        const replyText = document.getElementById('replyText');
+        if (replyText) {
+            replyText.addEventListener('input', (e) => {
+                const replyBtn = document.getElementById('sendReplyBtn');
+                if (replyBtn) {
+                    replyBtn.disabled = !e.target.value.trim();
+                }
             });
         }
 
@@ -1041,6 +1194,11 @@ class MoodCheckInApp {
         setTimeout(() => {
             updateTeacherFilters();
         }, 200);
+        
+        // Update unread message count
+        this.updateUnreadCount();
+        // Update nav unread count
+        this.updateNavUnreadCount();
     }
 
     showDirectorDashboard() {
@@ -1077,6 +1235,11 @@ class MoodCheckInApp {
         
         // Initialize charts
         this.initializeDirectorCharts();
+        
+        // Update unread message count
+        this.updateUnreadCount();
+        // Update nav unread count
+        this.updateNavUnreadCount();
     }
 
     async loadUserData() {
@@ -2444,6 +2607,552 @@ class MoodCheckInApp {
         }
     }
 
+    // Messaging functions
+    async showTalkToTeacherModal() {
+        const modal = document.getElementById('talkToTeacherModal');
+        if (!modal) return;
+
+        modal.classList.add('active');
+        
+        // Reset modal state
+        document.getElementById('messageComposeSection').style.display = 'none';
+        document.getElementById('messageText').value = '';
+        document.getElementById('sendMessageBtn').disabled = true;
+        this.selectedTeacherId = null;
+
+        // Load teachers
+        try {
+            const response = await APIUtils.getTeachers();
+            if (response.success) {
+                this.populateTeacherList(response.teachers);
+            } else {
+                const errorMsg = response.error || 'Unknown error';
+                document.getElementById('teacherList').innerHTML = `<p class="loading-text" style="color: #f44336;">Failed to load teachers: ${errorMsg}. Please try again.</p>`;
+                console.error('Failed to load teachers:', response.error);
+            }
+        } catch (error) {
+            console.error('Failed to load teachers:', error);
+            const errorMsg = error.message || 'Network error';
+            document.getElementById('teacherList').innerHTML = `<p class="loading-text" style="color: #f44336;">Failed to load teachers: ${errorMsg}. Please check your connection and try again.</p>`;
+        }
+    }
+
+    populateTeacherList(teachers) {
+        const teacherList = document.getElementById('teacherList');
+        if (!teacherList) return;
+
+        if (teachers.length === 0) {
+            teacherList.innerHTML = '<p class="loading-text">No teachers available.</p>';
+            return;
+        }
+
+        teacherList.innerHTML = teachers.map(teacher => `
+            <div class="teacher-item" data-teacher-id="${teacher.id}">
+                <h5>${teacher.first_name} ${teacher.surname}</h5>
+                <p>${teacher.class || 'Teacher'} - ${teacher.house || ''}</p>
+            </div>
+        `).join('');
+
+        // Add click handlers
+        teacherList.querySelectorAll('.teacher-item').forEach(item => {
+            item.addEventListener('click', () => {
+                // Remove previous selection
+                teacherList.querySelectorAll('.teacher-item').forEach(i => i.classList.remove('selected'));
+                // Select this teacher
+                item.classList.add('selected');
+                this.selectedTeacherId = parseInt(item.dataset.teacherId);
+                
+                // Show message compose section
+                document.getElementById('messageComposeSection').style.display = 'block';
+                
+                // Focus on message textarea
+                setTimeout(() => {
+                    document.getElementById('messageText').focus();
+                }, 100);
+            });
+        });
+    }
+
+    async handleSendMessage() {
+        if (!this.currentUser || !this.selectedTeacherId) {
+            this.showMessage('Please select a teacher first.', 'error');
+            return;
+        }
+
+        const messageText = document.getElementById('messageText').value.trim();
+        if (!messageText) {
+            this.showMessage('Please enter a message.', 'error');
+            return;
+        }
+
+        try {
+            const response = await APIUtils.sendMessage(
+                this.currentUser.id,
+                this.selectedTeacherId,
+                messageText
+            );
+
+            if (response.success) {
+                this.showMessage('Message sent successfully!', 'success');
+                document.getElementById('talkToTeacherModal').classList.remove('active');
+                document.getElementById('messageText').value = '';
+                document.getElementById('messageComposeSection').style.display = 'none';
+                this.selectedTeacherId = null;
+            } else {
+                this.showMessage('Failed to send message. Please try again.', 'error');
+            }
+        } catch (error) {
+            console.error('Send message error:', error);
+            this.showMessage('Failed to send message. Please try again.', 'error');
+        }
+    }
+
+    async loadMessages() {
+        if (!this.currentUser) return;
+
+        try {
+            const response = await APIUtils.getMessages(this.currentUser.id);
+            if (response.success) {
+                this.displayMessages(response.messages);
+            }
+        } catch (error) {
+            console.error('Failed to load messages:', error);
+        }
+    }
+
+    displayMessages(messages) {
+        const messagesSection = document.getElementById('messagesSection');
+        if (!messagesSection) return;
+
+        if (messages.length === 0) {
+            messagesSection.innerHTML = '<p class="loading-text">No messages yet.</p>';
+            return;
+        }
+
+        // Group messages by conversation (from_user_id)
+        const conversations = {};
+        messages.forEach(msg => {
+            const otherUserId = msg.from_user_id === this.currentUser.id ? msg.to_user_id : msg.from_user_id;
+            const otherUserName = msg.from_user_id === this.currentUser.id 
+                ? `${msg.to_first_name} ${msg.to_surname}`
+                : `${msg.from_first_name} ${msg.from_surname}`;
+            
+            if (!conversations[otherUserId]) {
+                conversations[otherUserId] = {
+                    otherUserId,
+                    otherUserName,
+                    messages: []
+                };
+            }
+            conversations[otherUserId].messages.push(msg);
+        });
+
+        // Sort conversations by most recent message
+        const sortedConversations = Object.values(conversations).sort((a, b) => {
+            const aLatest = new Date(a.messages[a.messages.length - 1].timestamp);
+            const bLatest = new Date(b.messages[b.messages.length - 1].timestamp);
+            return bLatest - aLatest;
+        });
+
+        messagesSection.innerHTML = sortedConversations.map(conv => {
+            const latestMsg = conv.messages[conv.messages.length - 1];
+            const unreadCount = conv.messages.filter(m => !m.is_read && m.to_user_id === this.currentUser.id).length;
+            
+            return `
+                <div class="message-item ${unreadCount > 0 ? 'unread' : ''}" data-user-id="${conv.otherUserId}">
+                    <div class="message-item-header">
+                        <span class="message-item-from">${conv.otherUserName}</span>
+                        <span class="message-item-time">${new Date(latestMsg.timestamp).toLocaleString()}</span>
+                    </div>
+                    <div class="message-item-content">${latestMsg.message}</div>
+                    ${unreadCount > 0 ? `<div style="color: #f44336; font-size: 0.85rem; margin-top: 0.5rem;">${unreadCount} unread</div>` : ''}
+                    <div class="message-item-actions">
+                        <button class="message-reply-btn" data-user-id="${conv.otherUserId}" data-user-name="${conv.otherUserName}">Reply</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Add reply button handlers
+        messagesSection.querySelectorAll('.message-reply-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const userId = parseInt(btn.dataset.userId);
+                const userName = btn.dataset.userName;
+                this.showReplySection(userId, userName);
+            });
+        });
+    }
+
+    showReplySection(userId, userName) {
+        document.getElementById('messageReplySection').style.display = 'block';
+        document.getElementById('messageThreadHeader').textContent = `Message from ${userName}`;
+        document.getElementById('replyText').value = '';
+        document.getElementById('cancelReply').style.display = 'inline-block';
+        document.getElementById('sendReplyBtn').style.display = 'inline-block';
+        this.replyToUserId = userId;
+        
+        setTimeout(() => {
+            document.getElementById('replyText').focus();
+        }, 100);
+    }
+
+    async handleSendReply() {
+        if (!this.currentUser || !this.replyToUserId) return;
+
+        const replyText = document.getElementById('replyText').value.trim();
+        if (!replyText) {
+            this.showMessage('Please enter a reply.', 'error');
+            return;
+        }
+
+        try {
+            const response = await APIUtils.sendMessage(
+                this.currentUser.id,
+                this.replyToUserId,
+                replyText
+            );
+
+            if (response.success) {
+                this.showMessage('Reply sent successfully!', 'success');
+                document.getElementById('messageReplySection').style.display = 'none';
+                document.getElementById('replyText').value = '';
+                document.getElementById('cancelReply').style.display = 'none';
+                document.getElementById('sendReplyBtn').style.display = 'none';
+                this.replyToUserId = null;
+                
+                // Reload messages
+                await this.loadMessages();
+                
+                // Update unread count (both navbar badge and dashboard banners)
+                await this.updateNavUnreadCount();
+                await this.updateUnreadCount();
+            } else {
+                this.showMessage('Failed to send reply. Please try again.', 'error');
+            }
+        } catch (error) {
+            console.error('Send reply error:', error);
+            this.showMessage('Failed to send reply. Please try again.', 'error');
+        }
+    }
+
+    async updateUnreadCount() {
+        if (!this.currentUser) return;
+
+        try {
+            const response = await APIUtils.getUnreadCount(this.currentUser.id);
+            if (response.success) {
+                const count = response.count;
+                const bannerId = this.currentUser.user_type === 'teacher' ? 'teacherMessagesBanner' : 'directorMessagesBanner';
+                const countId = this.currentUser.user_type === 'teacher' ? 'teacherUnreadCount' : 'directorUnreadCount';
+                
+                const banner = document.getElementById(bannerId);
+                const countElement = document.getElementById(countId);
+                
+                if (banner && countElement) {
+                    countElement.textContent = count;
+                    banner.style.display = count > 0 ? 'block' : 'none';
+                }
+            }
+        } catch (error) {
+            console.error('Failed to update unread count:', error);
+        }
+    }
+
+    showMessagesModal() {
+        const modal = document.getElementById('messagesModal');
+        if (!modal) return;
+
+        modal.classList.add('active');
+        this.loadMessages();
+    }
+
+    hideMessagesModal() {
+        const modal = document.getElementById('messagesModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+        document.getElementById('messageReplySection').style.display = 'none';
+        this.replyToUserId = null;
+    }
+
+    hideTalkToTeacherModal() {
+        const modal = document.getElementById('talkToTeacherModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+        document.getElementById('messageComposeSection').style.display = 'none';
+        document.getElementById('messageText').value = '';
+        this.selectedTeacherId = null;
+    }
+
+    // Message Center functions
+    async showMessageCenter() {
+        const modal = document.getElementById('messageCenterModal');
+        if (!modal) {
+            console.error('Message center modal not found in DOM');
+            return;
+        }
+
+        console.log('Opening message center...');
+        modal.classList.add('active');
+        this.showConversationsList();
+        await this.loadConversations();
+        await this.updateNavUnreadCount();
+    }
+
+    hideMessageCenter() {
+        const modal = document.getElementById('messageCenterModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+        this.showConversationsList();
+        this.currentConversationUserId = null;
+    }
+
+    showConversationsList() {
+        const conversationsList = document.getElementById('conversationsList');
+        const conversationView = document.getElementById('conversationView');
+        if (conversationsList) conversationsList.style.display = 'block';
+        if (conversationView) conversationView.style.display = 'none';
+    }
+
+    async loadConversations() {
+        if (!this.currentUser) return;
+
+        const conversationsList = document.getElementById('conversationsList');
+        if (!conversationsList) return;
+
+        try {
+            const response = await APIUtils.getMessages(this.currentUser.id);
+            if (response.success) {
+                this.displayConversations(response.messages);
+            } else {
+                conversationsList.innerHTML = '<p class="loading-text" style="color: #f44336;">Failed to load conversations. Please try again.</p>';
+            }
+        } catch (error) {
+            console.error('Failed to load conversations:', error);
+            conversationsList.innerHTML = '<p class="loading-text" style="color: #f44336;">Failed to load conversations. Please check your connection.</p>';
+        }
+    }
+
+    displayConversations(messages) {
+        const conversationsList = document.getElementById('conversationsList');
+        if (!conversationsList) return;
+
+        if (messages.length === 0) {
+            conversationsList.innerHTML = '<p class="loading-text">No conversations yet.</p>';
+            return;
+        }
+
+        // Group messages by conversation (other user)
+        const conversations = {};
+        messages.forEach(msg => {
+            const otherUserId = msg.from_user_id === this.currentUser.id ? msg.to_user_id : msg.from_user_id;
+            const otherUserName = msg.from_user_id === this.currentUser.id 
+                ? `${msg.to_first_name} ${msg.to_surname}`
+                : `${msg.from_first_name} ${msg.from_surname}`;
+            const otherUserType = msg.from_user_id === this.currentUser.id 
+                ? msg.to_user_type
+                : msg.from_user_type;
+            
+            if (!conversations[otherUserId]) {
+                conversations[otherUserId] = {
+                    otherUserId,
+                    otherUserName,
+                    otherUserType,
+                    messages: [],
+                    unreadCount: 0
+                };
+            }
+            conversations[otherUserId].messages.push(msg);
+            
+            // Count unread messages
+            if (!msg.is_read && msg.to_user_id === this.currentUser.id) {
+                conversations[otherUserId].unreadCount++;
+            }
+        });
+
+        // Sort conversations by most recent message
+        const sortedConversations = Object.values(conversations).sort((a, b) => {
+            const aLatest = new Date(a.messages[a.messages.length - 1].timestamp);
+            const bLatest = new Date(b.messages[b.messages.length - 1].timestamp);
+            return bLatest - aLatest;
+        });
+
+        conversationsList.innerHTML = sortedConversations.map(conv => {
+            const latestMsg = conv.messages[conv.messages.length - 1];
+            const isUnread = conv.unreadCount > 0;
+            const preview = latestMsg.message.length > 50 
+                ? latestMsg.message.substring(0, 50) + '...'
+                : latestMsg.message;
+            const timeAgo = this.getTimeAgo(new Date(latestMsg.timestamp));
+            
+            return `
+                <div class="conversation-item ${isUnread ? 'unread' : ''}" data-user-id="${conv.otherUserId}">
+                    <div class="conversation-item-header">
+                        <span class="conversation-item-name">${conv.otherUserName}</span>
+                        <span class="conversation-item-time">${timeAgo}</span>
+                    </div>
+                    <div class="conversation-item-preview">${preview}</div>
+                    ${isUnread ? `<span class="conversation-item-unread">${conv.unreadCount} unread</span>` : ''}
+                </div>
+            `;
+        }).join('');
+
+        // Add click handlers
+        conversationsList.querySelectorAll('.conversation-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const userId = parseInt(item.dataset.userId);
+                this.showConversation(userId);
+            });
+        });
+    }
+
+    async showConversation(userId) {
+        if (!this.currentUser) return;
+
+        // Mark conversation item as active
+        document.querySelectorAll('.conversation-item').forEach(item => {
+            item.classList.remove('active');
+            if (parseInt(item.dataset.userId) === userId) {
+                item.classList.add('active');
+            }
+        });
+
+        // Show conversation view
+        document.getElementById('conversationsList').style.display = 'block';
+        document.getElementById('conversationView').style.display = 'flex';
+
+        this.currentConversationUserId = userId;
+
+        try {
+            const response = await APIUtils.getMessages(this.currentUser.id);
+            if (response.success) {
+                // Filter messages for this conversation
+                const conversationMessages = response.messages.filter(msg => 
+                    (msg.from_user_id === userId && msg.to_user_id === this.currentUser.id) ||
+                    (msg.from_user_id === this.currentUser.id && msg.to_user_id === userId)
+                ).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+                // Get other user's name
+                const firstMsg = conversationMessages[0];
+                const otherUserName = firstMsg.from_user_id === userId 
+                    ? `${firstMsg.from_first_name} ${firstMsg.from_surname}`
+                    : `${firstMsg.to_first_name} ${firstMsg.to_surname}`;
+
+                document.getElementById('conversationTitle').textContent = otherUserName;
+                this.displayConversationMessages(conversationMessages, userId);
+
+                // Mark messages as read
+                const unreadMessages = conversationMessages.filter(msg => !msg.is_read && msg.to_user_id === this.currentUser.id);
+                if (unreadMessages.length > 0) {
+                    // Mark all unread messages as read
+                    await Promise.all(unreadMessages.map(msg => 
+                        APIUtils.markMessageAsRead(msg.id).catch(err => console.error('Failed to mark as read:', err))
+                    ));
+                    
+                    // Update UI after marking as read
+                    await this.updateNavUnreadCount();
+                    await this.updateUnreadCount(); // Update dashboard banners
+                }
+
+                // Update conversations list to reflect read status
+                await this.loadConversations();
+            }
+        } catch (error) {
+            console.error('Failed to load conversation:', error);
+        }
+    }
+
+    displayConversationMessages(messages, otherUserId) {
+        const conversationMessages = document.getElementById('conversationMessages');
+        if (!conversationMessages) return;
+
+        conversationMessages.innerHTML = messages.map(msg => {
+            const isSent = msg.from_user_id === this.currentUser.id;
+            const senderName = isSent 
+                ? `${msg.from_first_name} ${msg.from_surname}`
+                : `${msg.from_first_name} ${msg.from_surname}`;
+            const time = new Date(msg.timestamp).toLocaleString();
+
+            return `
+                <div class="message-bubble ${isSent ? 'sent' : 'received'}">
+                    <div class="message-bubble-header">
+                        <span>${senderName}</span>
+                    </div>
+                    <div class="message-bubble-content">${msg.message}</div>
+                    <div class="message-bubble-time">${time}</div>
+                </div>
+            `;
+        }).join('');
+
+        // Scroll to bottom
+        conversationMessages.scrollTop = conversationMessages.scrollHeight;
+    }
+
+    async handleConversationReply() {
+        if (!this.currentUser || !this.currentConversationUserId) return;
+
+        const replyText = document.getElementById('conversationReplyText').value.trim();
+        if (!replyText) {
+            this.showMessage('Please enter a message.', 'error');
+            return;
+        }
+
+        try {
+            const response = await APIUtils.sendMessage(
+                this.currentUser.id,
+                this.currentConversationUserId,
+                replyText
+            );
+
+            if (response.success) {
+                document.getElementById('conversationReplyText').value = '';
+                document.getElementById('sendConversationReplyBtn').disabled = true;
+                
+                // Reload conversation
+                await this.showConversation(this.currentConversationUserId);
+                await this.loadConversations();
+                await this.updateNavUnreadCount();
+            } else {
+                this.showMessage('Failed to send message. Please try again.', 'error');
+            }
+        } catch (error) {
+            console.error('Send message error:', error);
+            this.showMessage('Failed to send message. Please try again.', 'error');
+        }
+    }
+
+    getTimeAgo(date) {
+        const seconds = Math.floor((new Date() - date) / 1000);
+        if (seconds < 60) return 'just now';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        if (days < 7) return `${days}d ago`;
+        return date.toLocaleDateString();
+    }
+
+    async updateNavUnreadCount() {
+        if (!this.currentUser) return;
+
+        try {
+            const response = await APIUtils.getUnreadCount(this.currentUser.id);
+            if (response.success) {
+                const count = response.count;
+                const badge = document.getElementById('navMessageBadge');
+                if (badge) {
+                    badge.textContent = count;
+                    badge.style.display = count > 0 ? 'inline-block' : 'none';
+                }
+            }
+        } catch (error) {
+            console.error('Failed to update nav unread count:', error);
+        }
+    }
+
     async updateTeacherJournalList() {
         const journalList = document.getElementById('teacherJournalList');
         if (!journalList) return;
@@ -3343,14 +4052,25 @@ class MoodCheckInApp {
                     moodCount: moodData.length,
                     journalCount: journalData.length,
                     users: users.map(u => ({ id: u.id, name: u.first_name + ' ' + u.surname, type: u.user_type, house: u.house, class: u.class })),
-                    moods: moodData.map(m => ({ user_id: m.user_id, mood: m.mood, created_at: m.created_at }))
+                    moods: moodData.map(m => ({ user_id: m.user_id, mood: m.mood, timestamp: m.timestamp || m.created_at }))
                 });
+
+                // Validate we have data before creating charts
+                if (users.length === 0) {
+                    console.warn('No users found for charts');
+                }
+                if (moodData.length === 0) {
+                    console.warn('No mood data found for charts');
+                }
 
                 // Create separate charts for houses and grades
                 this.createHousesMoodDistributionChart(users, moodData);
                 this.createGradesMoodDistributionChart(users, moodData);
             } else {
                 console.error('API calls failed:', { usersResponse, moodResponse });
+                // Show error message to user
+                const errorMsg = usersResponse.success ? 'Failed to load mood data' : 'Failed to load user data';
+                console.error(errorMsg);
             }
         } catch (error) {
             console.error('Failed to update charts:', error);
@@ -3541,7 +4261,8 @@ class MoodCheckInApp {
                 console.log(`User ${user.first_name} ${user.surname} (House: ${user.house}): ${userMoods.length} mood entries`);
                 
                 userMoods.forEach(mood => {
-                    const moodType = mood.mood;
+                    // Capitalize mood value to match chart expectations (e.g., 'happy' -> 'Happy')
+                    const moodType = mood.mood ? mood.mood.charAt(0).toUpperCase() + mood.mood.slice(1) : 'Unknown';
                     
                     if (!groupData[user.house][moodType]) {
                         groupData[user.house][moodType] = 0;
@@ -3604,7 +4325,8 @@ class MoodCheckInApp {
                 console.log(`User ${user.first_name} ${user.surname} (Grade: ${user.class}): ${userMoods.length} mood entries`);
                 
                 userMoods.forEach(mood => {
-                    const moodType = mood.mood;
+                    // Capitalize mood value to match chart expectations (e.g., 'happy' -> 'Happy')
+                    const moodType = mood.mood ? mood.mood.charAt(0).toUpperCase() + mood.mood.slice(1) : 'Unknown';
                     
                     if (!groupData[user.class][moodType]) {
                         groupData[user.class][moodType] = 0;
@@ -4065,7 +4787,8 @@ function initializeFilterDropdowns() {
     // Close student list when clicking outside
     document.addEventListener('click', (e) => {
         if (studentListContainer && !studentListContainer.contains(e.target) && 
-            !houseButton.contains(e.target) && !gradeButton.contains(e.target)) {
+            (!houseButton || !houseButton.contains(e.target)) && 
+            (!gradeButton || !gradeButton.contains(e.target))) {
             hideStudentList();
         }
     });

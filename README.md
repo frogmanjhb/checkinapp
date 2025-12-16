@@ -31,14 +31,47 @@ A modern, responsive web application for student check-ins at school and home. B
    npm install
    ```
 
-3. **Start the development server**
+3. **Configure Railway Postgres (so local server uses Railway data)**
+
+   - In Railway, open your **Postgres** plugin → **Connect**
+   - Copy the **public** connection string (you must be able to reach it from your laptop)
+   - In this repo root, create a `.env` file by copying `env.example`:
+
+   ```bash
+   # macOS/Linux
+   cp env.example .env
+   ```
+
+   Then edit `.env` and set:
+
+   ```text
+   DATABASE_URL=postgresql://...
+   DATABASE_SSL=true
+   ```
+
+   **Windows PowerShell (one-off, no .env file):**
+   ```powershell
+   $env:DATABASE_URL="postgresql://..."
+   $env:DATABASE_SSL="true"
+   npm run dev
+   ```
+
+4. **Start the development server**
    ```bash
    npm start
    ```
 
-4. **Open your browser**
+5. **Open your browser**
    - Navigate to `http://localhost:3000`
    - The app will automatically open in your default browser
+
+## 🧱 Database migrations (optional)
+
+If you need to apply schema changes to the Railway database:
+
+```bash
+npm run migrate
+```
 
 ## 🔑 Demo Credentials
 

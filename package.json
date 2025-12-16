@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node backend.js",
     "build": "echo 'Build complete'",
-    "dev": "node backend.js"
+    "dev": "node backend.js",
+    "migrate": "node migrate-database.js"
   },
   "keywords": ["mood", "checkin", "feelings", "emoji", "wellness"],
   "author": "Your Name",

@@ -16,9 +16,12 @@ console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
 
 let pool = null;
 if (dbUrl) {
+  const sslEnabledEnv = (process.env.DATABASE_SSL || '').toLowerCase();
+  const useSsl = sslEnabledEnv ? sslEnabledEnv !== 'false' : true; // default keeps existing behavior
+
   pool = new Pool({
     connectionString: dbUrl,
-    ssl: { rejectUnauthorized: false }
+    ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {})
   });
 } else {
   console.log('⚠️ No database URL found - running without database');
@@ -52,8 +55,6 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.static('.'));
-
 // Initialize database tables
 async function initializeDatabase() {
   if (!pool) {
@@ -62,6 +63,132 @@ async function initializeDatabase() {
   }
   
   try {
+    // Helper: seed demo check-ins (3 weeks) for the demo student
+    async function seedDemoStudentCheckins(demoUserId) {
+      // If already seeded with ~3 weeks, skip
+      const existingCount = await pool.query(
+        `SELECT COUNT(*)::int AS count
+         FROM mood_checkins
+         WHERE user_id = $1 AND timestamp >= (CURRENT_DATE - INTERVAL '21 days')`,
+        [demoUserId]
+      );
+
+      const count = existingCount.rows?.[0]?.count ?? 0;
+      if (count >= 18) {
+        console.log(`✅ Demo student already has ${count} recent check-ins (skipping seed)`);
+        return;
+      }
+
+      const moodPresets = [
+        {
+          mood: 'happy',
+          emoji: '😊',
+          emotions: ['grateful', 'confident', 'proud'],
+          reasons: ['friends', 'schoolwork', 'sports'],
+          notes: 'Feeling good today. Things are going well.'
+        },
+        {
+          mood: 'excited',
+          emoji: '🤩',
+          emotions: ['energized', 'motivated', 'curious'],
+          reasons: ['friends', 'tests', 'schoolwork'],
+          notes: 'Excited for what’s coming up today.'
+        },
+        {
+          mood: 'calm',
+          emoji: '😌',
+          emotions: ['relaxed', 'peaceful', 'focused'],
+          reasons: ['schoolwork', 'friends'],
+          notes: 'Calm and focused. Taking things one step at a time.'
+        },
+        {
+          mood: 'tired',
+          emoji: '😴',
+          emotions: ['sleepy', 'drained', 'overwhelmed'],
+          reasons: ['sleep', 'tests', 'schoolwork'],
+          notes: 'A bit tired today. I could use more rest.'
+        },
+        {
+          mood: 'anxious',
+          emoji: '😰',
+          emotions: ['worried', 'nervous', 'stressed'],
+          reasons: ['tests', 'schoolwork', 'classmates'],
+          notes: 'Feeling anxious. Trying to breathe and stay positive.'
+        },
+        {
+          mood: 'sad',
+          emoji: '😢',
+          emotions: ['down', 'lonely', 'disappointed'],
+          reasons: ['friends', 'family'],
+          notes: 'Not my best day. Hoping tomorrow feels better.'
+        },
+        {
+          mood: 'angry',
+          emoji: '😠',
+          emotions: ['frustrated', 'irritated', 'upset'],
+          reasons: ['classmates', 'schoolwork'],
+          notes: 'Feeling frustrated. I’m trying to cool down.'
+        },
+        {
+          mood: 'confused',
+          emoji: '😕',
+          emotions: ['uncertain', 'stuck', 'distracted'],
+          reasons: ['schoolwork', 'teacher'],
+          notes: 'Feeling a bit confused. I might ask for help.'
+        }
+      ];
+
+      const locations = ['school', 'home'];
+      const now = new Date();
+      const startDaysAgo = 20; // inclusive -> 21 total days (20..0)
+      let inserted = 0;
+
+      for (let d = startDaysAgo; d >= 0; d--) {
+        const day = new Date(now);
+        day.setDate(now.getDate() - d);
+
+        // If a check-in already exists for this date, skip it (avoid duplicates)
+        const exists = await pool.query(
+          `SELECT 1
+           FROM mood_checkins
+           WHERE user_id = $1 AND DATE(timestamp) = $2::date
+           LIMIT 1`,
+          [demoUserId, day.toISOString().slice(0, 10)]
+        );
+
+        if (exists.rows.length > 0) continue;
+
+        // Deterministic variation by day index (no random flakiness)
+        const preset = moodPresets[d % moodPresets.length];
+        const location = locations[d % locations.length];
+
+        // Set a realistic time (between 07:30 and 18:30)
+        const minutesIntoDay = 450 + ((d * 37) % 660); // 450..1110
+        const ts = new Date(day);
+        ts.setHours(0, 0, 0, 0);
+        ts.setMinutes(minutesIntoDay);
+
+        await pool.query(
+          `INSERT INTO mood_checkins (user_id, mood, emoji, notes, location, reasons, emotions, timestamp)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            demoUserId,
+            preset.mood,
+            preset.emoji,
+            preset.notes,
+            location,
+            preset.reasons,
+            preset.emotions,
+            ts
+          ]
+        );
+
+        inserted++;
+      }
+
+      console.log(`✅ Seeded ${inserted} demo student check-ins (~3 weeks)`);
+    }
+
     // Create users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -131,6 +258,34 @@ async function initializeDatabase() {
       )
     `);
 
+    // Create messages table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        from_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        to_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        message TEXT NOT NULL,
+        is_read BOOLEAN DEFAULT FALSE,
+        thread_id INTEGER REFERENCES messages(id) ON DELETE SET NULL,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create index for messages
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_messages_to_user_id ON messages(to_user_id)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_messages_from_user_id ON messages(from_user_id)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_messages_is_read ON messages(is_read)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)
+    `);
+
     // Create indexes for better performance
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_mood_checkins_user_id ON mood_checkins(user_id)
@@ -155,13 +310,25 @@ async function initializeDatabase() {
 
     // Add demo users if they don't exist
     const demoUserExists = await pool.query('SELECT id FROM users WHERE email = $1', ['demo@stpeters.co.za']);
+    let demoUserId = demoUserExists.rows.length > 0 ? demoUserExists.rows[0].id : null;
     if (demoUserExists.rows.length === 0) {
       const hashedPassword = await bcrypt.hash('password', 10);
-      await pool.query(`
+      const demoInsert = await pool.query(`
         INSERT INTO users (first_name, surname, email, password_hash, user_type, class, house)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id
       `, ['Demo', 'Student', 'demo@stpeters.co.za', hashedPassword, 'student', 'Grade 6', 'Mirfield']);
+      demoUserId = demoInsert.rows[0].id;
       console.log('✅ Demo user created');
+    }
+
+    // Seed 3 weeks of mood check-ins for the demo student (if needed)
+    if (demoUserId) {
+      try {
+        await seedDemoStudentCheckins(demoUserId);
+      } catch (error) {
+        console.log('⚠️ Demo student check-in seeding failed:', error.message);
+      }
     }
 
     // Add additional demo students for Grade 5 and Grade 7
@@ -692,6 +859,152 @@ app.get('/api/teacher/grade-analytics', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// Get all teachers (for student to select)
+app.get('/api/teachers', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  
+  try {
+    const result = await pool.query(
+      `SELECT id, first_name, surname, email, class, house 
+       FROM users 
+       WHERE user_type = 'teacher' 
+       ORDER BY first_name, surname`
+    );
+    
+    res.json({ success: true, teachers: result.rows });
+  } catch (error) {
+    console.error('Get teachers error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Send a message (student to teacher, also sends to director)
+app.post('/api/messages', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  
+  try {
+    const { fromUserId, toUserId, message } = req.body;
+    
+    if (!fromUserId || !toUserId || !message) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+
+    // Get director user ID (Justin Atlee)
+    const directorResult = await pool.query(
+      'SELECT id FROM users WHERE email = $1 AND user_type = $2',
+      ['jatlee@stpeters.co.za', 'director']
+    );
+    
+    const directorId = directorResult.rows.length > 0 ? directorResult.rows[0].id : null;
+
+    // Insert message to teacher
+    const teacherMessageResult = await pool.query(
+      'INSERT INTO messages (from_user_id, to_user_id, message) VALUES ($1, $2, $3) RETURNING *',
+      [fromUserId, toUserId, message]
+    );
+
+    // Also send to director if exists
+    let directorMessage = null;
+    if (directorId) {
+      const directorMessageResult = await pool.query(
+        'INSERT INTO messages (from_user_id, to_user_id, message, thread_id) VALUES ($1, $2, $3, $4) RETURNING *',
+        [fromUserId, directorId, message, teacherMessageResult.rows[0].id]
+      );
+      directorMessage = directorMessageResult.rows[0];
+    }
+    
+    res.status(201).json({ 
+      success: true, 
+      message: teacherMessageResult.rows[0],
+      directorMessage: directorMessage
+    });
+  } catch (error) {
+    console.error('Send message error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get messages for a user
+app.get('/api/messages/:userId', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  
+  try {
+    const { userId } = req.params;
+    
+    const result = await pool.query(
+      `SELECT m.*, 
+              from_user.first_name as from_first_name, 
+              from_user.surname as from_surname,
+              from_user.user_type as from_user_type,
+              to_user.first_name as to_first_name,
+              to_user.surname as to_surname,
+              to_user.user_type as to_user_type
+       FROM messages m
+       JOIN users from_user ON m.from_user_id = from_user.id
+       JOIN users to_user ON m.to_user_id = to_user.id
+       WHERE m.to_user_id = $1 OR m.from_user_id = $1
+       ORDER BY m.timestamp DESC`,
+      [userId]
+    );
+    
+    res.json({ success: true, messages: result.rows });
+  } catch (error) {
+    console.error('Get messages error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Mark message as read
+app.put('/api/messages/:messageId/read', async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    
+    const result = await pool.query(
+      'UPDATE messages SET is_read = TRUE WHERE id = $1 RETURNING *',
+      [messageId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Message not found' });
+    }
+    
+    res.json({ success: true, message: result.rows[0] });
+  } catch (error) {
+    console.error('Mark message read error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get unread message count for a user
+app.get('/api/messages/:userId/unread-count', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  
+  try {
+    const { userId } = req.params;
+    
+    const result = await pool.query(
+      'SELECT COUNT(*) as count FROM messages WHERE to_user_id = $1 AND is_read = FALSE',
+      [userId]
+    );
+    
+    res.json({ success: true, count: parseInt(result.rows[0].count) });
+  } catch (error) {
+    console.error('Get unread count error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Serve static files (must be after API routes)
+app.use(express.static('.'));
 
 // Handle all other routes by serving index.html (for SPA routing)
 app.get('*', (req, res) => {

@@ -8,11 +8,12 @@ if (!dbUrl) {
   process.exit(1);
 }
 
+const sslEnabledEnv = (process.env.DATABASE_SSL || '').toLowerCase();
+const useSsl = sslEnabledEnv ? sslEnabledEnv !== 'false' : true; // default keeps existing behavior
+
 const pool = new Pool({
   connectionString: dbUrl,
-  ssl: {
-    rejectUnauthorized: false
-  }
+  ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {})
 });
 
 async function migrateDatabase() {
