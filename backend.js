@@ -322,7 +322,123 @@ async function initializeDatabase() {
       INSERT INTO app_settings (key, value) VALUES ('ghost_mode_enabled', 'true')
       ON CONFLICT (key) DO NOTHING
     `);
+    await pool.query(`
+      INSERT INTO app_settings (key, value) VALUES ('tile_flip_enabled', 'true')
+      ON CONFLICT (key) DO NOTHING
+    `);
     console.log('✅ app_settings initialized');
+
+    // Create tile_flips table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tile_flips (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        tile_index INTEGER NOT NULL CHECK (tile_index >= 0 AND tile_index <= 11),
+        quote_index INTEGER NOT NULL CHECK (quote_index >= 0 AND quote_index <= 49),
+        flipped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, tile_index)
+      )
+    `);
+
+    // Create tile_quotes table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tile_quotes (
+        id SERIAL PRIMARY KEY,
+        quote_index INTEGER NOT NULL UNIQUE CHECK (quote_index >= 0 AND quote_index <= 49),
+        quote_text TEXT NOT NULL,
+        author VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create tile_flip_resets table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tile_flip_resets (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        reset_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        next_quote_index INTEGER DEFAULT 0 CHECK (next_quote_index >= 0 AND next_quote_index <= 49),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id)
+      )
+    `);
+
+    // Create indexes for tile_flips
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_tile_flips_user_id ON tile_flips(user_id)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_tile_flips_tile_index ON tile_flips(tile_index)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_tile_flip_resets_user_id ON tile_flip_resets(user_id)
+    `);
+
+    // Seed 50 inspirational quotes
+    const quotes = [
+      { quote_index: 0, quote_text: "You are braver than you believe, stronger than you seem, and smarter than you think.", author: "A.A. Milne" },
+      { quote_index: 1, quote_text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
+      { quote_index: 2, quote_text: "Every accomplishment starts with the decision to try.", author: "Unknown" },
+      { quote_index: 3, quote_text: "You are never too old to set another goal or to dream a new dream.", author: "C.S. Lewis" },
+      { quote_index: 4, quote_text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+      { quote_index: 5, quote_text: "Don't let what you cannot do interfere with what you can do.", author: "John Wooden" },
+      { quote_index: 6, quote_text: "Success is the sum of small efforts repeated day in and day out.", author: "Robert Collier" },
+      { quote_index: 7, quote_text: "It's okay to not know, but it's not okay to not try.", author: "Unknown" },
+      { quote_index: 8, quote_text: "You have brains in your head. You have feet in your shoes. You can steer yourself any direction you choose.", author: "Dr. Seuss" },
+      { quote_index: 9, quote_text: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" },
+      { quote_index: 10, quote_text: "Mistakes are proof that you are trying.", author: "Unknown" },
+      { quote_index: 11, quote_text: "You are capable of amazing things.", author: "Unknown" },
+      { quote_index: 12, quote_text: "Be yourself; everyone else is already taken.", author: "Oscar Wilde" },
+      { quote_index: 13, quote_text: "The only person you should try to be better than is the person you were yesterday.", author: "Unknown" },
+      { quote_index: 14, quote_text: "Dream big and dare to fail.", author: "Norman Vaughan" },
+      { quote_index: 15, quote_text: "You miss 100% of the shots you don't take.", author: "Wayne Gretzky" },
+      { quote_index: 16, quote_text: "Be the change you wish to see in the world.", author: "Mahatma Gandhi" },
+      { quote_index: 17, quote_text: "In a world where you can be anything, be kind.", author: "Unknown" },
+      { quote_index: 18, quote_text: "Your limitation—it's only your imagination.", author: "Unknown" },
+      { quote_index: 19, quote_text: "Great things never come from comfort zones.", author: "Unknown" },
+      { quote_index: 20, quote_text: "Dream it. Wish it. Do it.", author: "Unknown" },
+      { quote_index: 21, quote_text: "Success doesn't come from what you do occasionally. It comes from what you do consistently.", author: "Unknown" },
+      { quote_index: 22, quote_text: "Don't wait for opportunity. Create it.", author: "Unknown" },
+      { quote_index: 23, quote_text: "The expert in anything was once a beginner.", author: "Helen Hayes" },
+      { quote_index: 24, quote_text: "You don't have to be perfect to be amazing.", author: "Unknown" },
+      { quote_index: 25, quote_text: "Your attitude determines your direction.", author: "Unknown" },
+      { quote_index: 26, quote_text: "The only bad workout is the one that didn't happen.", author: "Unknown" },
+      { quote_index: 27, quote_text: "Progress, not perfection.", author: "Unknown" },
+      { quote_index: 28, quote_text: "You are stronger than you think.", author: "Unknown" },
+      { quote_index: 29, quote_text: "Today is your opportunity to build the tomorrow you want.", author: "Ken Poirot" },
+      { quote_index: 30, quote_text: "When you know better, you do better.", author: "Maya Angelou" },
+      { quote_index: 31, quote_text: "It always seems impossible until it's done.", author: "Nelson Mandela" },
+      { quote_index: 32, quote_text: "You are enough just as you are.", author: "Unknown" },
+      { quote_index: 33, quote_text: "Every expert was once a beginner. Every pro was once an amateur.", author: "Unknown" },
+      { quote_index: 34, quote_text: "The way to get started is to quit talking and begin doing.", author: "Walt Disney" },
+      { quote_index: 35, quote_text: "Don't let yesterday take up too much of today.", author: "Will Rogers" },
+      { quote_index: 36, quote_text: "You learn more from failure than from success.", author: "Unknown" },
+      { quote_index: 37, quote_text: "If you want to lift yourself up, lift up someone else.", author: "Booker T. Washington" },
+      { quote_index: 38, quote_text: "The only way to have a friend is to be one.", author: "Ralph Waldo Emerson" },
+      { quote_index: 39, quote_text: "Be curious, not judgmental.", author: "Walt Whitman" },
+      { quote_index: 40, quote_text: "You can't use up creativity. The more you use, the more you have.", author: "Maya Angelou" },
+      { quote_index: 41, quote_text: "Think big thoughts but relish small pleasures.", author: "H. Jackson Brown Jr." },
+      { quote_index: 42, quote_text: "It's not about being the best. It's about being better than you were yesterday.", author: "Unknown" },
+      { quote_index: 43, quote_text: "The more that you read, the more things you will know. The more that you learn, the more places you'll go.", author: "Dr. Seuss" },
+      { quote_index: 44, quote_text: "You have to be odd to be number one.", author: "Dr. Seuss" },
+      { quote_index: 45, quote_text: "Today you are you, that is truer than true. There is no one alive who is youer than you.", author: "Dr. Seuss" },
+      { quote_index: 46, quote_text: "Why fit in when you were born to stand out?", author: "Dr. Seuss" },
+      { quote_index: 47, quote_text: "A person's a person, no matter how small.", author: "Dr. Seuss" },
+      { quote_index: 48, quote_text: "The more you give away, the happier you become.", author: "Unknown" },
+      { quote_index: 49, quote_text: "You are today where your thoughts have brought you. You will be tomorrow where your thoughts take you.", author: "James Allen" }
+    ];
+
+    for (const quote of quotes) {
+      await pool.query(`
+        INSERT INTO tile_quotes (quote_index, quote_text, author)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (quote_index) DO UPDATE
+        SET quote_text = EXCLUDED.quote_text, author = EXCLUDED.author, updated_at = CURRENT_TIMESTAMP
+      `, [quote.quote_index, quote.quote_text, quote.author]);
+    }
+    console.log('✅ Tile flip tables initialized and quotes seeded');
 
     console.log('✅ Database tables initialized successfully');
 
@@ -459,6 +575,18 @@ async function getGhostModeEnabled() {
   }
 }
 
+async function getTileFlipEnabled() {
+  if (!pool) return true;
+  try {
+    const r = await pool.query(`SELECT value FROM app_settings WHERE key = 'tile_flip_enabled'`);
+    if (!r.rows.length) return true;
+    return r.rows[0].value === 'true';
+  } catch (e) {
+    console.error('getTileFlipEnabled:', e);
+    return true;
+  }
+}
+
 // API Routes
 
 // User registration
@@ -576,11 +704,12 @@ app.post('/api/login', async (req, res) => {
 // Get app settings (e.g. plugin toggles) — used by all roles for UI visibility
 app.get('/api/settings', async (req, res) => {
   try {
-    const [messageCenterEnabled, ghostModeEnabled] = await Promise.all([
+    const [messageCenterEnabled, ghostModeEnabled, tileFlipEnabled] = await Promise.all([
       getMessageCenterEnabled(),
-      getGhostModeEnabled()
+      getGhostModeEnabled(),
+      getTileFlipEnabled()
     ]);
-    res.json({ success: true, messageCenterEnabled, ghostModeEnabled });
+    res.json({ success: true, messageCenterEnabled, ghostModeEnabled, tileFlipEnabled });
   } catch (error) {
     console.error('Get settings error:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -593,12 +722,12 @@ app.put('/api/director/settings', async (req, res) => {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
   try {
-    const { directorUserId, messageCenterEnabled, ghostModeEnabled } = req.body;
+    const { directorUserId, messageCenterEnabled, ghostModeEnabled, tileFlipEnabled } = req.body;
     if (directorUserId == null) {
       return res.status(400).json({ success: false, error: 'Missing directorUserId' });
     }
-    if (typeof messageCenterEnabled !== 'boolean' && typeof ghostModeEnabled !== 'boolean') {
-      return res.status(400).json({ success: false, error: 'At least one of messageCenterEnabled or ghostModeEnabled required' });
+    if (typeof messageCenterEnabled !== 'boolean' && typeof ghostModeEnabled !== 'boolean' && typeof tileFlipEnabled !== 'boolean') {
+      return res.status(400).json({ success: false, error: 'At least one setting must be provided' });
     }
     const check = await pool.query(
       'SELECT id FROM users WHERE id = $1 AND user_type = $2',
@@ -625,6 +754,15 @@ app.put('/api/director/settings', async (req, res) => {
         [val]
       );
       out.ghostModeEnabled = ghostModeEnabled;
+    }
+    if (typeof tileFlipEnabled === 'boolean') {
+      const val = tileFlipEnabled ? 'true' : 'false';
+      await pool.query(
+        `INSERT INTO app_settings (key, value) VALUES ('tile_flip_enabled', $1)
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+        [val]
+      );
+      out.tileFlipEnabled = tileFlipEnabled;
     }
     res.json({ success: true, ...out });
   } catch (error) {
@@ -853,6 +991,236 @@ app.get('/api/journal-entries/:userId', async (req, res) => {
   }
 });
 
+// Tile Flip endpoints
+app.get('/api/tile-flip/quotes', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  try {
+    const result = await pool.query(
+      'SELECT quote_index, quote_text, author FROM tile_quotes ORDER BY quote_index ASC'
+    );
+    res.json({ success: true, quotes: result.rows });
+  } catch (error) {
+    console.error('Get tile quotes error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/tile-flip/status/:userId', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  try {
+    const { userId } = req.params;
+    
+    // Get flipped tiles
+    const flippedResult = await pool.query(
+      'SELECT tile_index FROM tile_flips WHERE user_id = $1',
+      [userId]
+    );
+    const flippedTiles = flippedResult.rows.map(row => row.tile_index);
+    
+    // Get journal entry count
+    const journalResult = await pool.query(
+      'SELECT COUNT(*)::int AS count FROM journal_entries WHERE user_id = $1',
+      [userId]
+    );
+    const journalCount = journalResult.rows[0]?.count || 0;
+    
+    // Get reset info and next quote index
+    const resetResult = await pool.query(
+      'SELECT reset_at, next_quote_index FROM tile_flip_resets WHERE user_id = $1',
+      [userId]
+    );
+    
+    let nextQuoteIndex = 0;
+    let resetAt = null;
+    let shouldReset = false;
+    
+    if (resetResult.rows.length > 0) {
+      nextQuoteIndex = resetResult.rows[0].next_quote_index;
+      resetAt = resetResult.rows[0].reset_at;
+      
+      // Check if all tiles are flipped and 1 day has passed
+      if (flippedTiles.length === 12 && resetAt) {
+        const resetDate = new Date(resetAt);
+        const oneDayLater = new Date(resetDate.getTime() + 24 * 60 * 60 * 1000);
+        if (new Date() >= oneDayLater) {
+          shouldReset = true;
+        }
+      }
+    }
+    
+    const availableFlips = Math.max(0, journalCount - flippedTiles.length);
+    
+    res.json({
+      success: true,
+      flippedTiles,
+      availableFlips,
+      shouldReset,
+      resetAt,
+      nextQuoteIndex
+    });
+  } catch (error) {
+    console.error('Get tile flip status error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/tile-flip/flip', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  try {
+    const { userId, tileIndex } = req.body;
+    
+    if (userId == null || tileIndex == null) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+    
+    if (tileIndex < 0 || tileIndex > 11) {
+      return res.status(400).json({ success: false, error: 'Invalid tile index' });
+    }
+    
+    // Check if tile already flipped
+    const existingFlip = await pool.query(
+      'SELECT id FROM tile_flips WHERE user_id = $1 AND tile_index = $2',
+      [userId, tileIndex]
+    );
+    
+    if (existingFlip.rows.length > 0) {
+      return res.status(400).json({ success: false, error: 'Tile already flipped' });
+    }
+    
+    // Get journal entry count
+    const journalResult = await pool.query(
+      'SELECT COUNT(*)::int AS count FROM journal_entries WHERE user_id = $1',
+      [userId]
+    );
+    const journalCount = journalResult.rows[0]?.count || 0;
+    
+    // Get flipped tiles count
+    const flippedResult = await pool.query(
+      'SELECT COUNT(*)::int AS count FROM tile_flips WHERE user_id = $1',
+      [userId]
+    );
+    const flippedCount = flippedResult.rows[0]?.count || 0;
+    
+    // Check if user has available flips
+    if (journalCount <= flippedCount) {
+      return res.status(400).json({ success: false, error: 'No available flips. Complete a journal entry to earn a flip.' });
+    }
+    
+    // Get or create reset record to get next quote index
+    let resetRecord = await pool.query(
+      'SELECT next_quote_index FROM tile_flip_resets WHERE user_id = $1',
+      [userId]
+    );
+    
+    let quoteIndex;
+    if (resetRecord.rows.length === 0) {
+      // Create reset record starting at quote 0
+      quoteIndex = 0;
+      await pool.query(
+        'INSERT INTO tile_flip_resets (user_id, next_quote_index) VALUES ($1, $2)',
+        [userId, 1]
+      );
+    } else {
+      quoteIndex = resetRecord.rows[0].next_quote_index;
+      // Increment next quote index (wrap around after 49)
+      const nextIndex = (quoteIndex + 1) % 50;
+      await pool.query(
+        'UPDATE tile_flip_resets SET next_quote_index = $1 WHERE user_id = $2',
+        [nextIndex, userId]
+      );
+    }
+    
+    // Get the quote
+    const quoteResult = await pool.query(
+      'SELECT quote_text, author FROM tile_quotes WHERE quote_index = $1',
+      [quoteIndex]
+    );
+    
+    if (quoteResult.rows.length === 0) {
+      return res.status(500).json({ success: false, error: 'Quote not found' });
+    }
+    
+    const quote = quoteResult.rows[0];
+    
+    // Create flip record
+    await pool.query(
+      'INSERT INTO tile_flips (user_id, tile_index, quote_index) VALUES ($1, $2, $3)',
+      [userId, tileIndex, quoteIndex]
+    );
+    
+    // Check if all tiles are now flipped
+    const allFlippedResult = await pool.query(
+      'SELECT COUNT(*)::int AS count FROM tile_flips WHERE user_id = $1',
+      [userId]
+    );
+    const allFlippedCount = allFlippedResult.rows[0]?.count || 0;
+    
+    if (allFlippedCount === 12) {
+      // Schedule reset for 1 day from now
+      await pool.query(
+        `INSERT INTO tile_flip_resets (user_id, reset_at, next_quote_index)
+         VALUES ($1, CURRENT_TIMESTAMP, $2)
+         ON CONFLICT (user_id) DO UPDATE
+         SET reset_at = CURRENT_TIMESTAMP`,
+        [userId, (quoteIndex + 1) % 50]
+      );
+    }
+    
+    // Get updated status
+    const updatedFlippedResult = await pool.query(
+      'SELECT tile_index FROM tile_flips WHERE user_id = $1',
+      [userId]
+    );
+    const updatedFlippedTiles = updatedFlippedResult.rows.map(row => row.tile_index);
+    const updatedAvailableFlips = Math.max(0, journalCount - updatedFlippedTiles.length);
+    
+    res.json({
+      success: true,
+      quote: {
+        text: quote.quote_text,
+        author: quote.author
+      },
+      flippedTiles: updatedFlippedTiles,
+      availableFlips: updatedAvailableFlips
+    });
+  } catch (error) {
+    console.error('Flip tile error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/tile-flip/reset/:userId', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  try {
+    const { userId } = req.params;
+    
+    // Delete all flips for user
+    await pool.query('DELETE FROM tile_flips WHERE user_id = $1', [userId]);
+    
+    // Update reset record
+    await pool.query(
+      `INSERT INTO tile_flip_resets (user_id, reset_at, next_quote_index)
+       VALUES ($1, CURRENT_TIMESTAMP, $2)
+       ON CONFLICT (user_id) DO UPDATE
+       SET reset_at = CURRENT_TIMESTAMP, next_quote_index = $2`,
+      [userId, 0]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Reset tiles error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Director endpoints
 app.get('/api/director/all-users', async (req, res) => {
   try {
@@ -930,6 +1298,78 @@ app.get('/api/director/all-journal-entries', async (req, res) => {
     res.json({ success: true, entries: result.rows });
   } catch (error) {
     console.error('Director all journal entries error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Director tile quote management
+app.get('/api/director/tile-quotes', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  try {
+    const { directorUserId } = req.query;
+    if (!directorUserId) {
+      return res.status(400).json({ success: false, error: 'Missing directorUserId' });
+    }
+    
+    const check = await pool.query(
+      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
+      [directorUserId, 'director']
+    );
+    if (check.rows.length === 0) {
+      return res.status(403).json({ success: false, error: 'Only directors can access quotes' });
+    }
+    
+    const result = await pool.query(
+      'SELECT quote_index, quote_text, author FROM tile_quotes ORDER BY quote_index ASC'
+    );
+    
+    res.json({ success: true, quotes: result.rows });
+  } catch (error) {
+    console.error('Get tile quotes error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/director/tile-quotes', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  try {
+    const { directorUserId, quotes } = req.body;
+    if (!directorUserId) {
+      return res.status(400).json({ success: false, error: 'Missing directorUserId' });
+    }
+    if (!quotes || !Array.isArray(quotes)) {
+      return res.status(400).json({ success: false, error: 'Missing or invalid quotes array' });
+    }
+    
+    const check = await pool.query(
+      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
+      [directorUserId, 'director']
+    );
+    if (check.rows.length === 0) {
+      return res.status(403).json({ success: false, error: 'Only directors can update quotes' });
+    }
+    
+    // Update each quote
+    for (const quote of quotes) {
+      if (quote.quoteIndex == null || quote.quoteText == null) {
+        continue; // Skip invalid entries
+      }
+      
+      await pool.query(
+        `UPDATE tile_quotes 
+         SET quote_text = $1, author = $2, updated_at = CURRENT_TIMESTAMP
+         WHERE quote_index = $3`,
+        [quote.quoteText, quote.author || null, quote.quoteIndex]
+      );
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Update tile quotes error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

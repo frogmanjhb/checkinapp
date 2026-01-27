@@ -77,10 +77,43 @@ class APIUtils {
         return this.makeRequest('/settings');
     }
 
-    static async updateDirectorSettings(directorUserId, messageCenterEnabled, ghostModeEnabled) {
+    static async updateDirectorSettings(directorUserId, messageCenterEnabled, ghostModeEnabled, tileFlipEnabled) {
         return this.makeRequest('/director/settings', {
             method: 'PUT',
-            body: JSON.stringify({ directorUserId, messageCenterEnabled, ghostModeEnabled })
+            body: JSON.stringify({ directorUserId, messageCenterEnabled, ghostModeEnabled, tileFlipEnabled })
+        });
+    }
+
+    // Tile Flip methods
+    static async getTileFlipStatus(userId) {
+        return this.makeRequest(`/tile-flip/status/${userId}`);
+    }
+
+    static async getTileQuotes() {
+        return this.makeRequest('/tile-flip/quotes');
+    }
+
+    static async flipTile(userId, tileIndex) {
+        return this.makeRequest('/tile-flip/flip', {
+            method: 'POST',
+            body: JSON.stringify({ userId, tileIndex })
+        });
+    }
+
+    static async resetTiles(userId) {
+        return this.makeRequest(`/tile-flip/reset/${userId}`, {
+            method: 'POST'
+        });
+    }
+
+    static async getTileQuotesForDirector(directorUserId) {
+        return this.makeRequest(`/director/tile-quotes?directorUserId=${directorUserId}`);
+    }
+
+    static async updateTileQuotes(directorUserId, quotes) {
+        return this.makeRequest('/director/tile-quotes', {
+            method: 'PUT',
+            body: JSON.stringify({ directorUserId, quotes })
         });
     }
 
@@ -204,7 +237,11 @@ class MoodCheckInApp {
         this.mouseX = 0;
         this.mouseY = 0;
         this.physicsInterval = null;
-        this.pluginSettings = { messageCenterEnabled: true, ghostModeEnabled: true };
+        this.pluginSettings = { messageCenterEnabled: true, ghostModeEnabled: true, tileFlipEnabled: true };
+        this.tileFlipStatus = null;
+        this.tileQuotes = [];
+        this.availableFlips = 0;
+        this.nextQuoteIndex = 0;
         
         this.initializeApp();
         this.setupEventListeners();
@@ -1091,6 +1128,7 @@ class MoodCheckInApp {
         await this.fetchPluginSettings();
         this.applyMessageCenterVisibility();
         this.applyGhostModeVisibility();
+        this.applyTileFlipVisibility();
         document.getElementById('loginScreen').classList.remove('active');
         document.getElementById('registerScreen').classList.remove('active');
         document.getElementById('navUser').style.display = 'flex';
@@ -1110,6 +1148,7 @@ class MoodCheckInApp {
             if (res.success) {
                 if (typeof res.messageCenterEnabled === 'boolean') this.pluginSettings.messageCenterEnabled = res.messageCenterEnabled;
                 if (typeof res.ghostModeEnabled === 'boolean') this.pluginSettings.ghostModeEnabled = res.ghostModeEnabled;
+                if (typeof res.tileFlipEnabled === 'boolean') this.pluginSettings.tileFlipEnabled = res.tileFlipEnabled;
             }
         } catch (e) {
             console.warn('Failed to fetch plugin settings, using defaults:', e);
@@ -1149,6 +1188,14 @@ class MoodCheckInApp {
         }
     }
 
+    applyTileFlipVisibility() {
+        const enabled = !!this.pluginSettings.tileFlipEnabled;
+        const tileFlipCard = document.getElementById('tileFlipCard');
+        if (tileFlipCard) {
+            tileFlipCard.style.display = enabled ? '' : 'none';
+        }
+    }
+
     showStudentDashboard() {
         const studentScreen = document.getElementById('studentDashboardScreen');
         const teacherScreen = document.getElementById('teacherDashboardScreen');
@@ -1178,6 +1225,7 @@ class MoodCheckInApp {
         this.updateHistoryDisplay();
         this.updateStudentAnalytics();
         this.updateStudentJournalList();
+        this.initializeTileFlip();
     }
 
     updateStudentName() {
@@ -2651,6 +2699,7 @@ class MoodCheckInApp {
                 // Update journal display based on user type
                 if (this.currentUser.user_type === 'student') {
                     this.updateStudentJournalList();
+                    this.updateTileFlipStatus(); // Update tile flip status after journal entry
                 } else if (this.currentUser.user_type === 'teacher') {
                     this.updateTeacherJournalList();
                     this.updateTeacherStatusDisplay(); // Update the journal counter
@@ -2675,6 +2724,158 @@ class MoodCheckInApp {
             }
         } catch (error) {
             console.error('Failed to load journal entries:', error);
+        }
+    }
+
+    // Tile Flip methods
+    async initializeTileFlip() {
+        if (!this.currentUser || this.currentUser.user_type !== 'student') return;
+        if (!this.pluginSettings.tileFlipEnabled) return;
+
+        try {
+            // Check if tiles should reset
+            await this.checkAndResetTiles();
+
+            // Load status and quotes
+            const [statusResponse, quotesResponse] = await Promise.all([
+                APIUtils.getTileFlipStatus(this.currentUser.id),
+                APIUtils.getTileQuotes()
+            ]);
+
+            if (statusResponse.success) {
+                this.tileFlipStatus = statusResponse;
+                this.availableFlips = statusResponse.availableFlips;
+                this.nextQuoteIndex = statusResponse.nextQuoteIndex;
+            }
+
+            if (quotesResponse.success) {
+                this.tileQuotes = quotesResponse.quotes;
+            }
+
+            this.renderTileGrid();
+            this.updateTileFlipStatus();
+        } catch (error) {
+            console.error('Failed to initialize tile flip:', error);
+        }
+    }
+
+    renderTileGrid() {
+        const tileGrid = document.getElementById('tileGrid');
+        if (!tileGrid) return;
+
+        tileGrid.innerHTML = '';
+
+        const flippedTiles = this.tileFlipStatus?.flippedTiles || [];
+
+        for (let i = 0; i < 12; i++) {
+            const tile = document.createElement('div');
+            tile.className = 'tile';
+            tile.dataset.tileIndex = i;
+
+            if (flippedTiles.includes(i)) {
+                tile.classList.add('flipped');
+            } else if (this.availableFlips > 0) {
+                tile.classList.add('flipable');
+                tile.addEventListener('click', () => this.handleTileFlip(i));
+            }
+
+            tileGrid.appendChild(tile);
+        }
+    }
+
+    async handleTileFlip(tileIndex) {
+        if (!this.currentUser) return;
+        if (this.availableFlips <= 0) {
+            this.showMessage('No available flips. Complete a journal entry to earn a flip!', 'error');
+            return;
+        }
+
+        try {
+            const response = await APIUtils.flipTile(this.currentUser.id, tileIndex);
+
+            if (response.success) {
+                // Update status
+                this.tileFlipStatus = {
+                    flippedTiles: response.flippedTiles,
+                    availableFlips: response.availableFlips
+                };
+                this.availableFlips = response.availableFlips;
+
+                // Show quote popup
+                this.showTileQuoteModal(response.quote.text, response.quote.author);
+
+                // Re-render grid
+                this.renderTileGrid();
+                this.updateTileFlipStatus();
+            } else {
+                this.showMessage(response.error || 'Failed to flip tile. Please try again.', 'error');
+            }
+        } catch (error) {
+            console.error('Tile flip error:', error);
+            this.showMessage('Failed to flip tile. Please try again.', 'error');
+        }
+    }
+
+    showTileQuoteModal(quoteText, author) {
+        const modal = document.getElementById('tileQuoteModal');
+        const quoteContent = document.getElementById('quoteContent');
+        
+        if (!modal || !quoteContent) return;
+
+        quoteContent.innerHTML = `
+            <div class="quote-text">"${quoteText}"</div>
+            ${author ? `<div class="quote-author">— ${author}</div>` : ''}
+        `;
+
+        modal.classList.add('active');
+
+        // Close button handler
+        const closeBtn = document.getElementById('closeTileQuoteModal');
+        if (closeBtn) {
+            closeBtn.onclick = () => {
+                modal.classList.remove('active');
+            };
+        }
+
+        // Close on backdrop click
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+        };
+    }
+
+    async updateTileFlipStatus() {
+        if (!this.currentUser || this.currentUser.user_type !== 'student') return;
+
+        const statusElement = document.getElementById('tileFlipStatus');
+        const availableFlipsElement = document.getElementById('availableFlips');
+        
+        if (statusElement && availableFlipsElement) {
+            availableFlipsElement.textContent = this.availableFlips || 0;
+        }
+    }
+
+    async checkAndResetTiles() {
+        if (!this.currentUser || this.currentUser.user_type !== 'student') return;
+
+        try {
+            const statusResponse = await APIUtils.getTileFlipStatus(this.currentUser.id);
+            
+            if (statusResponse.success && statusResponse.shouldReset) {
+                // Reset tiles
+                await APIUtils.resetTiles(this.currentUser.id);
+                
+                // Reload status
+                const newStatus = await APIUtils.getTileFlipStatus(this.currentUser.id);
+                if (newStatus.success) {
+                    this.tileFlipStatus = newStatus;
+                    this.availableFlips = newStatus.availableFlips;
+                    this.nextQuoteIndex = newStatus.nextQuoteIndex;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to check/reset tiles:', error);
         }
     }
 
@@ -3769,9 +3970,11 @@ class MoodCheckInApp {
         const modal = document.getElementById('directorProfileModal');
         const msgToggle = document.getElementById('messageCenterPluginToggle');
         const ghostToggle = document.getElementById('ghostModePluginToggle');
+        const tileFlipToggle = document.getElementById('tileFlipPluginToggle');
         if (!modal || !msgToggle) return;
         msgToggle.checked = !!this.pluginSettings.messageCenterEnabled;
         if (ghostToggle) ghostToggle.checked = !!this.pluginSettings.ghostModeEnabled;
+        if (tileFlipToggle) tileFlipToggle.checked = !!this.pluginSettings.tileFlipEnabled;
         modal.style.display = 'flex';
         modal.classList.add('active');
     }
@@ -3779,17 +3982,21 @@ class MoodCheckInApp {
     async saveDirectorProfile() {
         const msgToggle = document.getElementById('messageCenterPluginToggle');
         const ghostToggle = document.getElementById('ghostModePluginToggle');
+        const tileFlipToggle = document.getElementById('tileFlipPluginToggle');
         const modal = document.getElementById('directorProfileModal');
         if (!this.currentUser || this.currentUser.user_type !== 'director' || !msgToggle || !modal) return;
         const messageCenterEnabled = !!msgToggle.checked;
         const ghostModeEnabled = ghostToggle ? !!ghostToggle.checked : true;
+        const tileFlipEnabled = tileFlipToggle ? !!tileFlipToggle.checked : true;
         try {
-            const res = await APIUtils.updateDirectorSettings(this.currentUser.id, messageCenterEnabled, ghostModeEnabled);
+            const res = await APIUtils.updateDirectorSettings(this.currentUser.id, messageCenterEnabled, ghostModeEnabled, tileFlipEnabled);
             if (res.success) {
                 if (typeof res.messageCenterEnabled === 'boolean') this.pluginSettings.messageCenterEnabled = res.messageCenterEnabled;
                 if (typeof res.ghostModeEnabled === 'boolean') this.pluginSettings.ghostModeEnabled = res.ghostModeEnabled;
+                if (typeof res.tileFlipEnabled === 'boolean') this.pluginSettings.tileFlipEnabled = res.tileFlipEnabled;
                 this.applyMessageCenterVisibility();
                 this.applyGhostModeVisibility();
+                this.applyTileFlipVisibility();
                 modal.style.display = 'none';
                 modal.classList.remove('active');
                 this.showMessage('Settings saved.', 'success');
