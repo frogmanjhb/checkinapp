@@ -1247,12 +1247,12 @@ class MoodCheckInApp {
         try {
             const response = await APIUtils.getHousePoints(this.currentUser.id);
             if (response.success) {
-                const housePointsDisplay = document.getElementById('housePointsDisplay');
+                const housePointsCard = document.getElementById('housePointsCard');
                 const houseBadge = document.getElementById('houseBadge');
-                const studentNameFooter = document.getElementById('studentNameFooter');
+                const studentNameCard = document.getElementById('studentNameCard');
                 const housePoints = document.getElementById('housePoints');
 
-                if (housePointsDisplay && houseBadge && studentNameFooter && housePoints) {
+                if (housePointsCard && houseBadge && studentNameCard && housePoints) {
                     // Set house badge image
                     const houseBadgeMap = {
                         'Bavin': 'images/SP House_Bavin.png',
@@ -1271,13 +1271,13 @@ class MoodCheckInApp {
                     // Set student name
                     const firstName = this.currentUser.first_name || this.currentUser.firstName || '';
                     const surname = this.currentUser.surname || this.currentUser.lastName || '';
-                    studentNameFooter.textContent = `${firstName} ${surname}`.trim();
+                    studentNameCard.textContent = `${firstName} ${surname}`.trim();
 
                     // Set house points
                     housePoints.textContent = response.points || 0;
 
-                    // Show the display
-                    housePointsDisplay.style.display = 'flex';
+                    // Show the card
+                    housePointsCard.style.display = 'block';
                 }
             }
         } catch (error) {
