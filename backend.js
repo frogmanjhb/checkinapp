@@ -306,6 +306,24 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_users_type ON users(user_type)
     `);
 
+    // App settings (plugins, feature flags)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key VARCHAR(100) PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    await pool.query(`
+      INSERT INTO app_settings (key, value) VALUES ('message_center_enabled', 'true')
+      ON CONFLICT (key) DO NOTHING
+    `);
+    await pool.query(`
+      INSERT INTO app_settings (key, value) VALUES ('ghost_mode_enabled', 'true')
+      ON CONFLICT (key) DO NOTHING
+    `);
+    console.log('✅ app_settings initialized');
+
     console.log('✅ Database tables initialized successfully');
 
     // Add demo users if they don't exist
@@ -417,6 +435,30 @@ async function initializeDatabase() {
   }
 }
 
+async function getMessageCenterEnabled() {
+  if (!pool) return true;
+  try {
+    const r = await pool.query(`SELECT value FROM app_settings WHERE key = 'message_center_enabled'`);
+    if (!r.rows.length) return true;
+    return r.rows[0].value === 'true';
+  } catch (e) {
+    console.error('getMessageCenterEnabled:', e);
+    return true;
+  }
+}
+
+async function getGhostModeEnabled() {
+  if (!pool) return true;
+  try {
+    const r = await pool.query(`SELECT value FROM app_settings WHERE key = 'ghost_mode_enabled'`);
+    if (!r.rows.length) return true;
+    return r.rows[0].value === 'true';
+  } catch (e) {
+    console.error('getGhostModeEnabled:', e);
+    return true;
+  }
+}
+
 // API Routes
 
 // User registration
@@ -426,7 +468,7 @@ app.post('/api/register', async (req, res) => {
   }
   
   try {
-    const { firstName, surname, email, password, userType, class: studentClass, house, grades } = req.body;
+    const { firstName, surname, email, password, userType, class: studentClass, house, grades, registrationPassword } = req.body;
     
     // Validate required fields
     if (!firstName || !surname || !email || !password || !userType) {
@@ -436,6 +478,16 @@ app.post('/api/register', async (req, res) => {
     // Validate email format
     if (!email.endsWith('@stpeters.co.za')) {
       return res.status(400).json({ success: false, error: 'Email must be a @stpeters.co.za address' });
+    }
+
+    // Validate registration password for teacher and director
+    if (userType === 'teacher' || userType === 'director') {
+      if (!registrationPassword) {
+        return res.status(400).json({ success: false, error: 'Registration password is required for teacher and director accounts' });
+      }
+      if (registrationPassword !== 'RE@CT2026') {
+        return res.status(403).json({ success: false, error: 'Invalid registration password' });
+      }
     }
 
     // Validate teacher-specific fields
@@ -517,6 +569,66 @@ app.post('/api/login', async (req, res) => {
     res.json({ success: true, user: userWithoutPassword });
   } catch (error) {
     console.error('Login error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get app settings (e.g. plugin toggles) — used by all roles for UI visibility
+app.get('/api/settings', async (req, res) => {
+  try {
+    const [messageCenterEnabled, ghostModeEnabled] = await Promise.all([
+      getMessageCenterEnabled(),
+      getGhostModeEnabled()
+    ]);
+    res.json({ success: true, messageCenterEnabled, ghostModeEnabled });
+  } catch (error) {
+    console.error('Get settings error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update app settings (director only)
+app.put('/api/director/settings', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  try {
+    const { directorUserId, messageCenterEnabled, ghostModeEnabled } = req.body;
+    if (directorUserId == null) {
+      return res.status(400).json({ success: false, error: 'Missing directorUserId' });
+    }
+    if (typeof messageCenterEnabled !== 'boolean' && typeof ghostModeEnabled !== 'boolean') {
+      return res.status(400).json({ success: false, error: 'At least one of messageCenterEnabled or ghostModeEnabled required' });
+    }
+    const check = await pool.query(
+      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
+      [directorUserId, 'director']
+    );
+    if (check.rows.length === 0) {
+      return res.status(403).json({ success: false, error: 'Only directors can update settings' });
+    }
+    const out = {};
+    if (typeof messageCenterEnabled === 'boolean') {
+      const val = messageCenterEnabled ? 'true' : 'false';
+      await pool.query(
+        `INSERT INTO app_settings (key, value) VALUES ('message_center_enabled', $1)
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+        [val]
+      );
+      out.messageCenterEnabled = messageCenterEnabled;
+    }
+    if (typeof ghostModeEnabled === 'boolean') {
+      const val = ghostModeEnabled ? 'true' : 'false';
+      await pool.query(
+        `INSERT INTO app_settings (key, value) VALUES ('ghost_mode_enabled', $1)
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+        [val]
+      );
+      out.ghostModeEnabled = ghostModeEnabled;
+    }
+    res.json({ success: true, ...out });
+  } catch (error) {
+    console.error('Update director settings error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -886,7 +998,10 @@ app.post('/api/messages', async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
-  
+  const enabled = await getMessageCenterEnabled();
+  if (!enabled) {
+    return res.status(503).json({ success: false, error: 'Message center is currently disabled' });
+  }
   try {
     const { fromUserId, toUserId, message } = req.body;
     
@@ -934,7 +1049,10 @@ app.get('/api/messages/:userId', async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
-  
+  const enabled = await getMessageCenterEnabled();
+  if (!enabled) {
+    return res.status(503).json({ success: false, error: 'Message center is currently disabled' });
+  }
   try {
     const { userId } = req.params;
     
@@ -963,7 +1081,14 @@ app.get('/api/messages/:userId', async (req, res) => {
 
 // Mark message as read
 app.put('/api/messages/:messageId/read', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
   try {
+    const enabled = await getMessageCenterEnabled();
+    if (!enabled) {
+      return res.status(503).json({ success: false, error: 'Message center is currently disabled' });
+    }
     const { messageId } = req.params;
     
     const result = await pool.query(
@@ -987,7 +1112,10 @@ app.get('/api/messages/:userId/unread-count', async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
-  
+  const enabled = await getMessageCenterEnabled();
+  if (!enabled) {
+    return res.status(503).json({ success: false, error: 'Message center is currently disabled' });
+  }
   try {
     const { userId } = req.params;
     

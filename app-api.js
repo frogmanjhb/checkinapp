@@ -72,6 +72,18 @@ class APIUtils {
         return this.makeRequest(`/journal-entries/${userId}?period=${period}`);
     }
 
+    // App settings
+    static async getSettings() {
+        return this.makeRequest('/settings');
+    }
+
+    static async updateDirectorSettings(directorUserId, messageCenterEnabled, ghostModeEnabled) {
+        return this.makeRequest('/director/settings', {
+            method: 'PUT',
+            body: JSON.stringify({ directorUserId, messageCenterEnabled, ghostModeEnabled })
+        });
+    }
+
     // Director methods
     static async getAllUsers() {
         return this.makeRequest('/director/all-users');
@@ -192,6 +204,7 @@ class MoodCheckInApp {
         this.mouseX = 0;
         this.mouseY = 0;
         this.physicsInterval = null;
+        this.pluginSettings = { messageCenterEnabled: true, ghostModeEnabled: true };
         
         this.initializeApp();
         this.setupEventListeners();
@@ -227,7 +240,7 @@ class MoodCheckInApp {
         if (savedUser) {
             this.currentUser = JSON.parse(savedUser);
             await this.loadUserData();
-            this.showDashboard();
+            await this.showDashboard();
         } else {
             this.showLoginScreen();
         }
@@ -690,7 +703,7 @@ class MoodCheckInApp {
                 this.currentUser = response.user;
                 localStorage.setItem('checkinUser', JSON.stringify(this.currentUser));
                 await this.loadUserData();
-                this.showDashboard();
+                await this.showDashboard();
                 this.showMessage('Login successful! Welcome back!', 'success');
             } else {
                 this.showMessage('Invalid credentials. Please try again.', 'error');
@@ -792,19 +805,20 @@ class MoodCheckInApp {
         await new Promise(resolve => setTimeout(resolve, 100));
 
         // Try to get elements with retry mechanism
-        let firstNameElement, surnameElement, gradeCheckboxes, houseElement, emailElement, passwordElement, confirmPasswordElement;
+        let firstNameElement, surnameElement, gradeCheckboxes, houseElement, registrationPasswordElement, emailElement, passwordElement, confirmPasswordElement;
         
         for (let i = 0; i < 3; i++) {
             firstNameElement = document.getElementById('teacherFirstName');
             surnameElement = document.getElementById('teacherSurname');
             gradeCheckboxes = document.querySelectorAll('input[name="teacherGrade"]:checked');
             houseElement = document.getElementById('teacherHouse');
+            registrationPasswordElement = document.getElementById('teacherRegistrationPassword');
             emailElement = document.getElementById('teacherEmail');
             passwordElement = document.getElementById('teacherPassword');
             confirmPasswordElement = document.getElementById('teacherConfirmPassword');
             
             if (firstNameElement && surnameElement && gradeCheckboxes.length > 0 && houseElement && 
-                emailElement && passwordElement && confirmPasswordElement) {
+                registrationPasswordElement && emailElement && passwordElement && confirmPasswordElement) {
                 break;
             }
             
@@ -814,7 +828,7 @@ class MoodCheckInApp {
         }
         
         if (!firstNameElement || !surnameElement || gradeCheckboxes.length === 0 || !houseElement || 
-            !emailElement || !passwordElement || !confirmPasswordElement) {
+            !registrationPasswordElement || !emailElement || !passwordElement || !confirmPasswordElement) {
             console.error('Teacher registration form elements not found in DOM');
             
             this.showMessage('Registration form not ready. Please refresh the page and try again.', 'error');
@@ -825,6 +839,7 @@ class MoodCheckInApp {
         const surname = SecurityUtils.sanitizeInput(surnameElement.value);
         const grades = Array.from(gradeCheckboxes).map(checkbox => checkbox.value);
         const house = houseElement.value;
+        const registrationPassword = registrationPasswordElement.value;
         const email = SecurityUtils.sanitizeInput(emailElement.value);
         const password = passwordElement.value;
         const confirmPassword = confirmPasswordElement.value;
@@ -859,7 +874,8 @@ class MoodCheckInApp {
                 password,
                 userType: 'teacher',
                 grades,
-                house
+                house,
+                registrationPassword
             });
 
             if (response.success) {
@@ -878,11 +894,12 @@ class MoodCheckInApp {
     async handleDirectorRegistration() {
         const firstNameElement = document.getElementById('directorFirstName');
         const surnameElement = document.getElementById('directorSurname');
+        const registrationPasswordElement = document.getElementById('directorRegistrationPassword');
         const emailElement = document.getElementById('directorEmail');
         const passwordElement = document.getElementById('directorPassword');
         const confirmPasswordElement = document.getElementById('directorConfirmPassword');
         
-        if (!firstNameElement || !surnameElement || !emailElement || 
+        if (!firstNameElement || !surnameElement || !registrationPasswordElement || !emailElement || 
             !passwordElement || !confirmPasswordElement) {
             console.error('Director registration form elements not found in DOM');
             this.showMessage('Registration form not ready. Please refresh the page and try again.', 'error');
@@ -891,6 +908,7 @@ class MoodCheckInApp {
         
         const firstName = SecurityUtils.sanitizeInput(firstNameElement.value);
         const surname = SecurityUtils.sanitizeInput(surnameElement.value);
+        const registrationPassword = registrationPasswordElement.value;
         const email = SecurityUtils.sanitizeInput(emailElement.value);
         const password = passwordElement.value;
         const confirmPassword = confirmPasswordElement.value;
@@ -918,7 +936,8 @@ class MoodCheckInApp {
                 surname,
                 email,
                 password,
-                userType: 'director'
+                userType: 'director',
+                registrationPassword
             });
 
             if (response.success) {
@@ -1068,7 +1087,10 @@ class MoodCheckInApp {
         }
     }
 
-    showDashboard() {
+    async showDashboard() {
+        await this.fetchPluginSettings();
+        this.applyMessageCenterVisibility();
+        this.applyGhostModeVisibility();
         document.getElementById('loginScreen').classList.remove('active');
         document.getElementById('registerScreen').classList.remove('active');
         document.getElementById('navUser').style.display = 'flex';
@@ -1079,6 +1101,51 @@ class MoodCheckInApp {
             this.showTeacherDashboard();
         } else if (this.currentUser.user_type === 'director') {
             this.showDirectorDashboard();
+        }
+    }
+
+    async fetchPluginSettings() {
+        try {
+            const res = await APIUtils.getSettings();
+            if (res.success) {
+                if (typeof res.messageCenterEnabled === 'boolean') this.pluginSettings.messageCenterEnabled = res.messageCenterEnabled;
+                if (typeof res.ghostModeEnabled === 'boolean') this.pluginSettings.ghostModeEnabled = res.ghostModeEnabled;
+            }
+        } catch (e) {
+            console.warn('Failed to fetch plugin settings, using defaults:', e);
+        }
+    }
+
+    applyMessageCenterVisibility() {
+        const enabled = !!this.pluginSettings.messageCenterEnabled;
+        const msgBtn = document.getElementById('messageCenterBtn');
+        const talkBtn = document.getElementById('talkToTeacherBtn');
+        const teacherBanner = document.getElementById('teacherMessagesBanner');
+        const directorBanner = document.getElementById('directorMessagesBanner');
+        const msgModal = document.getElementById('messageCenterModal');
+        if (msgBtn) msgBtn.style.display = enabled ? 'flex' : 'none';
+        if (talkBtn) talkBtn.style.display = enabled ? '' : 'none';
+        if (!enabled) {
+            if (teacherBanner) teacherBanner.style.display = 'none';
+            if (directorBanner) directorBanner.style.display = 'none';
+            if (msgModal && msgModal.classList.contains('active')) this.hideMessageCenter();
+            const talkModal = document.getElementById('talkToTeacherModal');
+            if (talkModal && talkModal.classList.contains('active')) this.hideTalkToTeacherModal();
+        }
+    }
+
+    applyGhostModeVisibility() {
+        const enabled = !!this.pluginSettings.ghostModeEnabled;
+        const toggleSection = document.querySelector('.ghost-mode-toggle');
+        const statusEl = document.getElementById('ghostModeStatus');
+        const toggleEl = document.getElementById('ghostModeToggle');
+        const indicators = document.querySelectorAll('.ghost-mode-modal-indicator');
+        if (toggleSection) toggleSection.style.display = enabled ? '' : 'none';
+        if (statusEl) statusEl.style.display = enabled && this.isGhostMode ? 'block' : 'none';
+        if (!enabled) {
+            this.isGhostMode = false;
+            if (toggleEl) toggleEl.checked = false;
+            indicators.forEach(el => { el.style.display = 'none'; });
         }
     }
 
@@ -1195,10 +1262,10 @@ class MoodCheckInApp {
             updateTeacherFilters();
         }, 200);
         
-        // Update unread message count
-        this.updateUnreadCount();
-        // Update nav unread count
-        this.updateNavUnreadCount();
+        if (this.pluginSettings.messageCenterEnabled) {
+            this.updateUnreadCount();
+            this.updateNavUnreadCount();
+        }
     }
 
     showDirectorDashboard() {
@@ -1236,10 +1303,10 @@ class MoodCheckInApp {
         // Initialize charts
         this.initializeDirectorCharts();
         
-        // Update unread message count
-        this.updateUnreadCount();
-        // Update nav unread count
-        this.updateNavUnreadCount();
+        if (this.pluginSettings.messageCenterEnabled) {
+            this.updateUnreadCount();
+            this.updateNavUnreadCount();
+        }
     }
 
     async loadUserData() {
@@ -1695,7 +1762,11 @@ class MoodCheckInApp {
     }
 
     toggleGhostMode(isEnabled) {
-        
+        if (isEnabled && !this.pluginSettings.ghostModeEnabled) {
+            const t = document.getElementById('ghostModeToggle');
+            if (t) t.checked = false;
+            return;
+        }
         // Update ghost mode status display
         const ghostModeStatus = document.getElementById('ghostModeStatus');
         if (ghostModeStatus) {
@@ -3621,12 +3692,24 @@ class MoodCheckInApp {
                 this.showGroupDetailModal('teachers', 'teachers');
             });
         }
+
+        // Director Profile card -> open profile modal
+        const profileCard = document.getElementById('directorProfileCard');
+        if (profileCard) {
+            profileCard.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.openDirectorProfileModal();
+            });
+        }
         
         // Setup modal close handlers
         const groupModal = document.getElementById('directorGroupDetailModal');
         const studentModal = document.getElementById('directorStudentDetailModal');
+        const profileModal = document.getElementById('directorProfileModal');
         const closeGroupBtn = document.getElementById('closeDirectorGroupDetailModal');
         const closeStudentBtn = document.getElementById('closeDirectorStudentDetailModal');
+        const closeProfileBtn = document.getElementById('closeDirectorProfileModal');
         
         if (closeGroupBtn && groupModal) {
             closeGroupBtn.addEventListener('click', () => {
@@ -3640,6 +3723,18 @@ class MoodCheckInApp {
                 studentModal.style.display = 'none';
                 studentModal.classList.remove('active');
             });
+        }
+        if (closeProfileBtn && profileModal) {
+            closeProfileBtn.addEventListener('click', () => {
+                profileModal.style.display = 'none';
+                profileModal.classList.remove('active');
+            });
+        }
+        
+        // Save Director Profile (plugins)
+        const saveProfileBtn = document.getElementById('saveDirectorProfileBtn');
+        if (saveProfileBtn && profileModal) {
+            saveProfileBtn.addEventListener('click', () => this.saveDirectorProfile());
         }
         
         // Close modals when clicking outside
@@ -3659,6 +3754,51 @@ class MoodCheckInApp {
                     studentModal.classList.remove('active');
                 }
             });
+        }
+        if (profileModal) {
+            profileModal.addEventListener('click', (e) => {
+                if (e.target === profileModal) {
+                    profileModal.style.display = 'none';
+                    profileModal.classList.remove('active');
+                }
+            });
+        }
+    }
+
+    openDirectorProfileModal() {
+        const modal = document.getElementById('directorProfileModal');
+        const msgToggle = document.getElementById('messageCenterPluginToggle');
+        const ghostToggle = document.getElementById('ghostModePluginToggle');
+        if (!modal || !msgToggle) return;
+        msgToggle.checked = !!this.pluginSettings.messageCenterEnabled;
+        if (ghostToggle) ghostToggle.checked = !!this.pluginSettings.ghostModeEnabled;
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+    }
+
+    async saveDirectorProfile() {
+        const msgToggle = document.getElementById('messageCenterPluginToggle');
+        const ghostToggle = document.getElementById('ghostModePluginToggle');
+        const modal = document.getElementById('directorProfileModal');
+        if (!this.currentUser || this.currentUser.user_type !== 'director' || !msgToggle || !modal) return;
+        const messageCenterEnabled = !!msgToggle.checked;
+        const ghostModeEnabled = ghostToggle ? !!ghostToggle.checked : true;
+        try {
+            const res = await APIUtils.updateDirectorSettings(this.currentUser.id, messageCenterEnabled, ghostModeEnabled);
+            if (res.success) {
+                if (typeof res.messageCenterEnabled === 'boolean') this.pluginSettings.messageCenterEnabled = res.messageCenterEnabled;
+                if (typeof res.ghostModeEnabled === 'boolean') this.pluginSettings.ghostModeEnabled = res.ghostModeEnabled;
+                this.applyMessageCenterVisibility();
+                this.applyGhostModeVisibility();
+                modal.style.display = 'none';
+                modal.classList.remove('active');
+                this.showMessage('Settings saved.', 'success');
+            } else {
+                this.showMessage(res.error || 'Failed to save settings.', 'error');
+            }
+        } catch (e) {
+            console.error('Save director profile error:', e);
+            this.showMessage('Failed to save settings. Please try again.', 'error');
         }
     }
 

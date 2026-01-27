@@ -61,6 +61,24 @@ async function migrateDatabase() {
     result.rows.forEach(row => {
       console.log(`  - ${row.column_name}: ${row.data_type}`);
     });
+
+    // App settings (plugins, e.g. message center)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key VARCHAR(100) PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    await pool.query(`
+      INSERT INTO app_settings (key, value) VALUES ('message_center_enabled', 'true')
+      ON CONFLICT (key) DO NOTHING
+    `);
+    await pool.query(`
+      INSERT INTO app_settings (key, value) VALUES ('ghost_mode_enabled', 'true')
+      ON CONFLICT (key) DO NOTHING
+    `);
+    console.log('✅ app_settings table ready');
     
     console.log('🎉 Database migration completed successfully!');
     

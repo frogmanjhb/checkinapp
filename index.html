@@ -37,7 +37,6 @@
             <!-- Login Screen -->
             <div id="loginScreen" class="screen active">
                 <div class="login-container">
-                    <img src="images/SP Prep Schools Centred Logo-Colour_White txt (2).png" alt="SP Prep Schools Logo" class="login-logo">
                     <div class="login-card">
                         <h2>Welcome to REACT!</h2>
                         <p>The Mood Check-In and Well-Being System for Students and Teachers</p>
@@ -174,6 +173,11 @@
                                 <small class="form-hint">You will only be able to view data from this house</small>
                             </div>
                             <div class="form-group">
+                                <label for="teacherRegistrationPassword">Registration Password</label>
+                                <input type="password" id="teacherRegistrationPassword" required placeholder="Enter registration password">
+                                <small class="form-hint">Required to create a teacher account</small>
+                            </div>
+                            <div class="form-group">
                                 <label for="teacherEmail">Email</label>
                                 <input type="email" id="teacherEmail" required placeholder="your.name@stpeters.co.za">
                                 <small class="form-hint">Must be a @stpeters.co.za email address</small>
@@ -200,6 +204,11 @@
                             <div class="form-group">
                                 <label for="directorSurname">Surname</label>
                                 <input type="text" id="directorSurname" required placeholder="Enter your surname">
+                            </div>
+                            <div class="form-group">
+                                <label for="directorRegistrationPassword">Registration Password</label>
+                                <input type="password" id="directorRegistrationPassword" required placeholder="Enter registration password">
+                                <small class="form-hint">Required to create a director account</small>
                             </div>
                             <div class="form-group">
                                 <label for="directorEmail">Email</label>
@@ -687,6 +696,20 @@
                                     </div>
                                 </div>
                                 <div class="teacher-count" id="teachersCount">Loading...</div>
+                            </div>
+                        </div>
+
+                        <!-- Director Profile / Settings Card -->
+                        <div class="director-modal-card" id="directorProfileCard">
+                            <div class="modal-card-header">
+                                <h3>⚙️ Director Profile</h3>
+                                <span class="card-click-indicator">👆</span>
+                            </div>
+                            <div class="modal-card-content">
+                                <div class="profile-card-summary">
+                                    <span class="profile-label">Plugins &amp; settings</span>
+                                    <span class="profile-value">Message Center, etc.</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1236,6 +1259,45 @@
             </div>
             <div class="modal-body" id="directorStudentDetailContent">
                 <!-- Student details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Director Profile Modal (plugins & settings) -->
+    <div id="directorProfileModal" class="modal">
+        <div class="modal-content director-modal-large">
+            <div class="modal-header">
+                <h3>⚙️ Director Profile</h3>
+                <button class="modal-close" id="closeDirectorProfileModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <section class="profile-section">
+                    <h4>Plugins</h4>
+                    <p class="profile-section-desc">Turn features on or off for students, teachers, and directors.</p>
+                    <div class="plugin-toggle-row">
+                        <div class="plugin-toggle-info">
+                            <span class="plugin-name">💬 Message Center</span>
+                            <span class="plugin-desc">Student–teacher messaging, Message Center in navbar, unread banners</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="messageCenterPluginToggle" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="plugin-toggle-row">
+                        <div class="plugin-toggle-info">
+                            <span class="plugin-name">👻 Ghost Mode</span>
+                            <span class="plugin-desc">Anonymous check-ins for students and teachers; toggle and indicators in mood/journal flow</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="ghostModePluginToggle" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </section>
+                <div class="profile-actions">
+                    <button type="button" id="saveDirectorProfileBtn" class="btn-primary">Save changes</button>
+                </div>
             </div>
         </div>
     </div>
