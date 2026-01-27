@@ -376,6 +376,23 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_tile_flip_resets_user_id ON tile_flip_resets(user_id)
     `);
 
+    // Create house_points table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS house_points (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        points INTEGER NOT NULL DEFAULT 0,
+        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id)
+      )
+    `);
+
+    // Create index for house_points
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_house_points_user_id ON house_points(user_id)
+    `);
+
     // Seed 50 inspirational quotes
     const quotes = [
       { quote_index: 0, quote_text: "You are braver than you believe, stronger than you seem, and smarter than you think.", author: "A.A. Milne" },
@@ -587,6 +604,34 @@ async function getTileFlipEnabled() {
   }
 }
 
+// Helper function to award house points
+async function awardHousePoints(userId, points) {
+  if (!pool) return;
+  try {
+    // Get user's house to ensure they're a student
+    const userResult = await pool.query(
+      'SELECT house FROM users WHERE id = $1 AND user_type = $2',
+      [userId, 'student']
+    );
+    
+    if (userResult.rows.length === 0) {
+      return; // Not a student, no points
+    }
+
+    // Insert or update house points
+    await pool.query(`
+      INSERT INTO house_points (user_id, points, last_updated)
+      VALUES ($1, $2, CURRENT_TIMESTAMP)
+      ON CONFLICT (user_id) 
+      DO UPDATE SET 
+        points = house_points.points + $2,
+        last_updated = CURRENT_TIMESTAMP
+    `, [userId, points]);
+  } catch (error) {
+    console.error('Error awarding house points:', error);
+  }
+}
+
 // API Routes
 
 // User registration
@@ -786,6 +831,9 @@ app.post('/api/mood-checkin', async (req, res) => {
       [userId, mood, emoji, notes, location, reasons || [], emotions || []]
     );
     
+    // Award 1 house point for check-in
+    await awardHousePoints(userId, 1);
+    
     res.status(201).json({ success: true, checkin: result.rows[0] });
   } catch (error) {
     console.error('Mood check-in error:', error);
@@ -954,6 +1002,9 @@ app.post('/api/journal-entry', async (req, res) => {
       'INSERT INTO journal_entries (user_id, entry) VALUES ($1, $2) RETURNING *',
       [userId, entry]
     );
+    
+    // Award 2 house points for journal entry
+    await awardHousePoints(userId, 2);
     
     res.status(201).json({ success: true, journalEntry: result.rows[0] });
   } catch (error) {
@@ -1153,6 +1204,9 @@ app.post('/api/tile-flip/flip', async (req, res) => {
       'INSERT INTO tile_flips (user_id, tile_index, quote_index) VALUES ($1, $2, $3)',
       [userId, tileIndex, quoteIndex]
     );
+    
+    // Award 1 house point for tile flip
+    await awardHousePoints(userId, 1);
     
     // Check if all tiles are now flipped
     const allFlippedResult = await pool.query(
@@ -1567,6 +1621,41 @@ app.get('/api/messages/:userId/unread-count', async (req, res) => {
     res.json({ success: true, count: parseInt(result.rows[0].count) });
   } catch (error) {
     console.error('Get unread count error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get house points for a user
+app.get('/api/house-points/:userId', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  try {
+    const { userId } = req.params;
+    
+    // Get user's house
+    const userResult = await pool.query(
+      'SELECT house FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+    
+    const house = userResult.rows[0].house;
+    
+    // Get house points (default to 0 if not found)
+    const pointsResult = await pool.query(
+      'SELECT points FROM house_points WHERE user_id = $1',
+      [userId]
+    );
+    
+    const points = pointsResult.rows.length > 0 ? pointsResult.rows[0].points : 0;
+    
+    res.json({ success: true, points, house });
+  } catch (error) {
+    console.error('Get house points error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

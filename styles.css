@@ -2231,6 +2231,82 @@ body {
     margin-top: 2rem;
 }
 
+.footer-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.house-points-display {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 2px solid #e1e5e9;
+    margin-bottom: 0.5rem;
+}
+
+.house-badge {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    background: white;
+    padding: 4px;
+}
+
+.house-points-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+}
+
+.student-name-footer {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 1rem;
+}
+
+.house-points-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2196F3;
+    line-height: 1;
+}
+
+.house-points-label {
+    font-size: 0.9rem;
+    color: #666;
+    font-weight: 500;
+}
+
+@media (max-width: 768px) {
+    .house-points-display {
+        flex-direction: column;
+        text-align: center;
+        padding: 1rem;
+    }
+
+    .house-badge {
+        width: 50px;
+        height: 50px;
+    }
+
+    .house-points-info {
+        align-items: center;
+    }
+
+    .house-points-value {
+        font-size: 1.3rem;
+    }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .nav-container {

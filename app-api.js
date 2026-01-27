@@ -165,6 +165,11 @@ class APIUtils {
     static async getUnreadCount(userId) {
         return this.makeRequest(`/messages/${userId}/unread-count`);
     }
+
+    // House Points methods
+    static async getHousePoints(userId) {
+        return this.makeRequest(`/house-points/${userId}`);
+    }
 }
 
 // Security utility for password validation
@@ -1231,6 +1236,53 @@ class MoodCheckInApp {
         this.updateStudentAnalytics();
         this.updateStudentJournalList();
         this.initializeTileFlip();
+        this.updateHousePoints();
+    }
+
+    async updateHousePoints() {
+        if (!this.currentUser || this.currentUser.user_type !== 'student') {
+            return;
+        }
+
+        try {
+            const response = await APIUtils.getHousePoints(this.currentUser.id);
+            if (response.success) {
+                const housePointsDisplay = document.getElementById('housePointsDisplay');
+                const houseBadge = document.getElementById('houseBadge');
+                const studentNameFooter = document.getElementById('studentNameFooter');
+                const housePoints = document.getElementById('housePoints');
+
+                if (housePointsDisplay && houseBadge && studentNameFooter && housePoints) {
+                    // Set house badge image
+                    const houseBadgeMap = {
+                        'Bavin': 'images/SP House_Bavin.png',
+                        'Bishops': 'images/SP House_Bishops.png',
+                        'Dodson': 'images/SP House_Dodson.png',
+                        'Mirfield': 'images/SP House_Mirfield.png',
+                        'Sage': 'images/SP House_Sage.png'
+                    };
+
+                    const house = response.house || this.currentUser.house;
+                    if (house && houseBadgeMap[house]) {
+                        houseBadge.src = houseBadgeMap[house];
+                        houseBadge.alt = `${house} House Badge`;
+                    }
+
+                    // Set student name
+                    const firstName = this.currentUser.first_name || this.currentUser.firstName || '';
+                    const surname = this.currentUser.surname || this.currentUser.lastName || '';
+                    studentNameFooter.textContent = `${firstName} ${surname}`.trim();
+
+                    // Set house points
+                    housePoints.textContent = response.points || 0;
+
+                    // Show the display
+                    housePointsDisplay.style.display = 'flex';
+                }
+            }
+        } catch (error) {
+            console.error('Error updating house points:', error);
+        }
     }
 
     updateStudentName() {
@@ -1931,6 +1983,11 @@ class MoodCheckInApp {
 
                 this.moodHistory.unshift(moodRecord);
                 this.allMoodHistory.unshift(moodRecord);
+                
+                // Update house points after check-in
+                if (this.currentUser.user_type === 'student') {
+                    this.updateHousePoints();
+                }
                 
                 this.hideLocationModal(); // Hide location modal
                 this.updateStatusDisplay();
@@ -2705,6 +2762,7 @@ class MoodCheckInApp {
                 if (this.currentUser.user_type === 'student') {
                     this.updateStudentJournalList();
                     this.updateTileFlipStatus(); // Update tile flip status after journal entry
+                    this.updateHousePoints(); // Update house points after journal entry
                 } else if (this.currentUser.user_type === 'teacher') {
                     this.updateTeacherJournalList();
                     this.updateTeacherStatusDisplay(); // Update the journal counter
@@ -2805,6 +2863,11 @@ class MoodCheckInApp {
                     availableFlips: response.availableFlips
                 };
                 this.availableFlips = response.availableFlips;
+
+                // Update house points after tile flip
+                if (this.currentUser.user_type === 'student') {
+                    this.updateHousePoints();
+                }
 
                 // Show quote popup
                 this.showTileQuoteModal(response.quote.text, response.quote.author);
