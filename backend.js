@@ -326,6 +326,10 @@ async function initializeDatabase() {
       INSERT INTO app_settings (key, value) VALUES ('tile_flip_enabled', 'true')
       ON CONFLICT (key) DO NOTHING
     `);
+    await pool.query(`
+      INSERT INTO app_settings (key, value) VALUES ('house_points_enabled', 'true')
+      ON CONFLICT (key) DO NOTHING
+    `);
     console.log('✅ app_settings initialized');
 
     // Create tile_flips table
@@ -604,6 +608,18 @@ async function getTileFlipEnabled() {
   }
 }
 
+async function getHousePointsEnabled() {
+  if (!pool) return true;
+  try {
+    const r = await pool.query(`SELECT value FROM app_settings WHERE key = 'house_points_enabled'`);
+    if (!r.rows.length) return true;
+    return r.rows[0].value === 'true';
+  } catch (e) {
+    console.error('getHousePointsEnabled:', e);
+    return true;
+  }
+}
+
 // Helper function to award house points
 async function awardHousePoints(userId, points) {
   if (!pool) return;
@@ -749,12 +765,13 @@ app.post('/api/login', async (req, res) => {
 // Get app settings (e.g. plugin toggles) — used by all roles for UI visibility
 app.get('/api/settings', async (req, res) => {
   try {
-    const [messageCenterEnabled, ghostModeEnabled, tileFlipEnabled] = await Promise.all([
+    const [messageCenterEnabled, ghostModeEnabled, tileFlipEnabled, housePointsEnabled] = await Promise.all([
       getMessageCenterEnabled(),
       getGhostModeEnabled(),
-      getTileFlipEnabled()
+      getTileFlipEnabled(),
+      getHousePointsEnabled()
     ]);
-    res.json({ success: true, messageCenterEnabled, ghostModeEnabled, tileFlipEnabled });
+    res.json({ success: true, messageCenterEnabled, ghostModeEnabled, tileFlipEnabled, housePointsEnabled });
   } catch (error) {
     console.error('Get settings error:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -767,11 +784,11 @@ app.put('/api/director/settings', async (req, res) => {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
   try {
-    const { directorUserId, messageCenterEnabled, ghostModeEnabled, tileFlipEnabled } = req.body;
+    const { directorUserId, messageCenterEnabled, ghostModeEnabled, tileFlipEnabled, housePointsEnabled } = req.body;
     if (directorUserId == null) {
       return res.status(400).json({ success: false, error: 'Missing directorUserId' });
     }
-    if (typeof messageCenterEnabled !== 'boolean' && typeof ghostModeEnabled !== 'boolean' && typeof tileFlipEnabled !== 'boolean') {
+    if (typeof messageCenterEnabled !== 'boolean' && typeof ghostModeEnabled !== 'boolean' && typeof tileFlipEnabled !== 'boolean' && typeof housePointsEnabled !== 'boolean') {
       return res.status(400).json({ success: false, error: 'At least one setting must be provided' });
     }
     const check = await pool.query(
@@ -808,6 +825,15 @@ app.put('/api/director/settings', async (req, res) => {
         [val]
       );
       out.tileFlipEnabled = tileFlipEnabled;
+    }
+    if (typeof housePointsEnabled === 'boolean') {
+      const val = housePointsEnabled ? 'true' : 'false';
+      await pool.query(
+        `INSERT INTO app_settings (key, value) VALUES ('house_points_enabled', $1)
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+        [val]
+      );
+      out.housePointsEnabled = housePointsEnabled;
     }
     res.json({ success: true, ...out });
   } catch (error) {
@@ -1656,6 +1682,48 @@ app.get('/api/house-points/:userId', async (req, res) => {
     res.json({ success: true, points, house });
   } catch (error) {
     console.error('Get house points error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get house points totals by house (for director)
+app.get('/api/director/house-points', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  try {
+    const { directorUserId } = req.query;
+    
+    if (!directorUserId) {
+      return res.status(400).json({ success: false, error: 'Missing directorUserId' });
+    }
+    
+    // Verify user is a director
+    const check = await pool.query(
+      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
+      [directorUserId, 'director']
+    );
+    
+    if (check.rows.length === 0) {
+      return res.status(403).json({ success: false, error: 'Only directors can access house points' });
+    }
+    
+    // Get total points for each house
+    const result = await pool.query(`
+      SELECT 
+        u.house,
+        COALESCE(SUM(hp.points), 0) as total_points,
+        COUNT(DISTINCT u.id) as student_count
+      FROM users u
+      LEFT JOIN house_points hp ON u.id = hp.user_id
+      WHERE u.user_type = 'student' AND u.house IS NOT NULL
+      GROUP BY u.house
+      ORDER BY u.house
+    `);
+    
+    res.json({ success: true, housePoints: result.rows });
+  } catch (error) {
+    console.error('Get house points totals error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

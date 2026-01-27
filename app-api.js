@@ -77,10 +77,10 @@ class APIUtils {
         return this.makeRequest('/settings');
     }
 
-    static async updateDirectorSettings(directorUserId, messageCenterEnabled, ghostModeEnabled, tileFlipEnabled) {
+    static async updateDirectorSettings(directorUserId, messageCenterEnabled, ghostModeEnabled, tileFlipEnabled, housePointsEnabled) {
         return this.makeRequest('/director/settings', {
             method: 'PUT',
-            body: JSON.stringify({ directorUserId, messageCenterEnabled, ghostModeEnabled, tileFlipEnabled })
+            body: JSON.stringify({ directorUserId, messageCenterEnabled, ghostModeEnabled, tileFlipEnabled, housePointsEnabled })
         });
     }
 
@@ -170,6 +170,10 @@ class APIUtils {
     static async getHousePoints(userId) {
         return this.makeRequest(`/house-points/${userId}`);
     }
+
+    static async getHousePointsTotals(directorUserId) {
+        return this.makeRequest(`/director/house-points?directorUserId=${directorUserId}`);
+    }
 }
 
 // Security utility for password validation
@@ -242,7 +246,7 @@ class MoodCheckInApp {
         this.mouseX = 0;
         this.mouseY = 0;
         this.physicsInterval = null;
-        this.pluginSettings = { messageCenterEnabled: true, ghostModeEnabled: true, tileFlipEnabled: true };
+        this.pluginSettings = { messageCenterEnabled: true, ghostModeEnabled: true, tileFlipEnabled: true, housePointsEnabled: true };
         this.tileFlipStatus = null;
         this.tileQuotes = [];
         this.availableFlips = 0;
@@ -1134,6 +1138,7 @@ class MoodCheckInApp {
         this.applyMessageCenterVisibility();
         this.applyGhostModeVisibility();
         this.applyTileFlipVisibility();
+        this.applyHousePointsVisibility();
         document.getElementById('loginScreen').classList.remove('active');
         document.getElementById('registerScreen').classList.remove('active');
         document.getElementById('navUser').style.display = 'flex';
@@ -1154,6 +1159,7 @@ class MoodCheckInApp {
                 if (typeof res.messageCenterEnabled === 'boolean') this.pluginSettings.messageCenterEnabled = res.messageCenterEnabled;
                 if (typeof res.ghostModeEnabled === 'boolean') this.pluginSettings.ghostModeEnabled = res.ghostModeEnabled;
                 if (typeof res.tileFlipEnabled === 'boolean') this.pluginSettings.tileFlipEnabled = res.tileFlipEnabled;
+                if (typeof res.housePointsEnabled === 'boolean') this.pluginSettings.housePointsEnabled = res.housePointsEnabled;
             }
         } catch (e) {
             console.warn('Failed to fetch plugin settings, using defaults:', e);
@@ -1206,6 +1212,14 @@ class MoodCheckInApp {
         }
     }
 
+    applyHousePointsVisibility() {
+        const enabled = !!this.pluginSettings.housePointsEnabled;
+        const housePointsCard = document.getElementById('housePointsCard');
+        if (housePointsCard) {
+            housePointsCard.style.display = enabled ? '' : 'none';
+        }
+    }
+
     showStudentDashboard() {
         const studentScreen = document.getElementById('studentDashboardScreen');
         const teacherScreen = document.getElementById('teacherDashboardScreen');
@@ -1236,7 +1250,10 @@ class MoodCheckInApp {
         this.updateStudentAnalytics();
         this.updateStudentJournalList();
         this.initializeTileFlip();
-        this.updateHousePoints();
+        this.applyHousePointsVisibility();
+        if (this.pluginSettings.housePointsEnabled) {
+            this.updateHousePoints();
+        }
     }
 
     async updateHousePoints() {
@@ -1276,8 +1293,7 @@ class MoodCheckInApp {
                     // Set house points
                     housePoints.textContent = response.points || 0;
 
-                    // Show the card
-                    housePointsCard.style.display = 'block';
+                    // Visibility is controlled by applyHousePointsVisibility()
                 }
             }
         } catch (error) {
@@ -4034,37 +4050,87 @@ class MoodCheckInApp {
         }
     }
 
-    openDirectorProfileModal() {
+    async openDirectorProfileModal() {
         const modal = document.getElementById('directorProfileModal');
         const msgToggle = document.getElementById('messageCenterPluginToggle');
         const ghostToggle = document.getElementById('ghostModePluginToggle');
         const tileFlipToggle = document.getElementById('tileFlipPluginToggle');
+        const housePointsToggle = document.getElementById('housePointsPluginToggle');
         if (!modal || !msgToggle) return;
         msgToggle.checked = !!this.pluginSettings.messageCenterEnabled;
         if (ghostToggle) ghostToggle.checked = !!this.pluginSettings.ghostModeEnabled;
         if (tileFlipToggle) tileFlipToggle.checked = !!this.pluginSettings.tileFlipEnabled;
+        if (housePointsToggle) housePointsToggle.checked = !!this.pluginSettings.housePointsEnabled;
         modal.style.display = 'flex';
         modal.classList.add('active');
+        
+        // Load house points
+        await this.updateDirectorHousePoints();
+    }
+
+    async updateDirectorHousePoints() {
+        if (!this.currentUser || this.currentUser.user_type !== 'director') {
+            return;
+        }
+
+        const housePointsGrid = document.getElementById('housePointsGrid');
+        if (!housePointsGrid) return;
+
+        try {
+            const response = await APIUtils.getHousePointsTotals(this.currentUser.id);
+            if (response.success && response.housePoints) {
+                const houseBadgeMap = {
+                    'Bavin': 'images/SP House_Bavin.png',
+                    'Bishops': 'images/SP House_Bishops.png',
+                    'Dodson': 'images/SP House_Dodson.png',
+                    'Mirfield': 'images/SP House_Mirfield.png',
+                    'Sage': 'images/SP House_Sage.png'
+                };
+
+                housePointsGrid.innerHTML = response.housePoints.map(house => {
+                    const badgeSrc = houseBadgeMap[house.house] || '';
+                    return `
+                        <div class="house-points-item">
+                            <img src="${badgeSrc}" alt="${house.house} House Badge" class="house-badge-director">
+                            <div class="house-points-details">
+                                <div class="house-name-director">${house.house} House</div>
+                                <div class="house-points-total">${parseInt(house.total_points)} Points</div>
+                                <div class="house-students-count">${parseInt(house.student_count)} Student${parseInt(house.student_count) !== 1 ? 's' : ''}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                housePointsGrid.innerHTML = '<p class="loading-text">No house points data available.</p>';
+            }
+        } catch (error) {
+            console.error('Error loading house points:', error);
+            housePointsGrid.innerHTML = '<p class="loading-text">Error loading house points.</p>';
+        }
     }
 
     async saveDirectorProfile() {
         const msgToggle = document.getElementById('messageCenterPluginToggle');
         const ghostToggle = document.getElementById('ghostModePluginToggle');
         const tileFlipToggle = document.getElementById('tileFlipPluginToggle');
+        const housePointsToggle = document.getElementById('housePointsPluginToggle');
         const modal = document.getElementById('directorProfileModal');
         if (!this.currentUser || this.currentUser.user_type !== 'director' || !msgToggle || !modal) return;
         const messageCenterEnabled = !!msgToggle.checked;
         const ghostModeEnabled = ghostToggle ? !!ghostToggle.checked : true;
         const tileFlipEnabled = tileFlipToggle ? !!tileFlipToggle.checked : true;
+        const housePointsEnabled = housePointsToggle ? !!housePointsToggle.checked : true;
         try {
-            const res = await APIUtils.updateDirectorSettings(this.currentUser.id, messageCenterEnabled, ghostModeEnabled, tileFlipEnabled);
+            const res = await APIUtils.updateDirectorSettings(this.currentUser.id, messageCenterEnabled, ghostModeEnabled, tileFlipEnabled, housePointsEnabled);
             if (res.success) {
                 if (typeof res.messageCenterEnabled === 'boolean') this.pluginSettings.messageCenterEnabled = res.messageCenterEnabled;
                 if (typeof res.ghostModeEnabled === 'boolean') this.pluginSettings.ghostModeEnabled = res.ghostModeEnabled;
                 if (typeof res.tileFlipEnabled === 'boolean') this.pluginSettings.tileFlipEnabled = res.tileFlipEnabled;
+                if (typeof res.housePointsEnabled === 'boolean') this.pluginSettings.housePointsEnabled = res.housePointsEnabled;
                 this.applyMessageCenterVisibility();
                 this.applyGhostModeVisibility();
                 this.applyTileFlipVisibility();
+                this.applyHousePointsVisibility();
                 modal.style.display = 'none';
                 modal.classList.remove('active');
                 this.showMessage('Settings saved.', 'success');

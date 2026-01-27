@@ -1347,6 +1347,24 @@
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
+                    <div class="plugin-toggle-row">
+                        <div class="plugin-toggle-info">
+                            <span class="plugin-name">🏆 House Points</span>
+                            <span class="plugin-desc">Students earn house points for check-ins (1pt), journal entries (2pts), and tile flips (1pt). Points displayed on student dashboard and tracked in director profile.</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="housePointsPluginToggle" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </section>
+                <section class="profile-section">
+                    <h4>🏆 House Points</h4>
+                    <p class="profile-section-desc">Track total house points for each house.</p>
+                    <div class="house-points-grid" id="housePointsGrid">
+                        <!-- House points will be populated here -->
+                        <p class="loading-text">Loading house points...</p>
+                    </div>
                 </section>
                 <div class="profile-actions">
                     <button type="button" id="saveDirectorProfileBtn" class="btn-primary">Save changes</button>

@@ -3917,6 +3917,84 @@ body {
     border-top: 1px solid #eee;
 }
 
+/* House Points Grid in Director Profile */
+.house-points-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.house-points-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.house-points-item:hover {
+    background: #e3f2fd;
+    border-color: #2196F3;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+}
+
+.house-badge-director {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    background: white;
+    padding: 4px;
+    flex-shrink: 0;
+}
+
+.house-points-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.house-name-director {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 1rem;
+}
+
+.house-points-total {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2196F3;
+    line-height: 1;
+}
+
+.house-students-count {
+    font-size: 0.85rem;
+    color: #666;
+    font-weight: 500;
+}
+
+@media (max-width: 768px) {
+    .house-points-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .house-points-item {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .house-points-details {
+        align-items: center;
+    }
+}
+
 /* Director Charts Section */
 .director-charts-section {
     margin-top: 3rem;
