@@ -1162,8 +1162,13 @@ class MoodCheckInApp {
         const teacherBanner = document.getElementById('teacherMessagesBanner');
         const directorBanner = document.getElementById('directorMessagesBanner');
         const msgModal = document.getElementById('messageCenterModal');
+        const checkinCard = document.querySelector('.bento-checkin');
         if (msgBtn) msgBtn.style.display = enabled ? 'flex' : 'none';
         if (talkBtn) talkBtn.style.display = enabled ? '' : 'none';
+        if (checkinCard) {
+            if (enabled) checkinCard.classList.remove('message-center-disabled');
+            else checkinCard.classList.add('message-center-disabled');
+        }
         if (!enabled) {
             if (teacherBanner) teacherBanner.style.display = 'none';
             if (directorBanner) directorBanner.style.display = 'none';

@@ -4412,6 +4412,44 @@ body {
     padding: 0.75rem;
 }
 
+/* Neat, aligned layout when Message Center / Talk to Teacher are disabled */
+.bento-checkin.message-center-disabled .student-checkin-layout {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+    gap: 1.25rem;
+}
+
+.bento-checkin.message-center-disabled .student-action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    align-content: start;
+}
+
+.bento-checkin.message-center-disabled .student-action-buttons .btn-mood-checkin,
+.bento-checkin.message-center-disabled .student-action-buttons .btn-journal-entry {
+    min-height: 54px;
+    height: auto;
+}
+
+/* Aligned status items (label | value) in check-in card */
+.bento-checkin .status-display {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.bento-checkin .status-item {
+    display: grid;
+    grid-template-columns: minmax(145px, auto) 1fr;
+    align-items: center;
+    gap: 0.75rem;
+    justify-items: start;
+}
+
+.bento-checkin .status-item .status-value {
+    justify-self: end;
+}
+
 /* Tile Flip Styles */
 .tile-flip-status {
     font-size: 0.9rem;
@@ -4575,6 +4613,13 @@ body {
     }
 
     .student-checkin-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .bento-checkin.message-center-disabled .student-checkin-layout {
+        grid-template-columns: 1fr;
+    }
+    .bento-checkin.message-center-disabled .student-action-buttons {
         grid-template-columns: 1fr;
     }
 }
