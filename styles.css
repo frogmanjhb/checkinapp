@@ -4457,6 +4457,21 @@ body {
     font-weight: 600;
 }
 
+.tile-flip-instructions {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #2196F3;
+}
+
+.tile-flip-instructions p {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
 .tile-flip-container {
     width: 100%;
     display: flex;
