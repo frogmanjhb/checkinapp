@@ -112,6 +112,17 @@ class APIUtils {
         });
     }
 
+    static async getCheckinJournalSettings(directorUserId) {
+        return this.makeRequest(`/director/checkin-journal-settings?directorUserId=${encodeURIComponent(directorUserId)}`);
+    }
+
+    static async updateCheckinJournalSettings(directorUserId, maxCheckinsPerDay, maxJournalEntriesPerDay) {
+        return this.makeRequest('/director/checkin-journal-settings', {
+            method: 'PUT',
+            body: JSON.stringify({ directorUserId, maxCheckinsPerDay, maxJournalEntriesPerDay })
+        });
+    }
+
     // Tile Flip methods
     static async getTileFlipStatus(userId) {
         return this.makeRequest(`/tile-flip/status/${userId}`);
@@ -4255,6 +4266,12 @@ class MoodCheckInApp {
             });
         });
 
+        // Save check-in and journal limits
+        const saveCheckinJournalSettingsBtn = document.getElementById('saveCheckinJournalSettingsBtn');
+        if (saveCheckinJournalSettingsBtn) {
+            saveCheckinJournalSettingsBtn.addEventListener('click', () => this.saveCheckinJournalSettings());
+        }
+
         // Delete all student data
         const deleteAllStudentDataBtn = document.getElementById('deleteAllStudentDataBtn');
         if (deleteAllStudentDataBtn) {
@@ -4281,6 +4298,43 @@ class MoodCheckInApp {
         if (housePointsToggle) housePointsToggle.checked = !!this.pluginSettings.housePointsEnabled;
         modal.style.display = 'flex';
         modal.classList.add('active');
+        if (this.currentUser && this.currentUser.user_type === 'director') {
+            this.loadCheckinJournalSettings();
+        }
+    }
+
+    async loadCheckinJournalSettings() {
+        const maxCheckinsEl = document.getElementById('maxCheckinsPerDay');
+        const maxJournalsEl = document.getElementById('maxJournalEntriesPerDay');
+        if (!maxCheckinsEl || !maxJournalsEl || !this.currentUser || this.currentUser.user_type !== 'director') return;
+        try {
+            const res = await APIUtils.getCheckinJournalSettings(this.currentUser.id);
+            if (res.success) {
+                maxCheckinsEl.value = res.maxCheckinsPerDay ?? 1;
+                maxJournalsEl.value = res.maxJournalEntriesPerDay ?? 1;
+            }
+        } catch (e) {
+            console.error('Load checkin/journal settings error:', e);
+        }
+    }
+
+    async saveCheckinJournalSettings() {
+        const maxCheckinsEl = document.getElementById('maxCheckinsPerDay');
+        const maxJournalsEl = document.getElementById('maxJournalEntriesPerDay');
+        if (!maxCheckinsEl || !maxJournalsEl || !this.currentUser || this.currentUser.user_type !== 'director') return;
+        const maxCheckinsPerDay = Math.min(999, Math.max(1, parseInt(maxCheckinsEl.value, 10) || 1));
+        const maxJournalEntriesPerDay = Math.min(999, Math.max(1, parseInt(maxJournalsEl.value, 10) || 1));
+        try {
+            const res = await APIUtils.updateCheckinJournalSettings(this.currentUser.id, maxCheckinsPerDay, maxJournalEntriesPerDay);
+            if (res.success) {
+                this.showMessage('Check-in and journal limits saved.', 'success');
+            } else {
+                this.showMessage(res.error || 'Failed to save limits.', 'error');
+            }
+        } catch (e) {
+            console.error('Save checkin/journal settings error:', e);
+            this.showMessage(e.message || 'Failed to save limits.', 'error');
+        }
     }
 
     async updateDirectorHousePoints() {

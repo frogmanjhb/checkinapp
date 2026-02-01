@@ -4138,6 +4138,30 @@ body {
     border-radius: 8px;
 }
 
+.profile-setting-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+.profile-setting-row label {
+    font-weight: 600;
+    color: #333;
+    min-width: 180px;
+}
+.profile-number-input {
+    width: 100px;
+    padding: 0.5rem 0.75rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+.profile-number-input:focus {
+    border-color: #2196F3;
+    outline: none;
+}
+
 .profile-danger-zone {
     margin-top: 1.5rem;
     padding: 1.25rem;

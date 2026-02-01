@@ -208,6 +208,14 @@ async function initializeDatabase() {
       INSERT INTO app_settings (key, value) VALUES ('house_points_enabled', 'true')
       ON CONFLICT (key) DO NOTHING
     `);
+    await pool.query(`
+      INSERT INTO app_settings (key, value) VALUES ('max_checkins_per_day', '1')
+      ON CONFLICT (key) DO NOTHING
+    `);
+    await pool.query(`
+      INSERT INTO app_settings (key, value) VALUES ('max_journal_entries_per_day', '1')
+      ON CONFLICT (key) DO NOTHING
+    `);
     console.log('✅ app_settings initialized');
 
     // Create tile_flips table
@@ -453,6 +461,32 @@ async function getHousePointsEnabled() {
   }
 }
 
+async function getMaxCheckinsPerDay() {
+  if (!pool) return 1;
+  try {
+    const r = await pool.query(`SELECT value FROM app_settings WHERE key = 'max_checkins_per_day'`);
+    if (!r.rows.length) return 1;
+    const n = parseInt(r.rows[0].value, 10);
+    return Number.isNaN(n) || n < 1 ? 1 : Math.min(n, 999);
+  } catch (e) {
+    console.error('getMaxCheckinsPerDay:', e);
+    return 1;
+  }
+}
+
+async function getMaxJournalEntriesPerDay() {
+  if (!pool) return 1;
+  try {
+    const r = await pool.query(`SELECT value FROM app_settings WHERE key = 'max_journal_entries_per_day'`);
+    if (!r.rows.length) return 1;
+    const n = parseInt(r.rows[0].value, 10);
+    return Number.isNaN(n) || n < 1 ? 1 : Math.min(n, 999);
+  } catch (e) {
+    console.error('getMaxJournalEntriesPerDay:', e);
+    return 1;
+  }
+}
+
 // Helper function to award house points
 async function awardHousePoints(userId, points) {
   if (!pool) return;
@@ -675,7 +709,96 @@ app.put('/api/director/settings', async (req, res) => {
   }
 });
 
-// Mood check-in (students: 1 per day)
+// Get check-in and journal limits (director only)
+app.get('/api/director/checkin-journal-settings', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  try {
+    const { directorUserId } = req.query;
+    if (!directorUserId) {
+      return res.status(400).json({ success: false, error: 'Missing directorUserId' });
+    }
+    const check = await pool.query(
+      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
+      [directorUserId, 'director']
+    );
+    if (check.rows.length === 0) {
+      return res.status(403).json({ success: false, error: 'Only directors can access these settings' });
+    }
+    const [maxCheckinsPerDay, maxJournalEntriesPerDay] = await Promise.all([
+      getMaxCheckinsPerDay(),
+      getMaxJournalEntriesPerDay()
+    ]);
+    res.json({ success: true, maxCheckinsPerDay, maxJournalEntriesPerDay });
+  } catch (error) {
+    console.error('Get checkin/journal settings error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update check-in and journal limits (director only)
+app.put('/api/director/checkin-journal-settings', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  try {
+    const { directorUserId, maxCheckinsPerDay, maxJournalEntriesPerDay } = req.body;
+    if (directorUserId == null) {
+      return res.status(400).json({ success: false, error: 'Missing directorUserId' });
+    }
+    const check = await pool.query(
+      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
+      [directorUserId, 'director']
+    );
+    if (check.rows.length === 0) {
+      return res.status(403).json({ success: false, error: 'Only directors can update these settings' });
+    }
+    const out = {};
+    if (typeof maxCheckinsPerDay === 'number' && maxCheckinsPerDay >= 1) {
+      const val = String(Math.min(Math.floor(maxCheckinsPerDay), 999));
+      await pool.query(
+        `INSERT INTO app_settings (key, value) VALUES ('max_checkins_per_day', $1)
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+        [val]
+      );
+      out.maxCheckinsPerDay = parseInt(val, 10);
+    } else if (typeof maxCheckinsPerDay === 'string' && maxCheckinsPerDay.trim() !== '') {
+      const n = Math.min(Math.max(1, parseInt(maxCheckinsPerDay, 10) || 1), 999);
+      const val = String(n);
+      await pool.query(
+        `INSERT INTO app_settings (key, value) VALUES ('max_checkins_per_day', $1)
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+        [val]
+      );
+      out.maxCheckinsPerDay = n;
+    }
+    if (typeof maxJournalEntriesPerDay === 'number' && maxJournalEntriesPerDay >= 1) {
+      const val = String(Math.min(Math.floor(maxJournalEntriesPerDay), 999));
+      await pool.query(
+        `INSERT INTO app_settings (key, value) VALUES ('max_journal_entries_per_day', $1)
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+        [val]
+      );
+      out.maxJournalEntriesPerDay = parseInt(val, 10);
+    } else if (typeof maxJournalEntriesPerDay === 'string' && maxJournalEntriesPerDay.trim() !== '') {
+      const n = Math.min(Math.max(1, parseInt(maxJournalEntriesPerDay, 10) || 1), 999);
+      const val = String(n);
+      await pool.query(
+        `INSERT INTO app_settings (key, value) VALUES ('max_journal_entries_per_day', $1)
+         ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+        [val]
+      );
+      out.maxJournalEntriesPerDay = n;
+    }
+    res.json({ success: true, ...out });
+  } catch (error) {
+    console.error('Update checkin/journal settings error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Mood check-in (students: limit per day from settings)
 app.post('/api/mood-checkin', async (req, res) => {
   try {
     const { userId, mood, emoji, notes, location, reasons, emotions } = req.body;
@@ -689,14 +812,15 @@ app.post('/api/mood-checkin', async (req, res) => {
       const userRow = await pool.query('SELECT user_type FROM users WHERE id = $1', [userId]);
       const isStudent = userRow.rows.length > 0 && userRow.rows[0].user_type === 'student';
       if (isStudent) {
-        const existing = await pool.query(
-          `SELECT 1 FROM mood_checkins
-           WHERE user_id = $1 AND timestamp::date = CURRENT_DATE
-           LIMIT 1`,
+        const maxPerDay = await getMaxCheckinsPerDay();
+        const countResult = await pool.query(
+          `SELECT COUNT(*)::int AS count FROM mood_checkins
+           WHERE user_id = $1 AND timestamp::date = CURRENT_DATE`,
           [userId]
         );
-        if (existing.rows.length > 0) {
-          return res.status(400).json({ success: false, error: "You've already checked in today." });
+        const count = countResult.rows[0]?.count ?? 0;
+        if (count >= maxPerDay) {
+          return res.status(400).json({ success: false, error: maxPerDay === 1 ? "You've already checked in today." : `You've reached the daily limit of ${maxPerDay} check-ins.` });
         }
       }
     }
@@ -877,14 +1001,15 @@ app.post('/api/journal-entry', async (req, res) => {
       const userRow = await pool.query('SELECT user_type FROM users WHERE id = $1', [userId]);
       const isStudent = userRow.rows.length > 0 && userRow.rows[0].user_type === 'student';
       if (isStudent) {
-        const existing = await pool.query(
-          `SELECT 1 FROM journal_entries
-           WHERE user_id = $1 AND timestamp::date = CURRENT_DATE
-           LIMIT 1`,
+        const maxPerDay = await getMaxJournalEntriesPerDay();
+        const countResult = await pool.query(
+          `SELECT COUNT(*)::int AS count FROM journal_entries
+           WHERE user_id = $1 AND timestamp::date = CURRENT_DATE`,
           [userId]
         );
-        if (existing.rows.length > 0) {
-          return res.status(400).json({ success: false, error: "You've already done your journal entry today." });
+        const count = countResult.rows[0]?.count ?? 0;
+        if (count >= maxPerDay) {
+          return res.status(400).json({ success: false, error: maxPerDay === 1 ? "You've already done your journal entry today." : `You've reached the daily limit of ${maxPerDay} journal entries.` });
         }
       }
     }
