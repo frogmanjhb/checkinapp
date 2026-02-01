@@ -423,6 +423,20 @@ body {
     box-shadow: 0 15px 30px rgba(255, 107, 107, 0.3);
 }
 
+.btn-mood-checkin:disabled,
+.btn-mood-checkin.btn-mood-checkin--disabled {
+    background: linear-gradient(135deg, #b0bec5, #cfd8dc);
+    border-color: #90a4ae;
+    color: #546e7a;
+    cursor: not-allowed;
+    transform: none;
+}
+.btn-mood-checkin:disabled:hover,
+.btn-mood-checkin.btn-mood-checkin--disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
 /* Old journal entry style removed - using teacher-specific style above */
 
 /* Old hover effect removed - using teacher-specific hover above */
@@ -1483,6 +1497,20 @@ body {
 .btn-journal-entry:hover {
     transform: translateY(-3px);
     box-shadow: 0 15px 30px rgba(156, 39, 176, 0.3);
+}
+
+.btn-journal-entry:disabled,
+.btn-journal-entry.btn-journal-entry--disabled {
+    background: linear-gradient(135deg, #b0bec5, #cfd8dc);
+    border-color: #90a4ae;
+    color: #546e7a;
+    cursor: not-allowed;
+    transform: none;
+}
+.btn-journal-entry:disabled:hover,
+.btn-journal-entry.btn-journal-entry--disabled:hover {
+    transform: none;
+    box-shadow: none;
 }
 
 .btn-talk-to-teacher {
@@ -3782,6 +3810,41 @@ body {
     margin: 0;
 }
 
+/* Management Tools card in director header */
+.director-management-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 1.5rem;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.director-management-card:hover {
+    border-color: #2196f3;
+    box-shadow: 0 6px 20px rgba(33, 150, 243, 0.2);
+    transform: translateY(-2px);
+}
+.director-management-card-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.director-management-icon {
+    font-size: 1.5rem;
+}
+.director-management-label {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #2c3e50;
+}
+.director-management-card:hover .director-management-label {
+    color: #1976d2;
+}
+
 /* Director Modal Cards Grid */
 .director-modal-cards-grid {
     display: grid;
@@ -4065,6 +4128,148 @@ body {
     margin-top: 1.5rem;
     padding-top: 1rem;
     border-top: 1px solid #eee;
+}
+
+.profile-placeholder {
+    color: #888;
+    font-style: italic;
+    padding: 1rem;
+    background: #f5f5f5;
+    border-radius: 8px;
+}
+
+.profile-danger-zone {
+    margin-top: 1.5rem;
+    padding: 1.25rem;
+    background: #fff5f5;
+    border: 1px solid #ffcdd2;
+    border-radius: 12px;
+}
+.profile-danger-zone h5 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    color: #c62828;
+}
+.profile-danger-desc {
+    color: #666;
+    font-size: 0.9rem;
+    margin: 0 0 1rem 0;
+    line-height: 1.4;
+}
+.btn-danger {
+    padding: 0.6rem 1.2rem;
+    background: #c62828;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-danger:hover {
+    background: #b71c1c;
+}
+.btn-danger:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+/* Director Profile modal tabs */
+.director-profile-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 0;
+}
+.director-profile-tab {
+    padding: 0.75rem 1.25rem;
+    border: none;
+    background: transparent;
+    color: #666;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    border-radius: 8px 8px 0 0;
+    transition: color 0.2s, background 0.2s;
+}
+.director-profile-tab:hover {
+    color: #1976d2;
+    background: #e3f2fd;
+}
+.director-profile-tab.active {
+    color: #1976d2;
+    background: #e3f2fd;
+    border-bottom: 2px solid #1976d2;
+    margin-bottom: -2px;
+}
+.director-profile-panel {
+    display: none;
+}
+.director-profile-panel.active {
+    display: block;
+}
+
+/* Director dashboard: House Points long card (all 5 houses) */
+.director-house-points-card {
+    width: 100%;
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 2px solid #e9ecef;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+.director-house-points-card-header {
+    margin-bottom: 1rem;
+}
+.director-house-points-card-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #2c3e50;
+}
+.director-house-points-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+    align-items: stretch;
+}
+.director-house-points-row .house-points-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+.director-house-points-row .house-points-item:hover {
+    background: #e3f2fd;
+    border-color: #2196F3;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+}
+.director-house-points-row .house-badge-director {
+    width: 56px;
+    height: 56px;
+    margin-bottom: 0.5rem;
+}
+.director-house-points-row .house-points-details {
+    align-items: center;
+}
+@media (max-width: 900px) {
+    .director-house-points-row {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+@media (max-width: 600px) {
+    .director-house-points-row {
+        grid-template-columns: 1fr 1fr;
+    }
 }
 
 /* House Points Grid in Director Profile */

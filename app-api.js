@@ -1,8 +1,12 @@
 // API utility for backend communication
+// Set window.REACT_API_BASE if the app is served from a different origin than the API (e.g. '' or 'http://localhost:3000')
+const API_BASE = (typeof window !== 'undefined' && window.REACT_API_BASE) ? window.REACT_API_BASE : '';
+
 class APIUtils {
     static async makeRequest(endpoint, options = {}) {
         try {
-            const response = await fetch(`/api${endpoint}`, {
+            const url = API_BASE ? `${API_BASE.replace(/\/$/, '')}/api${endpoint}` : `/api${endpoint}`;
+            const response = await fetch(url, {
                 headers: {
                     'Content-Type': 'application/json',
                     ...options.headers
@@ -10,7 +14,17 @@ class APIUtils {
                 ...options
             });
             
-            const data = await response.json();
+            const contentType = response.headers.get('Content-Type') || '';
+            let data;
+            if (contentType.includes('application/json')) {
+                data = await response.json();
+            } else {
+                const text = await response.text();
+                if (response.status === 404) {
+                    throw new Error('API not found (404). Use the Node backend: stop any other server on port 3000, run "npm start" or "node backend.js", then open http://localhost:3000 in the browser. If the backend runs on another port, set window.REACT_API_BASE to that URL (e.g. "http://localhost:3001") in index.html before the app-api.js script.');
+                }
+                throw new Error(response.status ? `Server error ${response.status}` : 'Request failed');
+            }
             
             if (!response.ok) {
                 throw new Error(data.error || 'Request failed');
@@ -81,6 +95,20 @@ class APIUtils {
         return this.makeRequest('/director/settings', {
             method: 'PUT',
             body: JSON.stringify({ directorUserId, messageCenterEnabled, ghostModeEnabled, tileFlipEnabled, housePointsEnabled })
+        });
+    }
+
+    static async deleteAllStudentData(directorUserId) {
+        return this.makeRequest('/director/delete-all-student-data', {
+            method: 'POST',
+            body: JSON.stringify({ directorUserId })
+        });
+    }
+
+    static async deleteAllTeacherData(directorUserId) {
+        return this.makeRequest('/director/delete-all-teacher-data', {
+            method: 'POST',
+            body: JSON.stringify({ directorUserId })
         });
     }
 
@@ -259,6 +287,7 @@ class MoodCheckInApp {
         this.tileQuotes = [];
         this.availableFlips = 0;
         this.nextQuoteIndex = 0;
+        this.studentJournalEntriesToday = [];
         
         this.initializeApp();
         this.setupEventListeners();
@@ -1265,6 +1294,7 @@ class MoodCheckInApp {
         this.updateHistoryDisplay();
         this.updateStudentAnalytics();
         this.updateStudentJournalList();
+        this.updateJournalButtonState();
         this.initializeTileFlip();
         this.applyHousePointsVisibility();
         if (this.pluginSettings.housePointsEnabled) {
@@ -1534,6 +1564,9 @@ class MoodCheckInApp {
         // Load and display modal card data
         this.updateDirectorModalCards();
         
+        // Load house points for dashboard card (all 5 houses)
+        this.updateDirectorHousePoints();
+        
         // Setup modal card click handlers
         this.setupDirectorModalHandlers();
         
@@ -1588,6 +1621,16 @@ class MoodCheckInApp {
     }
 
     showMoodModal() {
+        // Students: block opening if already checked in today
+        if (this.currentUser && this.currentUser.user_type === 'student') {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayMoodCount = this.moodHistory.filter(record => record.timestamp >= today).length;
+            if (todayMoodCount >= 1) {
+                this.showMessage("You've already checked in today.", 'error');
+                return;
+            }
+        }
         document.getElementById('moodModal').classList.add('active');
         this.selectedMood = null;
         this.updateMoodButtons();
@@ -1874,17 +1917,20 @@ class MoodCheckInApp {
                 
                 // Update journal display
                 if (this.currentUser.user_type === 'student') {
+                    this.studentJournalEntriesToday = this.studentJournalEntriesToday || [];
+                    if (response.journalEntry) this.studentJournalEntriesToday.push(response.journalEntry);
+                    this.updateJournalButtonState();
                     this.updateStudentJournalList();
                 } else if (this.currentUser.user_type === 'teacher') {
                     this.updateTeacherJournalList();
                     this.updateTeacherStatusDisplay(); // Update the journal counter
                 }
             } else {
-                this.showMessage('Failed to save journal entry. Please try again.', 'error');
+                this.showMessage(response.error || 'Failed to save journal entry. Please try again.', 'error');
             }
         } catch (error) {
             console.error('Journal entry error:', error);
-            this.showMessage('Failed to save journal entry. Please try again.', 'error');
+            this.showMessage(error.message || 'Failed to save journal entry. Please try again.', 'error');
         }
     }
 
@@ -2151,6 +2197,7 @@ class MoodCheckInApp {
     updateStatusDisplay() {
         const lastMoodElement = document.getElementById('lastMood');
         const todayCountElement = document.getElementById('todayCount');
+        const moodCheckInBtn = document.getElementById('moodCheckInBtn');
         
         // Get the most recent mood check-in
         const lastMoodRecord = this.moodHistory.find(record => record.mood);
@@ -2173,6 +2220,14 @@ class MoodCheckInApp {
         
         todayCountElement.textContent = todayMoodCount.toString();
         todayCountElement.className = 'status-value today-count';
+        
+        // Students: disable check-in button after one check-in today
+        if (moodCheckInBtn && this.currentUser && this.currentUser.user_type === 'student') {
+            const alreadyCheckedIn = todayMoodCount >= 1;
+            moodCheckInBtn.disabled = alreadyCheckedIn;
+            moodCheckInBtn.classList.toggle('btn-mood-checkin--disabled', alreadyCheckedIn);
+            moodCheckInBtn.textContent = alreadyCheckedIn ? '✓ Already checked in today' : '😊 How are you feeling?';
+        }
     }
 
     updateTeacherStatusDisplay() {
@@ -2843,6 +2898,14 @@ class MoodCheckInApp {
 
     // Journal entry methods
     showJournalEntryModal() {
+        // Students: block opening if already did journal today
+        if (this.currentUser && this.currentUser.user_type === 'student') {
+            const count = (this.studentJournalEntriesToday || []).length;
+            if (count >= 1) {
+                this.showMessage("You've already done your journal entry today.", 'error');
+                return;
+            }
+        }
         document.getElementById('journalEntryModal').classList.add('active');
         document.getElementById('journalEntryText').value = '';
         this.updateJournalCharacterCount('');
@@ -2892,6 +2955,9 @@ class MoodCheckInApp {
                 
                 // Update journal display based on user type
                 if (this.currentUser.user_type === 'student') {
+                    this.studentJournalEntriesToday = this.studentJournalEntriesToday || [];
+                    this.studentJournalEntriesToday.push(response.journalEntry);
+                    this.updateJournalButtonState();
                     this.updateStudentJournalList();
                     this.updateTileFlipStatus(); // Update tile flip status after journal entry
                     this.updateHousePoints(); // Update house points after journal entry
@@ -2900,11 +2966,11 @@ class MoodCheckInApp {
                     this.updateTeacherStatusDisplay(); // Update the journal counter
                 }
             } else {
-                this.showMessage('Failed to save journal entry. Please try again.', 'error');
+                this.showMessage(response.error || 'Failed to save journal entry. Please try again.', 'error');
             }
         } catch (error) {
             console.error('Journal entry error:', error);
-            this.showMessage('Failed to save journal entry. Please try again.', 'error');
+            this.showMessage(error.message || 'Failed to save journal entry. Please try again.', 'error');
         }
     }
 
@@ -2915,11 +2981,23 @@ class MoodCheckInApp {
         try {
             const response = await APIUtils.getJournalEntries(this.currentUser.id, 'daily');
             if (response.success) {
-                this.displayJournalEntries(journalList, response.entries);
+                this.studentJournalEntriesToday = response.entries || [];
+                this.displayJournalEntries(journalList, this.studentJournalEntriesToday);
+                this.updateJournalButtonState();
             }
         } catch (error) {
             console.error('Failed to load journal entries:', error);
         }
+    }
+
+    updateJournalButtonState() {
+        const journalEntryBtn = document.getElementById('journalEntryBtn');
+        if (!journalEntryBtn || !this.currentUser || this.currentUser.user_type !== 'student') return;
+        const count = (this.studentJournalEntriesToday || []).length;
+        const alreadyDidJournal = count >= 1;
+        journalEntryBtn.disabled = alreadyDidJournal;
+        journalEntryBtn.classList.toggle('btn-journal-entry--disabled', alreadyDidJournal);
+        journalEntryBtn.textContent = alreadyDidJournal ? '✓ Already did journal today' : '📝 Journal Entry';
     }
 
     // Tile Flip methods
@@ -4164,6 +4242,30 @@ class MoodCheckInApp {
                 }
             });
         }
+
+        // Director Profile modal tabs
+        document.querySelectorAll('.director-profile-tab').forEach(tabBtn => {
+            tabBtn.addEventListener('click', () => {
+                const tab = tabBtn.getAttribute('data-tab');
+                document.querySelectorAll('.director-profile-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.director-profile-panel').forEach(p => p.classList.remove('active'));
+                tabBtn.classList.add('active');
+                const panel = document.getElementById('directorProfilePanel' + (tab.charAt(0).toUpperCase() + tab.slice(1)));
+                if (panel) panel.classList.add('active');
+            });
+        });
+
+        // Delete all student data
+        const deleteAllStudentDataBtn = document.getElementById('deleteAllStudentDataBtn');
+        if (deleteAllStudentDataBtn) {
+            deleteAllStudentDataBtn.addEventListener('click', () => this.confirmDeleteAllStudentData());
+        }
+
+        // Delete all teacher data
+        const deleteAllTeacherDataBtn = document.getElementById('deleteAllTeacherDataBtn');
+        if (deleteAllTeacherDataBtn) {
+            deleteAllTeacherDataBtn.addEventListener('click', () => this.confirmDeleteAllTeacherData());
+        }
     }
 
     async openDirectorProfileModal() {
@@ -4179,9 +4281,6 @@ class MoodCheckInApp {
         if (housePointsToggle) housePointsToggle.checked = !!this.pluginSettings.housePointsEnabled;
         modal.style.display = 'flex';
         modal.classList.add('active');
-        
-        // Load house points
-        await this.updateDirectorHousePoints();
     }
 
     async updateDirectorHousePoints() {
@@ -4189,39 +4288,45 @@ class MoodCheckInApp {
             return;
         }
 
-        const housePointsGrid = document.getElementById('housePointsGrid');
-        if (!housePointsGrid) return;
+        const housePointsRow = document.getElementById('directorHousePointsRow');
+        if (!housePointsRow) return;
+
+        const houseOrder = ['Mirfield', 'Bavin', 'Sage', 'Bishops', 'Dodson'];
+        const houseBadgeMap = {
+            'Bavin': 'images/SP House_Bavin.png',
+            'Bishops': 'images/SP House_Bishops.png',
+            'Dodson': 'images/SP House_Dodson.png',
+            'Mirfield': 'images/SP House_Mirfield.png',
+            'Sage': 'images/SP House_Sage.png'
+        };
 
         try {
             const response = await APIUtils.getHousePointsTotals(this.currentUser.id);
             if (response.success && response.housePoints) {
-                const houseBadgeMap = {
-                    'Bavin': 'images/SP House_Bavin.png',
-                    'Bishops': 'images/SP House_Bishops.png',
-                    'Dodson': 'images/SP House_Dodson.png',
-                    'Mirfield': 'images/SP House_Mirfield.png',
-                    'Sage': 'images/SP House_Sage.png'
-                };
-
-                housePointsGrid.innerHTML = response.housePoints.map(house => {
+                const byHouse = {};
+                (response.housePoints || []).forEach(h => { byHouse[h.house] = h; });
+                housePointsRow.innerHTML = houseOrder.map(houseName => {
+                    const house = byHouse[houseName] || { house: houseName, total_points: 0, student_count: 0 };
                     const badgeSrc = houseBadgeMap[house.house] || '';
+                    const pts = parseInt(house.total_points) || 0;
+                    const count = parseInt(house.student_count) || 0;
                     return `
                         <div class="house-points-item">
                             <img src="${badgeSrc}" alt="${house.house} House Badge" class="house-badge-director">
                             <div class="house-points-details">
                                 <div class="house-name-director">${house.house} House</div>
-                                <div class="house-points-total">${parseInt(house.total_points)} Points</div>
-                                <div class="house-students-count">${parseInt(house.student_count)} Student${parseInt(house.student_count) !== 1 ? 's' : ''}</div>
+                                <div class="house-points-total">${pts} Points</div>
+                                <div class="house-students-count">${count} Student${count !== 1 ? 's' : ''}</div>
                             </div>
                         </div>
                     `;
                 }).join('');
             } else {
-                housePointsGrid.innerHTML = '<p class="loading-text">No house points data available.</p>';
+                housePointsRow.innerHTML = '<p class="loading-text">No house points data available.</p>';
             }
         } catch (error) {
             console.error('Error loading house points:', error);
-            housePointsGrid.innerHTML = '<p class="loading-text">Error loading house points.</p>';
+            housePointsRow.innerHTML = '<p class="loading-text">Error loading house points.</p>';
         }
     }
 
@@ -4256,6 +4361,55 @@ class MoodCheckInApp {
         } catch (e) {
             console.error('Save director profile error:', e);
             this.showMessage('Failed to save settings. Please try again.', 'error');
+        }
+    }
+
+    async confirmDeleteAllStudentData() {
+        if (!this.currentUser || this.currentUser.user_type !== 'director') return;
+        const msg = 'Permanently delete all student data? This will remove all students and their check-ins, journal entries, house points, tile flips, and messages. This cannot be undone.';
+        if (!confirm(msg)) return;
+        const btn = document.getElementById('deleteAllStudentDataBtn');
+        if (btn) btn.disabled = true;
+        try {
+            const res = await APIUtils.deleteAllStudentData(this.currentUser.id);
+            if (res.success) {
+                this.showMessage(`All student data deleted. ${res.deletedCount || 0} student(s) removed.`, 'success');
+                const modal = document.getElementById('directorProfileModal');
+                if (modal) { modal.style.display = 'none'; modal.classList.remove('active'); }
+                this.updateDirectorModalCards();
+                this.updateDirectorHousePoints();
+            } else {
+                this.showMessage(res.error || 'Failed to delete student data.', 'error');
+            }
+        } catch (e) {
+            console.error('Delete all student data error:', e);
+            this.showMessage(e.message || 'Failed to delete student data. Please try again.', 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    async confirmDeleteAllTeacherData() {
+        if (!this.currentUser || this.currentUser.user_type !== 'director') return;
+        const msg = 'Permanently delete all teacher data? This will remove all teachers and their check-ins, journal entries, messages, and assignments. This cannot be undone.';
+        if (!confirm(msg)) return;
+        const btn = document.getElementById('deleteAllTeacherDataBtn');
+        if (btn) btn.disabled = true;
+        try {
+            const res = await APIUtils.deleteAllTeacherData(this.currentUser.id);
+            if (res.success) {
+                this.showMessage(`All teacher data deleted. ${res.deletedCount || 0} teacher(s) removed.`, 'success');
+                const modal = document.getElementById('directorProfileModal');
+                if (modal) { modal.style.display = 'none'; modal.classList.remove('active'); }
+                this.updateDirectorModalCards();
+            } else {
+                this.showMessage(res.error || 'Failed to delete teacher data.', 'error');
+            }
+        } catch (e) {
+            console.error('Delete all teacher data error:', e);
+            this.showMessage(e.message || 'Failed to delete teacher data. Please try again.', 'error');
+        } finally {
+            if (btn) btn.disabled = false;
         }
     }
 

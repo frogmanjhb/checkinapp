@@ -67,132 +67,6 @@ async function initializeDatabase() {
   }
   
   try {
-    // Helper: seed demo check-ins (3 weeks) for the demo student
-    async function seedDemoStudentCheckins(demoUserId) {
-      // If already seeded with ~3 weeks, skip
-      const existingCount = await pool.query(
-        `SELECT COUNT(*)::int AS count
-         FROM mood_checkins
-         WHERE user_id = $1 AND timestamp >= (CURRENT_DATE - INTERVAL '21 days')`,
-        [demoUserId]
-      );
-
-      const count = existingCount.rows?.[0]?.count ?? 0;
-      if (count >= 18) {
-        console.log(`✅ Demo student already has ${count} recent check-ins (skipping seed)`);
-        return;
-      }
-
-      const moodPresets = [
-        {
-          mood: 'happy',
-          emoji: '😊',
-          emotions: ['grateful', 'confident', 'proud'],
-          reasons: ['friends', 'schoolwork', 'sports'],
-          notes: 'Feeling good today. Things are going well.'
-        },
-        {
-          mood: 'excited',
-          emoji: '🤩',
-          emotions: ['energized', 'motivated', 'curious'],
-          reasons: ['friends', 'tests', 'schoolwork'],
-          notes: 'Excited for what’s coming up today.'
-        },
-        {
-          mood: 'calm',
-          emoji: '😌',
-          emotions: ['relaxed', 'peaceful', 'focused'],
-          reasons: ['schoolwork', 'friends'],
-          notes: 'Calm and focused. Taking things one step at a time.'
-        },
-        {
-          mood: 'tired',
-          emoji: '😴',
-          emotions: ['sleepy', 'drained', 'overwhelmed'],
-          reasons: ['sleep', 'tests', 'schoolwork'],
-          notes: 'A bit tired today. I could use more rest.'
-        },
-        {
-          mood: 'anxious',
-          emoji: '😰',
-          emotions: ['worried', 'nervous', 'stressed'],
-          reasons: ['tests', 'schoolwork', 'classmates'],
-          notes: 'Feeling anxious. Trying to breathe and stay positive.'
-        },
-        {
-          mood: 'sad',
-          emoji: '😢',
-          emotions: ['down', 'lonely', 'disappointed'],
-          reasons: ['friends', 'family'],
-          notes: 'Not my best day. Hoping tomorrow feels better.'
-        },
-        {
-          mood: 'angry',
-          emoji: '😠',
-          emotions: ['frustrated', 'irritated', 'upset'],
-          reasons: ['classmates', 'schoolwork'],
-          notes: 'Feeling frustrated. I’m trying to cool down.'
-        },
-        {
-          mood: 'confused',
-          emoji: '😕',
-          emotions: ['uncertain', 'stuck', 'distracted'],
-          reasons: ['schoolwork', 'teacher'],
-          notes: 'Feeling a bit confused. I might ask for help.'
-        }
-      ];
-
-      const locations = ['school', 'home'];
-      const now = new Date();
-      const startDaysAgo = 20; // inclusive -> 21 total days (20..0)
-      let inserted = 0;
-
-      for (let d = startDaysAgo; d >= 0; d--) {
-        const day = new Date(now);
-        day.setDate(now.getDate() - d);
-
-        // If a check-in already exists for this date, skip it (avoid duplicates)
-        const exists = await pool.query(
-          `SELECT 1
-           FROM mood_checkins
-           WHERE user_id = $1 AND DATE(timestamp) = $2::date
-           LIMIT 1`,
-          [demoUserId, day.toISOString().slice(0, 10)]
-        );
-
-        if (exists.rows.length > 0) continue;
-
-        // Deterministic variation by day index (no random flakiness)
-        const preset = moodPresets[d % moodPresets.length];
-        const location = locations[d % locations.length];
-
-        // Set a realistic time (between 07:30 and 18:30)
-        const minutesIntoDay = 450 + ((d * 37) % 660); // 450..1110
-        const ts = new Date(day);
-        ts.setHours(0, 0, 0, 0);
-        ts.setMinutes(minutesIntoDay);
-
-        await pool.query(
-          `INSERT INTO mood_checkins (user_id, mood, emoji, notes, location, reasons, emotions, timestamp)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [
-            demoUserId,
-            preset.mood,
-            preset.emoji,
-            preset.notes,
-            location,
-            preset.reasons,
-            preset.emotions,
-            ts
-          ]
-        );
-
-        inserted++;
-      }
-
-      console.log(`✅ Seeded ${inserted} demo student check-ins (~3 weeks)`);
-    }
-
     // Create users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -466,51 +340,6 @@ async function initializeDatabase() {
     console.log('✅ Tile flip tables initialized and quotes seeded');
 
     console.log('✅ Database tables initialized successfully');
-
-    // Add demo users if they don't exist
-    const demoUserExists = await pool.query('SELECT id FROM users WHERE email = $1', ['demo@stpeters.co.za']);
-    let demoUserId = demoUserExists.rows.length > 0 ? demoUserExists.rows[0].id : null;
-    if (demoUserExists.rows.length === 0) {
-      const hashedPassword = await bcrypt.hash('password', 10);
-      const demoInsert = await pool.query(`
-        INSERT INTO users (first_name, surname, email, password_hash, user_type, class, house)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id
-      `, ['Demo', 'Student', 'demo@stpeters.co.za', hashedPassword, 'student', 'Grade 6', 'Mirfield']);
-      demoUserId = demoInsert.rows[0].id;
-      console.log('✅ Demo user created');
-    }
-
-    // Seed 3 weeks of mood check-ins for the demo student (if needed)
-    if (demoUserId) {
-      try {
-        await seedDemoStudentCheckins(demoUserId);
-      } catch (error) {
-        console.log('⚠️ Demo student check-in seeding failed:', error.message);
-      }
-    }
-
-    // Add additional demo students for Grade 5 and Grade 7
-    const additionalStudents = [
-      { name: 'Alice', surname: 'Johnson', email: 'alice.johnson@stpeters.co.za', grade: 'Grade 5', house: 'Mirfield' },
-      { name: 'Bob', surname: 'Smith', email: 'bob.smith@stpeters.co.za', grade: 'Grade 5', house: 'Mirfield' },
-      { name: 'Charlie', surname: 'Brown', email: 'charlie.brown@stpeters.co.za', grade: 'Grade 5', house: 'Mirfield' },
-      { name: 'Diana', surname: 'Davis', email: 'diana.davis@stpeters.co.za', grade: 'Grade 7', house: 'Mirfield' },
-      { name: 'Eve', surname: 'Wilson', email: 'eve.wilson@stpeters.co.za', grade: 'Grade 7', house: 'Mirfield' },
-      { name: 'Frank', surname: 'Miller', email: 'frank.miller@stpeters.co.za', grade: 'Grade 7', house: 'Mirfield' }
-    ];
-
-    for (const student of additionalStudents) {
-      const studentExists = await pool.query('SELECT id FROM users WHERE email = $1', [student.email]);
-      if (studentExists.rows.length === 0) {
-        const hashedPassword = await bcrypt.hash('password', 10);
-        await pool.query(`
-          INSERT INTO users (first_name, surname, email, password_hash, user_type, class, house)
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
-        `, [student.name, student.surname, student.email, hashedPassword, 'student', student.grade, student.house]);
-        console.log(`✅ Demo student ${student.name} ${student.surname} (${student.grade}) created`);
-      }
-    }
 
     // Add director user if it doesn't exist
     const directorExists = await pool.query('SELECT id FROM users WHERE email = $1', ['jatlee@stpeters.co.za']);
@@ -857,14 +686,18 @@ app.post('/api/mood-checkin', async (req, res) => {
     }
 
     if (pool) {
-      const existing = await pool.query(
-        `SELECT 1 FROM mood_checkins
-         WHERE user_id = $1 AND timestamp::date = CURRENT_DATE
-         LIMIT 1`,
-        [userId]
-      );
-      if (existing.rows.length > 0) {
-        return res.status(400).json({ success: false, error: "You've already checked in today." });
+      const userRow = await pool.query('SELECT user_type FROM users WHERE id = $1', [userId]);
+      const isStudent = userRow.rows.length > 0 && userRow.rows[0].user_type === 'student';
+      if (isStudent) {
+        const existing = await pool.query(
+          `SELECT 1 FROM mood_checkins
+           WHERE user_id = $1 AND timestamp::date = CURRENT_DATE
+           LIMIT 1`,
+          [userId]
+        );
+        if (existing.rows.length > 0) {
+          return res.status(400).json({ success: false, error: "You've already checked in today." });
+        }
       }
     }
 
@@ -1031,13 +864,29 @@ app.get('/api/all-mood-checkins', async (req, res) => {
   }
 });
 
-// Journal entry endpoints
+// Journal entry endpoints (students: 1 per day)
 app.post('/api/journal-entry', async (req, res) => {
   try {
     const { userId, entry } = req.body;
     
     if (!userId || !entry) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+
+    if (pool) {
+      const userRow = await pool.query('SELECT user_type FROM users WHERE id = $1', [userId]);
+      const isStudent = userRow.rows.length > 0 && userRow.rows[0].user_type === 'student';
+      if (isStudent) {
+        const existing = await pool.query(
+          `SELECT 1 FROM journal_entries
+           WHERE user_id = $1 AND timestamp::date = CURRENT_DATE
+           LIMIT 1`,
+          [userId]
+        );
+        if (existing.rows.length > 0) {
+          return res.status(400).json({ success: false, error: "You've already done your journal entry today." });
+        }
+      }
     }
 
     const result = await pool.query(
@@ -1741,6 +1590,114 @@ app.get('/api/director/house-points', async (req, res) => {
   } catch (error) {
     console.error('Get house points totals error:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete all student data (director only): students, check-ins, journals, house points, tile flips, messages
+app.post('/api/director/delete-all-student-data', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  try {
+    const directorUserId = req.body.directorUserId != null ? Number(req.body.directorUserId) : null;
+    if (directorUserId == null || Number.isNaN(directorUserId)) {
+      return res.status(400).json({ success: false, error: 'Missing or invalid directorUserId' });
+    }
+    const check = await pool.query(
+      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
+      [directorUserId, 'director']
+    );
+    if (check.rows.length === 0) {
+      return res.status(403).json({ success: false, error: 'Only directors can delete student data' });
+    }
+    const countResult = await pool.query(
+      "SELECT COUNT(*)::int AS count FROM users WHERE user_type = 'student'"
+    );
+    const count = countResult.rows[0]?.count ?? 0;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const studentIds = await client.query(
+        "SELECT id FROM users WHERE user_type = 'student'"
+      );
+      const ids = (studentIds.rows || []).map(r => r.id);
+      if (ids.length > 0) {
+        await client.query('DELETE FROM mood_checkins WHERE user_id = ANY($1::int[])', [ids]);
+        await client.query('DELETE FROM journal_entries WHERE user_id = ANY($1::int[])', [ids]);
+        await client.query('DELETE FROM house_points WHERE user_id = ANY($1::int[])', [ids]);
+        await client.query('DELETE FROM tile_flips WHERE user_id = ANY($1::int[])', [ids]);
+        await client.query('DELETE FROM tile_flip_resets WHERE user_id = ANY($1::int[])', [ids]);
+        await client.query(
+          'DELETE FROM messages WHERE from_user_id = ANY($1::int[]) OR to_user_id = ANY($1::int[])',
+          [ids]
+        );
+      }
+      await client.query("DELETE FROM users WHERE user_type = 'student'");
+      await client.query('COMMIT');
+    } catch (txError) {
+      try { await client.query('ROLLBACK'); } catch (_) { /* ignore */ }
+      throw txError;
+    } finally {
+      client.release();
+    }
+    res.json({ success: true, deletedCount: count });
+  } catch (error) {
+    console.error('Delete all student data error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Delete failed' });
+  }
+});
+
+// Delete all teacher data (director only): teachers, check-ins, journals, messages, teacher_assignments
+app.post('/api/director/delete-all-teacher-data', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  try {
+    const directorUserId = req.body.directorUserId != null ? Number(req.body.directorUserId) : null;
+    if (directorUserId == null || Number.isNaN(directorUserId)) {
+      return res.status(400).json({ success: false, error: 'Missing or invalid directorUserId' });
+    }
+    const check = await pool.query(
+      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
+      [directorUserId, 'director']
+    );
+    if (check.rows.length === 0) {
+      return res.status(403).json({ success: false, error: 'Only directors can delete teacher data' });
+    }
+    const countResult = await pool.query(
+      "SELECT COUNT(*)::int AS count FROM users WHERE user_type = 'teacher'"
+    );
+    const count = countResult.rows[0]?.count ?? 0;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const teacherIds = await client.query(
+        "SELECT id FROM users WHERE user_type = 'teacher'"
+      );
+      const ids = (teacherIds.rows || []).map(r => r.id);
+      if (ids.length > 0) {
+        await client.query('DELETE FROM mood_checkins WHERE user_id = ANY($1::int[])', [ids]);
+        await client.query('DELETE FROM journal_entries WHERE user_id = ANY($1::int[])', [ids]);
+        await client.query('DELETE FROM tile_flips WHERE user_id = ANY($1::int[])', [ids]);
+        await client.query('DELETE FROM tile_flip_resets WHERE user_id = ANY($1::int[])', [ids]);
+        await client.query(
+          'DELETE FROM messages WHERE from_user_id = ANY($1::int[]) OR to_user_id = ANY($1::int[])',
+          [ids]
+        );
+        await client.query('DELETE FROM teacher_assignments WHERE teacher_id = ANY($1::int[])', [ids]);
+      }
+      await client.query("DELETE FROM users WHERE user_type = 'teacher'");
+      await client.query('COMMIT');
+    } catch (txError) {
+      try { await client.query('ROLLBACK'); } catch (_) { /* ignore */ }
+      throw txError;
+    } finally {
+      client.release();
+    }
+    res.json({ success: true, deletedCount: count });
+  } catch (error) {
+    console.error('Delete all teacher data error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Delete failed' });
   }
 });
 

@@ -578,12 +578,14 @@
             <!-- Director Dashboard Screen -->
             <div id="directorDashboardScreen" class="screen">
                 <div class="director-dashboard-container">
-                    <!-- Header Section -->
+                    <!-- Header Section: Welcome + Management Tools -->
                     <div class="director-header">
                         <h1>Welcome, <span id="directorName"></span>! 👔</h1>
-                        <div class="header-info">
-                            <span class="header-date" id="directorCurrentDate"></span>
-                            <span class="header-time" id="directorCurrentTime"></span>
+                        <div class="director-management-card" id="directorProfileCard">
+                            <div class="director-management-card-inner">
+                                <span class="director-management-icon">⚙️</span>
+                                <span class="director-management-label">Management Tools</span>
+                            </div>
                         </div>
                     </div>
                     <!-- Messages Notification Banner -->
@@ -592,6 +594,16 @@
                             <span class="notification-icon">💬</span>
                             <span class="notification-text">You have <span id="directorUnreadCount">0</span> unread message(s)</span>
                             <button class="notification-action-btn" id="directorViewMessagesBtn">View Messages</button>
+                        </div>
+                    </div>
+
+                    <!-- House Points - all 5 houses in one long card -->
+                    <div class="director-house-points-card" id="directorHousePointsCard">
+                        <div class="director-house-points-card-header">
+                            <h2>🏆 House Points</h2>
+                        </div>
+                        <div class="director-house-points-row" id="directorHousePointsRow">
+                            <p class="loading-text">Loading house points...</p>
                         </div>
                     </div>
 
@@ -756,20 +768,6 @@
                                     </div>
                                 </div>
                                 <div class="teacher-count" id="teachersCount">Loading...</div>
-                            </div>
-                        </div>
-
-                        <!-- Director Profile / Settings Card -->
-                        <div class="director-modal-card" id="directorProfileCard">
-                            <div class="modal-card-header">
-                                <h3>⚙️ Director Profile</h3>
-                                <span class="card-click-indicator">👆</span>
-                            </div>
-                            <div class="modal-card-content">
-                                <div class="profile-card-summary">
-                                    <span class="profile-label">Plugins &amp; settings</span>
-                                    <span class="profile-value">Message Center, etc.</span>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -1324,68 +1322,89 @@
         </div>
     </div>
 
-    <!-- Director Profile Modal (plugins & settings) -->
+    <!-- Management Tools Modal (tabs: Plugin, Student, Teacher management) -->
     <div id="directorProfileModal" class="modal">
         <div class="modal-content director-modal-large">
             <div class="modal-header">
-                <h3>⚙️ Director Profile</h3>
+                <h3>⚙️ Management Tools</h3>
                 <button class="modal-close" id="closeDirectorProfileModal">&times;</button>
             </div>
             <div class="modal-body">
-                <section class="profile-section">
-                    <h4>Plugins</h4>
-                    <p class="profile-section-desc">Turn features on or off for students, teachers, and directors.</p>
-                    <div class="plugin-toggle-row">
-                        <div class="plugin-toggle-info">
-                            <span class="plugin-name">💬 Message Center</span>
-                            <span class="plugin-desc">Student–teacher messaging, Message Center in navbar, unread banners</span>
+                <div class="director-profile-tabs">
+                    <button type="button" class="director-profile-tab active" data-tab="plugins">Plugin management</button>
+                    <button type="button" class="director-profile-tab" data-tab="students">Student management</button>
+                    <button type="button" class="director-profile-tab" data-tab="teachers">Teacher management</button>
+                </div>
+                <div id="directorProfilePanelPlugins" class="director-profile-panel active">
+                    <section class="profile-section">
+                        <h4>Plugins</h4>
+                        <p class="profile-section-desc">Turn features on or off for students, teachers, and directors.</p>
+                        <div class="plugin-toggle-row">
+                            <div class="plugin-toggle-info">
+                                <span class="plugin-name">💬 Message Center</span>
+                                <span class="plugin-desc">Student–teacher messaging, Message Center in navbar, unread banners</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="messageCenterPluginToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="messageCenterPluginToggle" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="plugin-toggle-row">
-                        <div class="plugin-toggle-info">
-                            <span class="plugin-name">👻 Ghost Mode</span>
-                            <span class="plugin-desc">Anonymous check-ins for students and teachers; toggle and indicators in mood/journal flow</span>
+                        <div class="plugin-toggle-row">
+                            <div class="plugin-toggle-info">
+                                <span class="plugin-name">👻 Ghost Mode</span>
+                                <span class="plugin-desc">Anonymous check-ins for students and teachers; toggle and indicators in mood/journal flow</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="ghostModePluginToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="ghostModePluginToggle" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="plugin-toggle-row">
-                        <div class="plugin-toggle-info">
-                            <span class="plugin-name">🎴 Tile Flip</span>
-                            <span class="plugin-desc">Students earn tile flips by completing journal entries. Each tile reveals an inspirational quote.</span>
+                        <div class="plugin-toggle-row">
+                            <div class="plugin-toggle-info">
+                                <span class="plugin-name">🎴 Tile Flip</span>
+                                <span class="plugin-desc">Students earn tile flips by completing journal entries. Each tile reveals an inspirational quote.</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="tileFlipPluginToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="tileFlipPluginToggle" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="plugin-toggle-row">
-                        <div class="plugin-toggle-info">
-                            <span class="plugin-name">🏆 House Points</span>
-                            <span class="plugin-desc">Students earn house points for check-ins (1pt), journal entries (2pts), and tile flips (1pt). Points displayed on student dashboard and tracked in director profile.</span>
+                        <div class="plugin-toggle-row">
+                            <div class="plugin-toggle-info">
+                                <span class="plugin-name">🏆 House Points</span>
+                                <span class="plugin-desc">Students earn house points for check-ins (1pt), journal entries (2pts), and tile flips (1pt). Points displayed on student dashboard and in the House Points card above.</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="housePointsPluginToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="housePointsPluginToggle" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                </section>
-                <section class="profile-section">
-                    <h4>🏆 House Points</h4>
-                    <p class="profile-section-desc">Track total house points for each house.</p>
-                    <div class="house-points-grid" id="housePointsGrid">
-                        <!-- House points will be populated here -->
-                        <p class="loading-text">Loading house points...</p>
-                    </div>
-                </section>
-                <div class="profile-actions">
-                    <button type="button" id="saveDirectorProfileBtn" class="btn-primary">Save changes</button>
+                        <div class="profile-actions">
+                            <button type="button" id="saveDirectorProfileBtn" class="btn-primary">Save changes</button>
+                        </div>
+                    </section>
+                </div>
+                <div id="directorProfilePanelStudents" class="director-profile-panel">
+                    <section class="profile-section">
+                        <h4>Student management</h4>
+                        <p class="profile-section-desc">Manage students, grades, and house assignments.</p>
+                        <div class="profile-danger-zone">
+                            <h5>Delete all student data</h5>
+                            <p class="profile-danger-desc">Permanently remove all students and their data: names, accounts, mood check-ins, journal entries, house points, tile flips, and messages. This cannot be undone.</p>
+                            <button type="button" id="deleteAllStudentDataBtn" class="btn-danger">Delete all student data</button>
+                        </div>
+                    </section>
+                </div>
+                <div id="directorProfilePanelTeachers" class="director-profile-panel">
+                    <section class="profile-section">
+                        <h4>Teacher management</h4>
+                        <p class="profile-section-desc">Manage teachers, grade and house assignments, and permissions.</p>
+                        <div class="profile-danger-zone">
+                            <h5>Delete all teacher data</h5>
+                            <p class="profile-danger-desc">Permanently remove all teachers and their data: names, accounts, mood check-ins, journal entries, messages, and grade/house assignments. This cannot be undone.</p>
+                            <button type="button" id="deleteAllTeacherDataBtn" class="btn-danger">Delete all teacher data</button>
+                        </div>
+                    </section>
                 </div>
             </div>
         </div>
@@ -1436,6 +1455,7 @@
         </div>
     </div>
 
+    <!-- API is same-origin by default. If the app is served elsewhere (e.g. Live Server on :3000), set window.REACT_API_BASE to the backend URL (e.g. "http://localhost:3001") before loading app-api.js. -->
     <script src="app-api.js"></script>
 </body>
 </html>
