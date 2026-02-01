@@ -1,4 +1,7 @@
 require('dotenv').config();
+// Use stderr so startup logs show immediately (stdout can be buffered when not a TTY)
+const log = (...args) => { process.stderr.write(args.join(' ') + '\n'); };
+log('Starting backend...');
 const express = require('express');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
@@ -11,8 +14,8 @@ const PORT = process.env.PORT || 3000;
 
 // Database connection
 const dbUrl = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
-console.log('🔍 Database URL:', dbUrl ? 'Found' : 'Not found');
-console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
+log('🔍 Database URL:', dbUrl ? 'Found' : 'Not found');
+log('🔍 NODE_ENV:', process.env.NODE_ENV);
 
 let pool = null;
 if (dbUrl) {
@@ -21,16 +24,17 @@ if (dbUrl) {
 
   pool = new Pool({
     connectionString: dbUrl,
+    connectionTimeoutMillis: 10000,
     ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {})
   });
 } else {
-  console.log('⚠️ No database URL found - running without database');
+  log('⚠️ No database URL found - running without database');
 }
 
 // Test database connection
 if (pool) {
   pool.on('connect', () => {
-    console.log('✅ Connected to PostgreSQL database');
+    log('✅ Connected to PostgreSQL database');
   });
 
   pool.on('error', (err) => {
@@ -842,7 +846,7 @@ app.put('/api/director/settings', async (req, res) => {
   }
 });
 
-// Mood check-in
+// Mood check-in (students: 1 per day)
 app.post('/api/mood-checkin', async (req, res) => {
   try {
     const { userId, mood, emoji, notes, location, reasons, emotions } = req.body;
@@ -850,6 +854,18 @@ app.post('/api/mood-checkin', async (req, res) => {
     
     if (!userId || !mood || !emoji) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+
+    if (pool) {
+      const existing = await pool.query(
+        `SELECT 1 FROM mood_checkins
+         WHERE user_id = $1 AND timestamp::date = CURRENT_DATE
+         LIMIT 1`,
+        [userId]
+      );
+      if (existing.rows.length > 0) {
+        return res.status(400).json({ success: false, error: "You've already checked in today." });
+      }
     }
 
     const result = await pool.query(
@@ -1728,6 +1744,54 @@ app.get('/api/director/house-points', async (req, res) => {
   }
 });
 
+// Get school house points (totals by house) - for students/teachers
+app.get('/api/school-house-points', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  try {
+    const result = await pool.query(`
+      SELECT 
+        u.house,
+        COALESCE(SUM(hp.points), 0) as total_points,
+        COUNT(DISTINCT u.id) as student_count
+      FROM users u
+      LEFT JOIN house_points hp ON u.id = hp.user_id
+      WHERE u.user_type = 'student' AND u.house IS NOT NULL
+      GROUP BY u.house
+      ORDER BY u.house
+    `);
+    res.json({ success: true, housePoints: result.rows });
+  } catch (error) {
+    console.error('School house points error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get grade house points (totals by class/grade) - for students/teachers
+app.get('/api/grade-house-points', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  try {
+    const result = await pool.query(`
+      SELECT 
+        u.class as grade,
+        COALESCE(SUM(hp.points), 0) as total_points,
+        COUNT(DISTINCT u.id) as student_count
+      FROM users u
+      LEFT JOIN house_points hp ON u.id = hp.user_id
+      WHERE u.user_type = 'student' AND u.class IS NOT NULL AND u.class != ''
+      GROUP BY u.class
+      ORDER BY u.class
+    `);
+    res.json({ success: true, gradePoints: result.rows });
+  } catch (error) {
+    console.error('Grade house points error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Serve static files (must be after API routes)
 app.use(express.static('.'));
 
@@ -1739,16 +1803,17 @@ app.get('*', (req, res) => {
 // Start server
 async function startServer() {
   try {
+    log(`Binding to port ${PORT}...`);
     // Start the server first
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📱 App available at http://localhost:${PORT}`);
+      log(`🚀 Server running on port ${PORT}`);
+      log(`📱 Open http://localhost:${PORT}`);
     });
     
     // Initialize database in background (non-blocking)
     initializeDatabase().catch(error => {
       console.error('❌ Database initialization failed:', error);
-      console.log('⚠️ App will continue without database - some features may not work');
+      log('⚠️ App will continue without database - some features may not work');
     });
     
   } catch (error) {

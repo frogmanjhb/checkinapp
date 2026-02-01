@@ -174,6 +174,14 @@ class APIUtils {
     static async getHousePointsTotals(directorUserId) {
         return this.makeRequest(`/director/house-points?directorUserId=${directorUserId}`);
     }
+
+    static async getSchoolHousePoints() {
+        return this.makeRequest('/school-house-points');
+    }
+
+    static async getGradeHousePoints() {
+        return this.makeRequest('/grade-house-points');
+    }
 }
 
 // Security utility for password validation
@@ -475,6 +483,14 @@ class MoodCheckInApp {
                 this.showJournalEntryModal();
             });
         }
+
+        // House points tabs (student dashboard)
+        document.querySelectorAll('.house-points-tab').forEach(tabBtn => {
+            tabBtn.addEventListener('click', () => {
+                const tab = tabBtn.getAttribute('data-tab');
+                this.switchHousePointsTab(tab);
+            });
+        });
 
         // New Teacher UI elements
         initializeTeacherUI();
@@ -1254,6 +1270,35 @@ class MoodCheckInApp {
         if (this.pluginSettings.housePointsEnabled) {
             this.updateHousePoints();
         }
+        this.showScrollPrompt();
+    }
+
+    showScrollPrompt() {
+        const prompt = document.getElementById('scrollPrompt');
+        if (!prompt) return;
+        this._removeScrollPromptListener();
+        prompt.classList.remove('hidden');
+        const onScroll = () => {
+            if (window.scrollY > 120) {
+                prompt.classList.add('hidden');
+                this._removeScrollPromptListener();
+            }
+        };
+        this._scrollPromptListener = onScroll;
+        window.addEventListener('scroll', onScroll, { passive: true });
+    }
+
+    _removeScrollPromptListener() {
+        if (this._scrollPromptListener) {
+            window.removeEventListener('scroll', this._scrollPromptListener, { passive: true });
+            this._scrollPromptListener = null;
+        }
+    }
+
+    hideScrollPrompt() {
+        const prompt = document.getElementById('scrollPrompt');
+        if (prompt) prompt.classList.add('hidden');
+        this._removeScrollPromptListener();
     }
 
     async updateHousePoints() {
@@ -1301,6 +1346,75 @@ class MoodCheckInApp {
         }
     }
 
+    switchHousePointsTab(tab) {
+        document.querySelectorAll('.house-points-tab').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+        });
+        document.querySelectorAll('.house-points-panel').forEach(panel => {
+            const isYour = tab === 'your' && panel.id === 'housePointsPanelYour';
+            const isGrade = tab === 'grade' && panel.id === 'housePointsPanelGrade';
+            const isSchool = tab === 'school' && panel.id === 'housePointsPanelSchool';
+            panel.classList.toggle('active', isYour || isGrade || isSchool);
+        });
+        if (tab === 'grade') this.loadGradeHousePoints();
+        if (tab === 'school') this.loadSchoolHousePoints();
+    }
+
+    async loadGradeHousePoints() {
+        const el = document.getElementById('gradeHousePointsList');
+        if (!el) return;
+        el.innerHTML = '<p class="loading-text">Loading...</p>';
+        try {
+            const response = await APIUtils.getGradeHousePoints();
+            if (response.success && response.gradePoints && response.gradePoints.length > 0) {
+                el.innerHTML = response.gradePoints.map(row => `
+                    <div class="house-points-list-item">
+                        <span class="house-points-list-label">${row.grade || 'Unknown'}</span>
+                        <span class="house-points-list-value">${parseInt(row.total_points)} points</span>
+                    </div>
+                `).join('');
+            } else {
+                el.innerHTML = '<p class="loading-text">No grade points data yet.</p>';
+            }
+        } catch (e) {
+            console.error('Grade house points error:', e);
+            el.innerHTML = '<p class="loading-text">Could not load grade points.</p>';
+        }
+    }
+
+    async loadSchoolHousePoints() {
+        const el = document.getElementById('schoolHousePointsList');
+        if (!el) return;
+        el.innerHTML = '<p class="loading-text">Loading...</p>';
+        try {
+            const response = await APIUtils.getSchoolHousePoints();
+            if (response.success && response.housePoints && response.housePoints.length > 0) {
+                const houseBadgeMap = {
+                    'Bavin': 'images/SP House_Bavin.png',
+                    'Bishops': 'images/SP House_Bishops.png',
+                    'Dodson': 'images/SP House_Dodson.png',
+                    'Mirfield': 'images/SP House_Mirfield.png',
+                    'Sage': 'images/SP House_Sage.png'
+                };
+                el.innerHTML = response.housePoints.map(row => {
+                    const img = houseBadgeMap[row.house] ? `<img src="${houseBadgeMap[row.house]}" alt="${row.house}" class="house-points-list-badge">` : '';
+                    return `
+                    <div class="house-points-list-item">
+                        ${img}
+                        <span class="house-points-list-label">${row.house || 'Unknown'}</span>
+                        <span class="house-points-list-value">${parseInt(row.total_points)} points</span>
+                    </div>
+                `;
+                }).join('');
+            } else {
+                el.innerHTML = '<p class="loading-text">No school house points data yet.</p>';
+            }
+        } catch (e) {
+            console.error('School house points error:', e);
+            el.innerHTML = '<p class="loading-text">Could not load school points.</p>';
+        }
+    }
+
     updateStudentName() {
         const studentNameElement = document.getElementById('studentName');
         const userNameElement = document.getElementById('userName');
@@ -1338,6 +1452,7 @@ class MoodCheckInApp {
     }
 
     showTeacherDashboard() {
+        this.hideScrollPrompt();
         const studentScreen = document.getElementById('studentDashboardScreen');
         const teacherScreen = document.getElementById('teacherDashboardScreen');
         const directorScreen = document.getElementById('directorDashboardScreen');
@@ -1390,6 +1505,7 @@ class MoodCheckInApp {
     }
 
     showDirectorDashboard() {
+        this.hideScrollPrompt();
         const studentScreen = document.getElementById('studentDashboardScreen');
         const teacherScreen = document.getElementById('teacherDashboardScreen');
         const directorScreen = document.getElementById('directorDashboardScreen');
@@ -2024,11 +2140,11 @@ class MoodCheckInApp {
                     this.showJournalingEncouragementModal();
                 }, 1000);
             } else {
-                this.showMessage('Failed to save mood check-in. Please try again.', 'error');
+                this.showMessage(response.error || 'Failed to save mood check-in. Please try again.', 'error');
             }
         } catch (error) {
             console.error('Mood check-in error:', error);
-            this.showMessage('Failed to save mood check-in. Please try again.', 'error');
+            this.showMessage(error.message || 'Failed to save mood check-in. Please try again.', 'error');
         }
     }
 

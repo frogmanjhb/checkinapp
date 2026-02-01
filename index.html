@@ -38,6 +38,7 @@
             <div id="loginScreen" class="screen active">
                 <div class="login-container">
                     <div class="login-card">
+                        <img src="images/SP Boys Prep Centred Logo-Colour.jpg" alt="SP Boys Prep" class="login-logo">
                         <h2>Welcome to REACT!</h2>
                         <p>The Mood Check-In and Well-Being System for Students and Teachers</p>
                         <form id="loginForm">
@@ -51,8 +52,11 @@
                             </div>
                             <button type="submit" class="btn-primary">Login</button>
                         </form>
-                        <div class="auth-switch">
-                            <p>Don't have an account? <a href="#" id="showRegister">Register here</a></p>
+                        <div class="auth-switch auth-switch--prominent">
+                            <p class="auth-switch__prompt">First time here?</p>
+                            <div class="auth-switch__button-wrap">
+                                <a href="#" id="showRegister" class="auth-switch__link">Register here</a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -231,25 +235,25 @@
                         <div class="auth-switch">
                             <p>Already have an account? <a href="#" id="showLogin">Login here</a></p>
                         </div>
-                        
-                        <!-- Debug button -->
-                        <div style="margin-top: 20px; text-align: center;">
-                            <button type="button" onclick="console.log('Debug button clicked'); alert('Debug button works!');" style="background: #ff9800; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
-                                🐛 Debug Test
-                            </button>
-                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Student Dashboard Screen -->
             <div id="studentDashboardScreen" class="screen">
+                <div id="scrollPrompt" class="scroll-prompt hidden" aria-hidden="true">
+                    <span class="scroll-prompt-bubble">
+                        <span class="scroll-prompt-arrow">↓</span>
+                        <span class="scroll-prompt-text">Scroll for more</span>
+                    </span>
+                </div>
                 <div class="student-dashboard-container">
                     <!-- Header -->
                     <div class="student-header-card">
                         <div class="student-header-main">
                             <h2>Welcome back, <span id="studentName"></span>! 👋</h2>
                             <p class="current-time" id="currentTime"></p>
+                            <p class="student-header-instructions">1 check-in and 1 journal entry per day. Check-ins, journal entries, and tile flips earn house points.</p>
                         </div>
                     </div>
 
@@ -355,15 +359,28 @@
                                 <h3>🏆 House Points</h3>
                             </div>
                             <div class="bento-card-body">
-                                <div class="house-points-card-content">
-                                    <img id="houseBadge" src="" alt="House Badge" class="house-badge-card">
-                                    <div class="house-points-info-card">
-                                        <span id="studentNameCard" class="student-name-card"></span>
-                                        <div class="house-points-display-card">
-                                            <span id="housePoints" class="house-points-value-card">0</span>
-                                            <span class="house-points-label-card">House Points</span>
+                                <div class="house-points-tabs">
+                                    <button type="button" class="house-points-tab active" data-tab="your">Your house points</button>
+                                    <button type="button" class="house-points-tab" data-tab="grade">Grade house points</button>
+                                    <button type="button" class="house-points-tab" data-tab="school">School house points</button>
+                                </div>
+                                <div id="housePointsPanelYour" class="house-points-panel active">
+                                    <div class="house-points-card-content">
+                                        <img id="houseBadge" src="" alt="House Badge" class="house-badge-card">
+                                        <div class="house-points-info-card">
+                                            <span id="studentNameCard" class="student-name-card"></span>
+                                            <div class="house-points-display-card">
+                                                <span id="housePoints" class="house-points-value-card">0</span>
+                                                <span class="house-points-label-card">House Points</span>
+                                            </div>
                                         </div>
                                     </div>
+                                </div>
+                                <div id="housePointsPanelGrade" class="house-points-panel">
+                                    <div id="gradeHousePointsList" class="house-points-list"></div>
+                                </div>
+                                <div id="housePointsPanelSchool" class="house-points-panel">
+                                    <div id="schoolHousePointsList" class="house-points-list"></div>
                                 </div>
                             </div>
                         </section>
@@ -378,7 +395,7 @@
                             </div>
                             <div class="bento-card-body">
                                 <div class="tile-flip-instructions">
-                                    <p>✨ Complete journal entries to earn tile flips! Click on any available tile to reveal an inspirational quote. Each journal entry you complete gives you one flip.</p>
+                                    <p>✨ Earn flips by completing journal entries. Click a tile to reveal a quote.</p>
                                 </div>
                                 <div class="tile-flip-container">
                                     <div class="tile-flip-image-wrapper">
@@ -1198,7 +1215,8 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>&copy; 2024 REACT - Mood Check-In System</p>
+            <p>© 2026 REACT - Mood Check-In and Well-Being System</p>
+            <p class="footer-credit">Created by <a href="https://www.katalystlabs.co.za" target="_blank" rel="noopener noreferrer">www.katalystlabs.co.za</a></p>
         </footer>
     </div>
 
