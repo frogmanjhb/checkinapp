@@ -4374,6 +4374,101 @@ body {
     }
 }
 
+/* Director Journal Section */
+.director-journal-section {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e1e5e9;
+}
+
+.journal-section-header {
+    margin-bottom: 1.5rem;
+}
+
+.journal-section-header h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.director-journal-list {
+    max-height: 500px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.director-journal-list .journal-entry-item {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    transition: all 0.2s ease;
+}
+
+.director-journal-list .journal-entry-item:hover {
+    border-color: #2196f3;
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
+}
+
+.director-journal-list .journal-entry-info {
+    flex: 1;
+}
+
+.director-journal-list .journal-entry-user {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.director-journal-list .user-type-badge {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 20px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.director-journal-list .user-type-badge.student {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.director-journal-list .user-type-badge.teacher {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.director-journal-list .journal-entry-details {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+}
+
+.director-journal-list .journal-entry-text {
+    color: #495057;
+    line-height: 1.5;
+}
+
+.director-journal-list .journal-entry-time {
+    font-size: 0.8rem;
+    color: #868e96;
+    white-space: nowrap;
+}
+
 /* Director Charts Section */
 .director-charts-section {
     margin-top: 3rem;
