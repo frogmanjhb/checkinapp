@@ -4115,8 +4115,21 @@ class MoodCheckInApp {
     // Update grade card with data
     updateGradeCard(grade, users, moodData) {
         const gradeValue = grade.replace('grade', 'Grade ');
+        
+        // Debug: Log all students and their classes
+        const allStudents = users.filter(user => user.user_type === 'student');
+        console.log(`[${gradeValue}] Total students:`, allStudents.length);
+        console.log(`[${gradeValue}] Students with classes:`, allStudents.map(s => ({ 
+            name: `${s.first_name} ${s.surname}`, 
+            class: s.class, 
+            derivedGrade: getGradeFromClass(s.class),
+            matchesGrade: isClassInGrade(s.class, gradeValue)
+        })));
+        
         // Filter students by grade - supports both new class names (5EF, 6A) and legacy format (Grade 5)
         const students = users.filter(user => user.user_type === 'student' && isClassInGrade(user.class, gradeValue));
+        console.log(`[${gradeValue}] Filtered students:`, students.length);
+        
         const studentMoods = moodData.filter(mood => 
             students.some(student => student.id === mood.user_id)
         );
@@ -4642,6 +4655,8 @@ class MoodCheckInApp {
             modal.style.display = 'none';
             modal.classList.remove('active');
         }
+        // Refresh grade cards to reflect any changes
+        this.updateDirectorModalCards();
     }
 
     async loadClassFilterOptions() {
@@ -4788,10 +4803,13 @@ class MoodCheckInApp {
                 this.showMessage(`Successfully updated ${response.count} student${response.count > 1 ? 's' : ''}.`, 'success');
                 this.studentClassChanges = {};
                 
-                // Refresh the list
+                // Refresh the list in the modal
                 const filterSelect = document.getElementById('studentClassFilter');
                 const filterValue = filterSelect ? filterSelect.value : 'all';
                 await this.loadStudentsForClassAssignment(filterValue);
+                
+                // Refresh the grade cards on the director dashboard
+                await this.updateDirectorModalCards();
             } else {
                 this.showMessage(response.error || 'Failed to update student classes.', 'error');
             }
