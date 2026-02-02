@@ -4346,6 +4346,221 @@ body {
     color: #c62828;
 }
 
+/* Student Class Assignment Section */
+.student-class-assignment-section {
+    background: #e8f5e9;
+    border: 1px solid #c8e6c9;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.student-class-assignment-section h5 {
+    font-size: 1.05rem;
+    color: #2e7d32;
+    margin: 0 0 0.5rem 0;
+}
+
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: linear-gradient(135deg, #43a047 0%, #2e7d32 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+}
+
+/* Student Class Assignment Modal */
+.student-class-assignment-modal {
+    max-width: 700px;
+    width: 95%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.student-class-assignment-modal .modal-body {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+}
+
+.student-class-filter {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.student-class-filter label {
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap;
+}
+
+.student-class-filter select {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background: white;
+}
+
+.student-class-filter select:focus {
+    outline: none;
+    border-color: #2196f3;
+}
+
+.student-class-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 1.5rem;
+    max-height: 50vh;
+}
+
+.student-class-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.student-class-item:hover {
+    border-color: #2196f3;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.1);
+}
+
+.student-class-item.no-class {
+    background: #fff8e1;
+    border-color: #ffcc80;
+}
+
+.student-class-item.changed {
+    background: #e3f2fd;
+    border-color: #2196f3;
+}
+
+.student-class-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.student-class-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2196F3, #1976D2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.student-class-details {
+    min-width: 0;
+}
+
+.student-class-name {
+    font-weight: 600;
+    color: #2c3e50;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.student-class-meta {
+    font-size: 0.8rem;
+    color: #6c757d;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.student-class-select-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.student-class-select {
+    padding: 0.4rem 0.75rem;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background: white;
+    min-width: 120px;
+    cursor: pointer;
+}
+
+.student-class-select:focus {
+    outline: none;
+    border-color: #2196f3;
+}
+
+.unassigned-badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    background: #ff9800;
+    color: white;
+    border-radius: 20px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.student-class-assignment-modal .modal-footer {
+    padding: 1rem 1.5rem;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.student-class-assignment-modal .modal-footer .btn-primary {
+    padding: 0.75rem 1.5rem;
+}
+
+.student-class-assignment-modal .modal-footer .btn-primary:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.no-students-text {
+    text-align: center;
+    color: #666;
+    padding: 2rem;
+    font-size: 0.95rem;
+}
+
 /* Director dashboard: House Points long card (all 5 houses) */
 .director-house-points-card {
     width: 100%;

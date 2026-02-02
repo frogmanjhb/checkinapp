@@ -188,6 +188,22 @@ class APIUtils {
         });
     }
 
+    // Update a single student's class
+    static async updateStudentClass(directorUserId, studentId, className) {
+        return this.makeRequest(`/director/student-class/${studentId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ directorUserId, className })
+        });
+    }
+
+    // Bulk update student classes
+    static async updateStudentClasses(directorUserId, updates) {
+        return this.makeRequest('/director/student-classes', {
+            method: 'PUT',
+            body: JSON.stringify({ directorUserId, updates })
+        });
+    }
+
     // Teacher grade analytics (no names)
     static async getGradeAnalytics(grade, period = 'daily') {
         return this.makeRequest(`/teacher/grade-analytics?grade=${grade}&period=${period}`);
@@ -4321,6 +4337,38 @@ class MoodCheckInApp {
                 }
             });
         }
+
+        // Student Class Assignment Modal
+        const openStudentClassAssignmentBtn = document.getElementById('openStudentClassAssignmentBtn');
+        if (openStudentClassAssignmentBtn) {
+            openStudentClassAssignmentBtn.addEventListener('click', () => this.openStudentClassAssignmentModal());
+        }
+
+        const closeStudentClassAssignmentModal = document.getElementById('closeStudentClassAssignmentModal');
+        if (closeStudentClassAssignmentModal) {
+            closeStudentClassAssignmentModal.addEventListener('click', () => this.closeStudentClassAssignmentModal());
+        }
+
+        const studentClassAssignmentModal = document.getElementById('studentClassAssignmentModal');
+        if (studentClassAssignmentModal) {
+            studentClassAssignmentModal.addEventListener('click', (e) => {
+                if (e.target === studentClassAssignmentModal) {
+                    this.closeStudentClassAssignmentModal();
+                }
+            });
+        }
+
+        const saveAllStudentClassesBtn = document.getElementById('saveAllStudentClassesBtn');
+        if (saveAllStudentClassesBtn) {
+            saveAllStudentClassesBtn.addEventListener('click', () => this.saveAllStudentClasses());
+        }
+
+        const studentClassFilter = document.getElementById('studentClassFilter');
+        if (studentClassFilter) {
+            studentClassFilter.addEventListener('change', (e) => {
+                this.loadStudentsForClassAssignment(e.target.value);
+            });
+        }
     }
 
     async openDirectorProfileModal() {
@@ -4490,6 +4538,185 @@ class MoodCheckInApp {
         } catch (error) {
             console.error('Failed to delete class name:', error);
             this.showMessage(error.message || 'Failed to delete class.', 'error');
+        }
+    }
+
+    // Student Class Assignment Methods
+    async openStudentClassAssignmentModal() {
+        const modal = document.getElementById('studentClassAssignmentModal');
+        if (!modal) return;
+
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+
+        // Load class names for filter dropdown
+        await this.loadClassFilterOptions();
+        // Load students
+        await this.loadStudentsForClassAssignment();
+    }
+
+    closeStudentClassAssignmentModal() {
+        const modal = document.getElementById('studentClassAssignmentModal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        }
+    }
+
+    async loadClassFilterOptions() {
+        const filterSelect = document.getElementById('studentClassFilter');
+        if (!filterSelect) return;
+
+        try {
+            const response = await APIUtils.getClassNames();
+            if (response.success && response.classNames) {
+                // Keep the first two options (All Students, Unassigned Only)
+                const existingOptions = filterSelect.querySelectorAll('option');
+                existingOptions.forEach((opt, index) => {
+                    if (index > 1) opt.remove();
+                });
+
+                // Add class name options
+                response.classNames.forEach(className => {
+                    const option = document.createElement('option');
+                    option.value = className;
+                    option.textContent = className;
+                    filterSelect.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Failed to load class filter options:', error);
+        }
+    }
+
+    async loadStudentsForClassAssignment(filterValue = 'all') {
+        const listContainer = document.getElementById('studentClassList');
+        if (!listContainer) return;
+
+        listContainer.innerHTML = '<p class="loading-text">Loading students...</p>';
+
+        try {
+            // Get all users
+            const usersResponse = await APIUtils.getAllUsers();
+            // Get class names
+            const classNamesResponse = await APIUtils.getClassNames();
+
+            if (usersResponse.success && classNamesResponse.success) {
+                let students = usersResponse.users.filter(u => u.user_type === 'student');
+                const classNames = classNamesResponse.classNames || [];
+
+                // Apply filter
+                if (filterValue === 'unassigned') {
+                    students = students.filter(s => !s.class || s.class.trim() === '');
+                } else if (filterValue !== 'all') {
+                    students = students.filter(s => s.class === filterValue);
+                }
+
+                if (students.length === 0) {
+                    listContainer.innerHTML = '<p class="no-students-text">No students found matching the filter.</p>';
+                    return;
+                }
+
+                // Sort by name
+                students.sort((a, b) => {
+                    const nameA = `${a.first_name} ${a.surname}`.toLowerCase();
+                    const nameB = `${b.first_name} ${b.surname}`.toLowerCase();
+                    return nameA.localeCompare(nameB);
+                });
+
+                listContainer.innerHTML = students.map(student => {
+                    const initials = `${student.first_name.charAt(0)}${student.surname.charAt(0)}`.toUpperCase();
+                    const currentClass = student.class || '';
+                    const hasNoClass = !currentClass || currentClass.trim() === '';
+
+                    return `
+                        <div class="student-class-item ${hasNoClass ? 'no-class' : ''}" data-student-id="${student.id}">
+                            <div class="student-class-info">
+                                <div class="student-class-avatar">${initials}</div>
+                                <div class="student-class-details">
+                                    <div class="student-class-name">${student.first_name} ${student.surname}</div>
+                                    <div class="student-class-meta">${student.house || 'No house'} • ${student.email}</div>
+                                </div>
+                            </div>
+                            <div class="student-class-select-wrapper">
+                                <select class="student-class-select" data-student-id="${student.id}" data-original-class="${currentClass}">
+                                    <option value="" ${hasNoClass ? 'selected' : ''}>-- No Class --</option>
+                                    ${classNames.map(cn => `<option value="${cn}" ${currentClass === cn ? 'selected' : ''}>${cn}</option>`).join('')}
+                                </select>
+                                ${hasNoClass ? '<span class="unassigned-badge">Unassigned</span>' : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Track changes
+                this.studentClassChanges = {};
+                listContainer.querySelectorAll('.student-class-select').forEach(select => {
+                    select.addEventListener('change', (e) => {
+                        const studentId = e.target.dataset.studentId;
+                        const originalClass = e.target.dataset.originalClass;
+                        const newClass = e.target.value;
+
+                        if (newClass !== originalClass) {
+                            this.studentClassChanges[studentId] = newClass;
+                            e.target.closest('.student-class-item').classList.add('changed');
+                        } else {
+                            delete this.studentClassChanges[studentId];
+                            e.target.closest('.student-class-item').classList.remove('changed');
+                        }
+
+                        this.updateSaveButtonState();
+                    });
+                });
+
+                this.updateSaveButtonState();
+            } else {
+                listContainer.innerHTML = '<p class="error-text">Failed to load students.</p>';
+            }
+        } catch (error) {
+            console.error('Failed to load students for class assignment:', error);
+            listContainer.innerHTML = '<p class="error-text">Failed to load students.</p>';
+        }
+    }
+
+    updateSaveButtonState() {
+        const saveBtn = document.getElementById('saveAllStudentClassesBtn');
+        if (!saveBtn) return;
+
+        const changeCount = Object.keys(this.studentClassChanges || {}).length;
+        saveBtn.textContent = changeCount > 0 
+            ? `Save ${changeCount} Change${changeCount > 1 ? 's' : ''}` 
+            : 'Save All Changes';
+        saveBtn.disabled = changeCount === 0;
+    }
+
+    async saveAllStudentClasses() {
+        if (!this.studentClassChanges || Object.keys(this.studentClassChanges).length === 0) {
+            this.showMessage('No changes to save.', 'info');
+            return;
+        }
+
+        const updates = Object.entries(this.studentClassChanges).map(([studentId, className]) => ({
+            studentId: parseInt(studentId),
+            className: className || null
+        }));
+
+        try {
+            const response = await APIUtils.updateStudentClasses(this.currentUser.id, updates);
+            if (response.success) {
+                this.showMessage(`Successfully updated ${response.count} student${response.count > 1 ? 's' : ''}.`, 'success');
+                this.studentClassChanges = {};
+                
+                // Refresh the list
+                const filterSelect = document.getElementById('studentClassFilter');
+                const filterValue = filterSelect ? filterSelect.value : 'all';
+                await this.loadStudentsForClassAssignment(filterValue);
+            } else {
+                this.showMessage(response.error || 'Failed to update student classes.', 'error');
+            }
+        } catch (error) {
+            console.error('Failed to save student classes:', error);
+            this.showMessage(error.message || 'Failed to save changes.', 'error');
         }
     }
 

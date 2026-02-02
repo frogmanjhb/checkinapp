@@ -1440,6 +1440,15 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Student Class Assignment Section -->
+                        <div class="student-class-assignment-section">
+                            <h5>Assign Classes to Students</h5>
+                            <p class="profile-section-desc">View all students and assign or update their class names.</p>
+                            <button type="button" id="openStudentClassAssignmentBtn" class="btn-secondary">
+                                <span>👥</span> Manage Student Classes
+                            </button>
+                        </div>
                         
                         <div class="profile-danger-zone">
                             <h5>Delete all student data</h5>
@@ -1458,6 +1467,32 @@
                             <button type="button" id="deleteAllTeacherDataBtn" class="btn-danger">Delete all teacher data</button>
                         </div>
                     </section>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Class Assignment Modal -->
+    <div id="studentClassAssignmentModal" class="modal">
+        <div class="modal-content student-class-assignment-modal">
+            <div class="modal-header">
+                <h3>👥 Assign Classes to Students</h3>
+                <button class="modal-close" id="closeStudentClassAssignmentModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="student-class-filter">
+                    <label for="studentClassFilter">Filter by class:</label>
+                    <select id="studentClassFilter">
+                        <option value="all">All Students</option>
+                        <option value="unassigned">Unassigned Only</option>
+                        <!-- Class options will be loaded dynamically -->
+                    </select>
+                </div>
+                <div class="student-class-list" id="studentClassList">
+                    <p class="loading-text">Loading students...</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="saveAllStudentClassesBtn" class="btn-primary">Save All Changes</button>
                 </div>
             </div>
         </div>

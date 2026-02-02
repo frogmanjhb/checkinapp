@@ -918,6 +918,80 @@ app.delete('/api/director/class-names/:className', async (req, res) => {
   }
 });
 
+// Update a student's class (director only)
+app.put('/api/director/student-class/:studentId', async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { className, directorUserId } = req.body;
+    
+    if (!studentId || !directorUserId) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+    
+    // Verify director
+    const directorResult = await pool.query('SELECT user_type FROM users WHERE id = $1', [directorUserId]);
+    if (directorResult.rows.length === 0 || directorResult.rows[0].user_type !== 'director') {
+      return res.status(403).json({ success: false, error: 'Only directors can update student classes' });
+    }
+    
+    // Verify student exists and is a student
+    const studentResult = await pool.query('SELECT id, user_type FROM users WHERE id = $1', [studentId]);
+    if (studentResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Student not found' });
+    }
+    if (studentResult.rows[0].user_type !== 'student') {
+      return res.status(400).json({ success: false, error: 'User is not a student' });
+    }
+    
+    // Update the student's class
+    const updateResult = await pool.query(
+      'UPDATE users SET class = $1, updated_at = NOW() WHERE id = $2 RETURNING id, first_name, surname, class, house',
+      [className || null, studentId]
+    );
+    
+    res.json({ success: true, student: updateResult.rows[0] });
+  } catch (error) {
+    console.error('Update student class error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Bulk update student classes (director only)
+app.put('/api/director/student-classes', async (req, res) => {
+  try {
+    const { updates, directorUserId } = req.body;
+    
+    if (!updates || !Array.isArray(updates) || !directorUserId) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+    
+    // Verify director
+    const directorResult = await pool.query('SELECT user_type FROM users WHERE id = $1', [directorUserId]);
+    if (directorResult.rows.length === 0 || directorResult.rows[0].user_type !== 'director') {
+      return res.status(403).json({ success: false, error: 'Only directors can update student classes' });
+    }
+    
+    const results = [];
+    for (const update of updates) {
+      if (!update.studentId) continue;
+      
+      const updateResult = await pool.query(
+        'UPDATE users SET class = $1, updated_at = NOW() WHERE id = $2 AND user_type = $3 RETURNING id, first_name, surname, class, house',
+        [update.className || null, update.studentId, 'student']
+      );
+      
+      if (updateResult.rows.length > 0) {
+        results.push(updateResult.rows[0]);
+      }
+    }
+    
+    res.json({ success: true, updatedStudents: results, count: results.length });
+  } catch (error) {
+    console.error('Bulk update student classes error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Mood check-in (students: limit per day from settings)
 app.post('/api/mood-checkin', async (req, res) => {
   try {
