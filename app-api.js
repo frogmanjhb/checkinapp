@@ -2,6 +2,31 @@
 // Set window.REACT_API_BASE if the app is served from a different origin than the API (e.g. '' or 'http://localhost:3000')
 const API_BASE = (typeof window !== 'undefined' && window.REACT_API_BASE) ? window.REACT_API_BASE : '';
 
+// Helper function to extract grade from class name
+// Examples: "5EF" -> "Grade 5", "6A" -> "Grade 6", "7B" -> "Grade 7"
+// Also handles legacy format: "Grade 5" -> "Grade 5"
+function getGradeFromClass(className) {
+    if (!className) return null;
+    
+    // Handle legacy format "Grade X"
+    if (className.startsWith('Grade ')) {
+        return className;
+    }
+    
+    // Extract first digit from class name (e.g., "5EF" -> "5", "6A" -> "6")
+    const match = className.match(/^(\d)/);
+    if (match) {
+        return `Grade ${match[1]}`;
+    }
+    
+    return null;
+}
+
+// Helper function to check if a class belongs to a specific grade
+function isClassInGrade(className, grade) {
+    return getGradeFromClass(className) === grade;
+}
+
 class APIUtils {
     static async makeRequest(endpoint, options = {}) {
         try {
@@ -4090,7 +4115,8 @@ class MoodCheckInApp {
     // Update grade card with data
     updateGradeCard(grade, users, moodData) {
         const gradeValue = grade.replace('grade', 'Grade ');
-        const students = users.filter(user => user.user_type === 'student' && user.class === gradeValue);
+        // Filter students by grade - supports both new class names (5EF, 6A) and legacy format (Grade 5)
+        const students = users.filter(user => user.user_type === 'student' && isClassInGrade(user.class, gradeValue));
         const studentMoods = moodData.filter(mood => 
             students.some(student => student.id === mood.user_id)
         );
@@ -4690,7 +4716,7 @@ class MoodCheckInApp {
                                 <div class="student-class-avatar">${initials}</div>
                                 <div class="student-class-details">
                                     <div class="student-class-name">${student.first_name} ${student.surname}</div>
-                                    <div class="student-class-meta">${student.house || 'No house'} • ${student.email}</div>
+                                    <div class="student-class-meta">${currentClass ? `${getGradeFromClass(currentClass) || ''} • ` : ''}${student.house || 'No house'} • ${student.email}</div>
                                 </div>
                             </div>
                             <div class="student-class-select-wrapper">
@@ -4843,7 +4869,7 @@ class MoodCheckInApp {
                                 <div class="student-deletion-avatar">${initials}</div>
                                 <div class="student-deletion-details">
                                     <div class="student-deletion-name">${student.first_name} ${student.surname}</div>
-                                    <div class="student-deletion-meta">${student.class || 'No class'} • ${student.house || 'No house'} • ${student.email}</div>
+                                    <div class="student-deletion-meta">${student.class ? `${student.class} (${getGradeFromClass(student.class) || 'No grade'})` : 'No class'} • ${student.house || 'No house'} • ${student.email}</div>
                                 </div>
                             </div>
                             <button type="button" class="btn-delete-student" data-student-id="${student.id}" data-student-name="${student.first_name} ${student.surname}">
@@ -5067,7 +5093,8 @@ class MoodCheckInApp {
                 let groupUsers = [];
                 if (groupType === 'grade') {
                     const gradeValue = groupId.replace('grade', 'Grade ');
-                    groupUsers = users.filter(user => user.user_type === 'student' && user.class === gradeValue);
+                    // Filter students by grade - supports both new class names (5EF, 6A) and legacy format (Grade 5)
+                    groupUsers = users.filter(user => user.user_type === 'student' && isClassInGrade(user.class, gradeValue));
                 } else if (groupType === 'house') {
                     groupUsers = users.filter(user => 
                         user.user_type === 'student' && user.house && user.house.toLowerCase() === groupId
@@ -5152,7 +5179,7 @@ class MoodCheckInApp {
                     <div class="director-student-info">
                         <div class="director-student-name">${user.first_name} ${user.surname}</div>
                         <div class="director-student-details">
-                            ${user.class || user.house || 'Teacher'} • ${user.email}
+                            ${user.class ? `${user.class} (${getGradeFromClass(user.class) || 'No grade'})` : user.house || 'Teacher'} • ${user.email}
                         </div>
                     </div>
                     <div class="director-student-mood">
@@ -5283,7 +5310,7 @@ class MoodCheckInApp {
                     <div class="director-student-info">
                         <h4>${user.first_name} ${user.surname}</h4>
                         <div class="director-student-details">
-                            ${user.class || user.house || 'Teacher'} • ${user.email}
+                            ${user.class ? `Class: ${user.class} • ${getGradeFromClass(user.class) || 'No grade'}` : user.house || 'Teacher'} • ${user.email}
                             <br>
                             Latest Mood: ${moodEmoji} ${latestMood ? latestMood.mood : 'No recent mood'}
                         </div>
@@ -5674,37 +5701,34 @@ class MoodCheckInApp {
         
         console.log('Aggregating mood data for grades:', users.length, 'users and', moodData.length, 'mood entries');
         
-        // First, collect all unique grades from users
-        const allGrades = new Set();
-        
-        users.forEach(user => {
-            if (user.user_type === 'student' && user.class) {
-                allGrades.add(user.class);
-            }
-        });
-        
-        console.log('All grades found:', Array.from(allGrades));
-        
-        // Initialize all grades with empty mood counts
-        allGrades.forEach(grade => {
+        // Initialize all standard grades
+        const standardGrades = ['Grade 5', 'Grade 6', 'Grade 7'];
+        standardGrades.forEach(grade => {
             groupData[grade] = {};
         });
         
-        // Now count moods for each user by grade
+        // Now count moods for each user by their derived grade
         users.forEach(user => {
             if (user.user_type === 'student' && user.class) {
+                // Get the grade from the class name (e.g., "5EF" -> "Grade 5")
+                const userGrade = getGradeFromClass(user.class);
+                if (!userGrade) return;
+                
                 const userMoods = moodData.filter(mood => mood.user_id == user.id);
-                console.log(`User ${user.first_name} ${user.surname} (Grade: ${user.class}): ${userMoods.length} mood entries`);
+                console.log(`User ${user.first_name} ${user.surname} (Class: ${user.class}, Grade: ${userGrade}): ${userMoods.length} mood entries`);
                 
                 userMoods.forEach(mood => {
                     // Capitalize mood value to match chart expectations (e.g., 'happy' -> 'Happy')
                     const moodType = mood.mood ? mood.mood.charAt(0).toUpperCase() + mood.mood.slice(1) : 'Unknown';
                     
-                    if (!groupData[user.class][moodType]) {
-                        groupData[user.class][moodType] = 0;
+                    if (!groupData[userGrade]) {
+                        groupData[userGrade] = {};
                     }
-                    groupData[user.class][moodType]++;
-                    console.log(`Added ${moodType} mood to grade ${user.class}`);
+                    if (!groupData[userGrade][moodType]) {
+                        groupData[userGrade][moodType] = 0;
+                    }
+                    groupData[userGrade][moodType]++;
+                    console.log(`Added ${moodType} mood to ${userGrade}`);
                 });
             }
         });
@@ -5736,63 +5760,46 @@ class MoodCheckInApp {
         
         console.log('Aggregating mood data for', users.length, 'users and', moodData.length, 'mood entries');
         
-        // First, collect all unique groups (houses and grades) from users
-        const allGroups = new Set();
-        const studentsByGroup = {};
-        
-        users.forEach(user => {
-            if (user.user_type === 'student') {
-                const house = user.house;
-                const grade = user.class;
-                
-                if (house) {
-                    allGroups.add(house);
-                    if (!studentsByGroup[house]) studentsByGroup[house] = [];
-                    studentsByGroup[house].push(user);
-                }
-                
-                if (grade) {
-                    allGroups.add(grade);
-                    if (!studentsByGroup[grade]) studentsByGroup[grade] = [];
-                    studentsByGroup[grade].push(user);
-                }
-            }
-        });
-        
-        console.log('All groups found:', Array.from(allGroups));
-        console.log('Students by group:', studentsByGroup);
+        // Initialize standard houses and grades
+        const standardHouses = ['Mirfield', 'Bishops', 'Bavin', 'Dodson', 'Sage'];
+        const standardGrades = ['Grade 5', 'Grade 6', 'Grade 7'];
         
         // Initialize all groups with empty mood counts
-        allGroups.forEach(group => {
-            groupData[group] = {};
+        standardHouses.forEach(house => {
+            groupData[house] = {};
+        });
+        standardGrades.forEach(grade => {
+            groupData[grade] = {};
         });
         
         // Now count moods for each user
         users.forEach(user => {
             if (user.user_type === 'student') {
                 const userMoods = moodData.filter(mood => mood.user_id == user.id);
-                console.log(`User ${user.first_name} ${user.surname} (House: ${user.house}, Grade: ${user.class}): ${userMoods.length} mood entries`);
+                // Get the grade from the class name (e.g., "5EF" -> "Grade 5")
+                const userGrade = getGradeFromClass(user.class);
+                console.log(`User ${user.first_name} ${user.surname} (House: ${user.house}, Class: ${user.class}, Grade: ${userGrade}): ${userMoods.length} mood entries`);
                 
                 userMoods.forEach(mood => {
                     const moodType = mood.mood;
                     
                     // Add to house group
-                    if (user.house) {
+                    if (user.house && groupData[user.house]) {
                         if (!groupData[user.house][moodType]) {
                             groupData[user.house][moodType] = 0;
                         }
                         groupData[user.house][moodType]++;
                     }
                     
-                    // Add to grade group
-                    if (user.class) {
-                        if (!groupData[user.class][moodType]) {
-                            groupData[user.class][moodType] = 0;
+                    // Add to grade group (using derived grade from class name)
+                    if (userGrade && groupData[userGrade]) {
+                        if (!groupData[userGrade][moodType]) {
+                            groupData[userGrade][moodType] = 0;
                         }
-                        groupData[user.class][moodType]++;
+                        groupData[userGrade][moodType]++;
                     }
                     
-                    console.log(`Added ${moodType} mood to ${user.house || 'no house'} and ${user.class || 'no grade'}`);
+                    console.log(`Added ${moodType} mood to ${user.house || 'no house'} and ${userGrade || 'no grade'}`);
                 });
             }
         });
