@@ -1450,6 +1450,15 @@
                             </button>
                         </div>
                         
+                        <!-- Individual Student Deletion Section -->
+                        <div class="individual-student-deletion-section">
+                            <h5>Delete Individual Students</h5>
+                            <p class="profile-section-desc">Remove individual student accounts and all their associated data.</p>
+                            <button type="button" id="openStudentDeletionBtn" class="btn-warning" onclick="if(window.moodApp) window.moodApp.openStudentDeletionModal();">
+                                <span>🗑️</span> Manage Student Accounts
+                            </button>
+                        </div>
+
                         <div class="profile-danger-zone">
                             <h5>Delete all student data</h5>
                             <p class="profile-danger-desc">Permanently remove all students and their data: names, accounts, mood check-ins, journal entries, house points, tile flips, and messages. This cannot be undone.</p>
@@ -1467,6 +1476,28 @@
                             <button type="button" id="deleteAllTeacherDataBtn" class="btn-danger">Delete all teacher data</button>
                         </div>
                     </section>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Individual Student Deletion Modal -->
+    <div id="studentDeletionModal" class="modal">
+        <div class="modal-content student-deletion-modal">
+            <div class="modal-header">
+                <h3>🗑️ Delete Individual Students</h3>
+                <button class="modal-close" id="closeStudentDeletionModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="deletion-warning-banner">
+                    <span class="warning-icon">⚠️</span>
+                    <span>Deleting a student will permanently remove their account and all associated data including mood check-ins, journal entries, house points, and messages.</span>
+                </div>
+                <div class="student-deletion-search">
+                    <input type="text" id="studentDeletionSearch" placeholder="Search students by name...">
+                </div>
+                <div class="student-deletion-list" id="studentDeletionList">
+                    <p class="loading-text">Loading students...</p>
                 </div>
             </div>
         </div>

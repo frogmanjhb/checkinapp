@@ -2020,6 +2020,84 @@ app.post('/api/director/delete-all-teacher-data', async (req, res) => {
   }
 });
 
+// Delete individual student (director only)
+app.delete('/api/director/student/:studentId', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+  
+  try {
+    const { studentId } = req.params;
+    const { directorUserId } = req.body;
+    
+    if (!studentId || !directorUserId) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+    
+    // Verify director
+    const directorCheck = await pool.query(
+      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
+      [directorUserId, 'director']
+    );
+    if (directorCheck.rows.length === 0) {
+      return res.status(403).json({ success: false, error: 'Only directors can delete students' });
+    }
+    
+    // Verify student exists and is a student
+    const studentCheck = await pool.query(
+      'SELECT id, first_name, surname FROM users WHERE id = $1 AND user_type = $2',
+      [studentId, 'student']
+    );
+    if (studentCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Student not found' });
+    }
+    
+    const studentName = `${studentCheck.rows[0].first_name} ${studentCheck.rows[0].surname}`;
+    
+    // Delete all related data in a transaction
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Delete mood check-ins
+      await client.query('DELETE FROM mood_checkins WHERE user_id = $1', [studentId]);
+      
+      // Delete journal entries
+      await client.query('DELETE FROM journal_entries WHERE user_id = $1', [studentId]);
+      
+      // Delete house points
+      await client.query('DELETE FROM house_points WHERE user_id = $1', [studentId]);
+      
+      // Delete tile flips
+      await client.query('DELETE FROM tile_flips WHERE user_id = $1', [studentId]);
+      
+      // Delete tile flip resets
+      await client.query('DELETE FROM tile_flip_resets WHERE user_id = $1', [studentId]);
+      
+      // Delete messages (sent and received)
+      await client.query(
+        'DELETE FROM messages WHERE from_user_id = $1 OR to_user_id = $1',
+        [studentId]
+      );
+      
+      // Delete the student account
+      await client.query('DELETE FROM users WHERE id = $1', [studentId]);
+      
+      await client.query('COMMIT');
+    } catch (txError) {
+      try { await client.query('ROLLBACK'); } catch (_) { /* ignore */ }
+      throw txError;
+    } finally {
+      client.release();
+    }
+    
+    res.json({ success: true, message: `Student "${studentName}" has been deleted`, studentId: parseInt(studentId) });
+  } catch (error) {
+    console.error('Delete individual student error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Delete failed' });
+  }
+});
+
 // Get school house points (totals by house) - for students/teachers
 app.get('/api/school-house-points', async (req, res) => {
   if (!pool) {

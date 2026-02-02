@@ -204,6 +204,14 @@ class APIUtils {
         });
     }
 
+    // Delete individual student
+    static async deleteStudent(directorUserId, studentId) {
+        return this.makeRequest(`/director/student/${studentId}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ directorUserId })
+        });
+    }
+
     // Teacher grade analytics (no names)
     static async getGradeAnalytics(grade, period = 'daily') {
         return this.makeRequest(`/teacher/grade-analytics?grade=${grade}&period=${period}`);
@@ -4376,6 +4384,40 @@ class MoodCheckInApp {
                 this.loadStudentsForClassAssignment(e.target.value);
             });
         }
+
+        // Student Deletion Modal
+        const openStudentDeletionBtn = document.getElementById('openStudentDeletionBtn');
+        if (openStudentDeletionBtn) {
+            openStudentDeletionBtn.addEventListener('click', () => {
+                console.log('Manage Student Accounts button clicked');
+                this.openStudentDeletionModal();
+            });
+        }
+
+        const closeStudentDeletionModal = document.getElementById('closeStudentDeletionModal');
+        if (closeStudentDeletionModal) {
+            closeStudentDeletionModal.addEventListener('click', () => this.closeStudentDeletionModal());
+        }
+
+        const studentDeletionModal = document.getElementById('studentDeletionModal');
+        if (studentDeletionModal) {
+            studentDeletionModal.addEventListener('click', (e) => {
+                if (e.target === studentDeletionModal) {
+                    this.closeStudentDeletionModal();
+                }
+            });
+        }
+
+        const studentDeletionSearch = document.getElementById('studentDeletionSearch');
+        if (studentDeletionSearch) {
+            studentDeletionSearch.addEventListener('input', (e) => {
+                // Debounce the search
+                clearTimeout(this.studentSearchTimeout);
+                this.studentSearchTimeout = setTimeout(() => {
+                    this.loadStudentsForDeletion(e.target.value);
+                }, 300);
+            });
+        }
     }
 
     async openDirectorProfileModal() {
@@ -4730,6 +4772,133 @@ class MoodCheckInApp {
         } catch (error) {
             console.error('Failed to save student classes:', error);
             this.showMessage(error.message || 'Failed to save changes.', 'error');
+        }
+    }
+
+    // Student Deletion Modal Methods
+    async openStudentDeletionModal() {
+        console.log('openStudentDeletionModal called');
+        const modal = document.getElementById('studentDeletionModal');
+        if (!modal) {
+            console.error('studentDeletionModal not found');
+            return;
+        }
+
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+
+        // Load students
+        await this.loadStudentsForDeletion();
+    }
+
+    closeStudentDeletionModal() {
+        const modal = document.getElementById('studentDeletionModal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        }
+    }
+
+    async loadStudentsForDeletion(searchTerm = '') {
+        const listContainer = document.getElementById('studentDeletionList');
+        if (!listContainer) return;
+
+        listContainer.innerHTML = '<p class="loading-text">Loading students...</p>';
+
+        try {
+            const usersResponse = await APIUtils.getAllUsers();
+
+            if (usersResponse.success) {
+                let students = usersResponse.users.filter(u => u.user_type === 'student');
+
+                // Apply search filter
+                if (searchTerm.trim()) {
+                    const term = searchTerm.toLowerCase();
+                    students = students.filter(s => 
+                        `${s.first_name} ${s.surname}`.toLowerCase().includes(term) ||
+                        s.email.toLowerCase().includes(term)
+                    );
+                }
+
+                if (students.length === 0) {
+                    listContainer.innerHTML = searchTerm 
+                        ? '<p class="no-students-text">No students found matching your search.</p>'
+                        : '<p class="no-students-text">No students registered yet.</p>';
+                    return;
+                }
+
+                // Sort by name
+                students.sort((a, b) => {
+                    const nameA = `${a.first_name} ${a.surname}`.toLowerCase();
+                    const nameB = `${b.first_name} ${b.surname}`.toLowerCase();
+                    return nameA.localeCompare(nameB);
+                });
+
+                listContainer.innerHTML = students.map(student => {
+                    const initials = `${student.first_name.charAt(0)}${student.surname.charAt(0)}`.toUpperCase();
+
+                    return `
+                        <div class="student-deletion-item" data-student-id="${student.id}">
+                            <div class="student-deletion-info">
+                                <div class="student-deletion-avatar">${initials}</div>
+                                <div class="student-deletion-details">
+                                    <div class="student-deletion-name">${student.first_name} ${student.surname}</div>
+                                    <div class="student-deletion-meta">${student.class || 'No class'} • ${student.house || 'No house'} • ${student.email}</div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn-delete-student" data-student-id="${student.id}" data-student-name="${student.first_name} ${student.surname}">
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+
+                // Add delete button handlers
+                listContainer.querySelectorAll('.btn-delete-student').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const studentId = e.target.dataset.studentId;
+                        const studentName = e.target.dataset.studentName;
+                        this.confirmDeleteStudent(studentId, studentName);
+                    });
+                });
+            } else {
+                listContainer.innerHTML = '<p class="error-text">Failed to load students.</p>';
+            }
+        } catch (error) {
+            console.error('Failed to load students for deletion:', error);
+            listContainer.innerHTML = '<p class="error-text">Failed to load students.</p>';
+        }
+    }
+
+    async confirmDeleteStudent(studentId, studentName) {
+        const confirmed = confirm(
+            `Are you sure you want to delete "${studentName}"?\n\n` +
+            `This will permanently remove:\n` +
+            `• Their account and login\n` +
+            `• All mood check-ins\n` +
+            `• All journal entries\n` +
+            `• All house points earned\n` +
+            `• All tile flips\n` +
+            `• All messages\n\n` +
+            `This action cannot be undone.`
+        );
+
+        if (!confirmed) return;
+
+        try {
+            const response = await APIUtils.deleteStudent(this.currentUser.id, studentId);
+            if (response.success) {
+                this.showMessage(response.message || `Student deleted successfully.`, 'success');
+                // Refresh the list
+                const searchInput = document.getElementById('studentDeletionSearch');
+                const searchTerm = searchInput ? searchInput.value : '';
+                await this.loadStudentsForDeletion(searchTerm);
+            } else {
+                this.showMessage(response.error || 'Failed to delete student.', 'error');
+            }
+        } catch (error) {
+            console.error('Failed to delete student:', error);
+            this.showMessage(error.message || 'Failed to delete student.', 'error');
         }
     }
 
