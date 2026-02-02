@@ -216,6 +216,12 @@ async function initializeDatabase() {
       INSERT INTO app_settings (key, value) VALUES ('max_journal_entries_per_day', '1')
       ON CONFLICT (key) DO NOTHING
     `);
+    // Initialize default class names
+    const defaultClassNames = ['5EF', '5AM', '5JS', '6A', '6B', '6C', '7A', '7B', '7C'];
+    await pool.query(`
+      INSERT INTO app_settings (key, value) VALUES ('class_names', $1)
+      ON CONFLICT (key) DO NOTHING
+    `, [JSON.stringify(defaultClassNames)]);
     console.log('✅ app_settings initialized');
 
     // Create tile_flips table
@@ -794,6 +800,120 @@ app.put('/api/director/checkin-journal-settings', async (req, res) => {
     res.json({ success: true, ...out });
   } catch (error) {
     console.error('Update checkin/journal settings error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get available class names (public endpoint for registration)
+app.get('/api/class-names', async (req, res) => {
+  try {
+    const defaultClassNames = ['5EF', '5AM', '5JS', '6A', '6B', '6C', '7A', '7B', '7C'];
+    
+    if (!pool) {
+      return res.json({ success: true, classNames: defaultClassNames });
+    }
+    
+    const result = await pool.query(`SELECT value FROM app_settings WHERE key = 'class_names'`);
+    if (result.rows.length === 0) {
+      return res.json({ success: true, classNames: defaultClassNames });
+    }
+    
+    const classNames = JSON.parse(result.rows[0].value);
+    res.json({ success: true, classNames: classNames.sort() });
+  } catch (error) {
+    console.error('Get class names error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Add a new class name (director only)
+app.post('/api/director/class-names', async (req, res) => {
+  try {
+    const { className, directorUserId } = req.body;
+    
+    if (!className || !directorUserId) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+    
+    // Verify director
+    const userResult = await pool.query('SELECT user_type FROM users WHERE id = $1', [directorUserId]);
+    if (userResult.rows.length === 0 || userResult.rows[0].user_type !== 'director') {
+      return res.status(403).json({ success: false, error: 'Only directors can manage class names' });
+    }
+    
+    // Get current class names
+    const defaultClassNames = ['5EF', '5AM', '5JS', '6A', '6B', '6C', '7A', '7B', '7C'];
+    let currentClassNames = defaultClassNames;
+    
+    const result = await pool.query(`SELECT value FROM app_settings WHERE key = 'class_names'`);
+    if (result.rows.length > 0) {
+      currentClassNames = JSON.parse(result.rows[0].value);
+    }
+    
+    // Check if class name already exists (case-insensitive)
+    const normalizedClassName = className.trim().toUpperCase();
+    if (currentClassNames.some(c => c.toUpperCase() === normalizedClassName)) {
+      return res.status(400).json({ success: false, error: 'Class name already exists' });
+    }
+    
+    // Add new class name
+    currentClassNames.push(className.trim());
+    currentClassNames.sort();
+    
+    await pool.query(
+      `INSERT INTO app_settings (key, value) VALUES ('class_names', $1)
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+      [JSON.stringify(currentClassNames)]
+    );
+    
+    res.json({ success: true, classNames: currentClassNames });
+  } catch (error) {
+    console.error('Add class name error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete a class name (director only)
+app.delete('/api/director/class-names/:className', async (req, res) => {
+  try {
+    const { className } = req.params;
+    const { directorUserId } = req.body;
+    
+    if (!className || !directorUserId) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+    
+    // Verify director
+    const userResult = await pool.query('SELECT user_type FROM users WHERE id = $1', [directorUserId]);
+    if (userResult.rows.length === 0 || userResult.rows[0].user_type !== 'director') {
+      return res.status(403).json({ success: false, error: 'Only directors can manage class names' });
+    }
+    
+    // Get current class names
+    const result = await pool.query(`SELECT value FROM app_settings WHERE key = 'class_names'`);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'No class names configured' });
+    }
+    
+    let currentClassNames = JSON.parse(result.rows[0].value);
+    
+    // Remove the class name (case-insensitive match)
+    const normalizedClassName = className.trim().toUpperCase();
+    const filteredClassNames = currentClassNames.filter(c => c.toUpperCase() !== normalizedClassName);
+    
+    if (filteredClassNames.length === currentClassNames.length) {
+      return res.status(404).json({ success: false, error: 'Class name not found' });
+    }
+    
+    await pool.query(
+      `INSERT INTO app_settings (key, value) VALUES ('class_names', $1)
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+      [JSON.stringify(filteredClassNames)]
+    );
+    
+    res.json({ success: true, classNames: filteredClassNames });
+  } catch (error) {
+    console.error('Delete class name error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

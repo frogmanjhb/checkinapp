@@ -169,6 +169,25 @@ class APIUtils {
         return this.makeRequest(`/director/all-journal-entries?period=${period}`);
     }
 
+    // Class names management
+    static async getClassNames() {
+        return this.makeRequest('/class-names');
+    }
+
+    static async addClassName(directorUserId, className) {
+        return this.makeRequest('/director/class-names', {
+            method: 'POST',
+            body: JSON.stringify({ directorUserId, className })
+        });
+    }
+
+    static async deleteClassName(directorUserId, className) {
+        return this.makeRequest(`/director/class-names/${encodeURIComponent(className)}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ directorUserId })
+        });
+    }
+
     // Teacher grade analytics (no names)
     static async getGradeAnalytics(grade, period = 'daily') {
         return this.makeRequest(`/teacher/grade-analytics?grade=${grade}&period=${period}`);
@@ -328,6 +347,8 @@ class MoodCheckInApp {
             }
         }
         
+        // Load class names for registration dropdown
+        await this.loadClassNames();
         
         // Check if user is already logged in
         const savedUser = localStorage.getItem('checkinUser');
@@ -4283,6 +4304,23 @@ class MoodCheckInApp {
         if (deleteAllTeacherDataBtn) {
             deleteAllTeacherDataBtn.addEventListener('click', () => this.confirmDeleteAllTeacherData());
         }
+
+        // Add class name button
+        const addClassNameBtn = document.getElementById('addClassNameBtn');
+        if (addClassNameBtn) {
+            addClassNameBtn.addEventListener('click', () => this.addClassName());
+        }
+
+        // Add class name input - allow Enter key to submit
+        const newClassNameInput = document.getElementById('newClassNameInput');
+        if (newClassNameInput) {
+            newClassNameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.addClassName();
+                }
+            });
+        }
     }
 
     async openDirectorProfileModal() {
@@ -4300,6 +4338,7 @@ class MoodCheckInApp {
         modal.classList.add('active');
         if (this.currentUser && this.currentUser.user_type === 'director') {
             this.loadCheckinJournalSettings();
+            this.loadDirectorClassNames();
         }
     }
 
@@ -4334,6 +4373,123 @@ class MoodCheckInApp {
         } catch (e) {
             console.error('Save checkin/journal settings error:', e);
             this.showMessage(e.message || 'Failed to save limits.', 'error');
+        }
+    }
+
+    // Class Names Management
+    async loadClassNames() {
+        const studentClassSelect = document.getElementById('studentClass');
+        if (!studentClassSelect) return;
+
+        try {
+            const response = await APIUtils.getClassNames();
+            if (response.success && response.classNames) {
+                // Clear existing options except the first one
+                studentClassSelect.innerHTML = '<option value="">Select your class</option>';
+                
+                // Add class options
+                response.classNames.forEach(className => {
+                    const option = document.createElement('option');
+                    option.value = className;
+                    option.textContent = className;
+                    studentClassSelect.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Failed to load class names:', error);
+            // Fallback to default class names
+            const defaultClasses = ['5EF', '5AM', '5JS', '6A', '6B', '6C', '7A', '7B', '7C'];
+            studentClassSelect.innerHTML = '<option value="">Select your class</option>';
+            defaultClasses.forEach(className => {
+                const option = document.createElement('option');
+                option.value = className;
+                option.textContent = className;
+                studentClassSelect.appendChild(option);
+            });
+        }
+    }
+
+    async loadDirectorClassNames() {
+        const classNamesList = document.getElementById('classNamesList');
+        if (!classNamesList) return;
+
+        try {
+            const response = await APIUtils.getClassNames();
+            if (response.success && response.classNames) {
+                if (response.classNames.length === 0) {
+                    classNamesList.innerHTML = '<p class="no-classes-text">No classes configured. Add a class above.</p>';
+                    return;
+                }
+                
+                classNamesList.innerHTML = response.classNames.map(className => `
+                    <div class="class-name-item">
+                        <span class="class-name-text">${className}</span>
+                        <button type="button" class="class-delete-btn" data-class="${className}" title="Delete class">×</button>
+                    </div>
+                `).join('');
+
+                // Add delete handlers
+                classNamesList.querySelectorAll('.class-delete-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const className = e.target.getAttribute('data-class');
+                        this.confirmDeleteClassName(className);
+                    });
+                });
+            }
+        } catch (error) {
+            console.error('Failed to load class names for director:', error);
+            classNamesList.innerHTML = '<p class="error-text">Failed to load classes.</p>';
+        }
+    }
+
+    async addClassName() {
+        const input = document.getElementById('newClassNameInput');
+        if (!input || !this.currentUser || this.currentUser.user_type !== 'director') return;
+
+        const className = input.value.trim();
+        if (!className) {
+            this.showMessage('Please enter a class name.', 'error');
+            return;
+        }
+
+        if (className.length > 10) {
+            this.showMessage('Class name must be 10 characters or less.', 'error');
+            return;
+        }
+
+        try {
+            const response = await APIUtils.addClassName(this.currentUser.id, className);
+            if (response.success) {
+                this.showMessage(`Class "${className}" added successfully.`, 'success');
+                input.value = '';
+                await this.loadDirectorClassNames();
+                await this.loadClassNames(); // Update registration dropdown
+            } else {
+                this.showMessage(response.error || 'Failed to add class.', 'error');
+            }
+        } catch (error) {
+            console.error('Failed to add class name:', error);
+            this.showMessage(error.message || 'Failed to add class.', 'error');
+        }
+    }
+
+    async confirmDeleteClassName(className) {
+        if (!confirm(`Are you sure you want to delete the class "${className}"? Students already registered with this class will keep their current class assignment.`)) {
+            return;
+        }
+
+        try {
+            const response = await APIUtils.deleteClassName(this.currentUser.id, className);
+            if (response.success) {
+                this.showMessage(`Class "${className}" deleted successfully.`, 'success');
+                await this.loadDirectorClassNames();
+                await this.loadClassNames(); // Update registration dropdown
+            } else {
+                this.showMessage(response.error || 'Failed to delete class.', 'error');
+            }
+        } catch (error) {
+            console.error('Failed to delete class name:', error);
+            this.showMessage(error.message || 'Failed to delete class.', 'error');
         }
     }
 
@@ -4779,6 +4935,8 @@ class MoodCheckInApp {
         
         return journalData.slice(-5).reverse().map(journal => {
             const date = new Date(journal.timestamp).toLocaleString();
+            // Use 'entry' field from database, fallback to 'content' for legacy data
+            const entryText = journal.entry || journal.content || 'No content';
             
             return `
                 <div class="director-journal-item">
@@ -4789,7 +4947,7 @@ class MoodCheckInApp {
                         <div class="director-journal-date">${date}</div>
                     </div>
                     <div class="director-journal-content">
-                        ${journal.content}
+                        ${entryText}
                     </div>
                 </div>
             `;
