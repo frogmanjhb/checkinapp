@@ -4183,6 +4183,7 @@ class MoodCheckInApp {
 
     // Setup modal card click handlers
     setupDirectorModalHandlers() {
+        console.log('setupDirectorModalHandlers() called');
         // Setup grade card handlers
         ['grade5', 'grade6', 'grade7'].forEach(grade => {
             const card = document.getElementById(grade + 'Card');
@@ -4340,8 +4341,14 @@ class MoodCheckInApp {
 
         // Student Class Assignment Modal
         const openStudentClassAssignmentBtn = document.getElementById('openStudentClassAssignmentBtn');
+        console.log('Setting up Student Class Assignment button:', openStudentClassAssignmentBtn);
         if (openStudentClassAssignmentBtn) {
-            openStudentClassAssignmentBtn.addEventListener('click', () => this.openStudentClassAssignmentModal());
+            openStudentClassAssignmentBtn.addEventListener('click', () => {
+                console.log('Manage Student Classes button clicked');
+                this.openStudentClassAssignmentModal();
+            });
+        } else {
+            console.warn('openStudentClassAssignmentBtn not found in DOM');
         }
 
         const closeStudentClassAssignmentModal = document.getElementById('closeStudentClassAssignmentModal');
@@ -4543,11 +4550,17 @@ class MoodCheckInApp {
 
     // Student Class Assignment Methods
     async openStudentClassAssignmentModal() {
+        console.log('openStudentClassAssignmentModal called');
         const modal = document.getElementById('studentClassAssignmentModal');
-        if (!modal) return;
+        console.log('Modal element:', modal);
+        if (!modal) {
+            console.error('studentClassAssignmentModal not found!');
+            return;
+        }
 
         modal.style.display = 'flex';
         modal.classList.add('active');
+        console.log('Modal should now be visible');
 
         // Load class names for filter dropdown
         await this.loadClassFilterOptions();
