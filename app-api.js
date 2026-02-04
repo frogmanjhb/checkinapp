@@ -5000,6 +5000,7 @@ class MoodCheckInApp {
             modal.style.display = 'none';
             modal.classList.remove('active');
         }
+        this.studentResetPasswords = {};
     }
 
     async loadStudentsForCredentials(searchTerm = '') {
@@ -5035,9 +5036,18 @@ class MoodCheckInApp {
                     return nameA.localeCompare(nameB);
                 });
 
+                this.studentResetPasswords = this.studentResetPasswords || {};
                 listContainer.innerHTML = students.map(student => {
                     const initials = `${student.first_name.charAt(0)}${student.surname.charAt(0)}`.toUpperCase();
                     const email = student.email || '';
+                    const resetPassword = this.studentResetPasswords[student.id];
+                    const passwordRow = resetPassword
+                        ? `<div class="student-credentials-password-row">
+                            <span class="credentials-label">Password:</span>
+                            <code class="credentials-password">${resetPassword}</code>
+                            <button type="button" class="btn-copy-password" data-password="${resetPassword}" title="Copy password">📋 Copy</button>
+                           </div>`
+                        : '';
                     return `
                         <div class="student-credentials-item" data-student-id="${student.id}">
                             <div class="student-credentials-info">
@@ -5050,6 +5060,7 @@ class MoodCheckInApp {
                                         <code class="credentials-email">${email}</code>
                                         <button type="button" class="btn-copy-email" data-email="${email}" title="Copy email">📋 Copy</button>
                                     </div>
+                                    ${passwordRow}
                                 </div>
                             </div>
                             <button type="button" class="btn-reset-password" data-student-id="${student.id}" data-student-name="${student.first_name} ${student.surname}">
@@ -5068,6 +5079,19 @@ class MoodCheckInApp {
                             }).catch(() => this.copyToClipboardFallback(email));
                         } else {
                             this.copyToClipboardFallback(email);
+                        }
+                    });
+                });
+
+                listContainer.querySelectorAll('.btn-copy-password').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const password = e.target.dataset.password;
+                        if (password && navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(password).then(() => {
+                                this.showMessage('Password copied to clipboard.', 'success');
+                            }).catch(() => this.copyPasswordFallback(password));
+                        } else if (password) {
+                            this.copyPasswordFallback(password);
                         }
                     });
                 });
@@ -5104,6 +5128,22 @@ class MoodCheckInApp {
         document.body.removeChild(ta);
     }
 
+    copyPasswordFallback(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            this.showMessage('Password copied to clipboard.', 'success');
+        } catch (err) {
+            this.showMessage('Could not copy. Please copy manually.', 'error');
+        }
+        document.body.removeChild(ta);
+    }
+
     async handleResetStudentPassword(studentId, studentName) {
         const confirmed = confirm(
             `Reset password for "${studentName}"?\n\n` +
@@ -5119,21 +5159,9 @@ class MoodCheckInApp {
         try {
             const response = await APIUtils.resetStudentPassword(this.currentUser.id, studentId);
             if (response.success) {
-                const msg = `New password for ${response.email}: ${response.newPassword}\n\nCopied to clipboard.`;
-                this.showMessage('Password reset. New password copied to clipboard.', 'success');
-
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(response.newPassword).catch(() => {});
-                } else {
-                    const ta = document.createElement('textarea');
-                    ta.value = response.newPassword;
-                    ta.style.position = 'fixed';
-                    ta.style.opacity = '0';
-                    document.body.appendChild(ta);
-                    ta.select();
-                    try { document.execCommand('copy'); } catch (_) {}
-                    document.body.removeChild(ta);
-                }
+                this.studentResetPasswords = this.studentResetPasswords || {};
+                this.studentResetPasswords[studentId] = response.newPassword;
+                this.showMessage('Password reset. It is shown below—copy when ready.', 'success');
 
                 const searchInput = document.getElementById('studentCredentialsSearch');
                 await this.loadStudentsForCredentials(searchInput ? searchInput.value : '');

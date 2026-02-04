@@ -1450,22 +1450,18 @@
                             </button>
                         </div>
 
-                        <!-- View Student Credentials Section -->
-                        <div class="student-credentials-section">
-                            <h5>View Student Credentials</h5>
-                            <p class="profile-section-desc">View and copy student usernames (emails). Reset passwords for students who have forgotten them.</p>
-                            <button type="button" id="openStudentCredentialsBtn" class="btn-secondary" onclick="if(window.moodApp) window.moodApp.openStudentCredentialsModal();">
-                                <span>🔑</span> View Usernames &amp; Reset Passwords
-                            </button>
-                        </div>
-                        
-                        <!-- Individual Student Deletion Section -->
+                        <!-- Individual Student Management Section -->
                         <div class="individual-student-deletion-section">
-                            <h5>Delete Individual Students</h5>
-                            <p class="profile-section-desc">Remove individual student accounts and all their associated data.</p>
-                            <button type="button" id="openStudentDeletionBtn" class="btn-warning" onclick="if(window.moodApp) window.moodApp.openStudentDeletionModal();">
-                                <span>🗑️</span> Manage Student Accounts
-                            </button>
+                            <h5>Manage Individual Students</h5>
+                            <p class="profile-section-desc">View usernames and reset passwords, or remove individual student accounts and their data.</p>
+                            <div class="student-management-buttons">
+                                <button type="button" id="openStudentCredentialsBtn" class="btn-secondary" onclick="if(window.moodApp) window.moodApp.openStudentCredentialsModal();">
+                                    <span>🔑</span> View Usernames
+                                </button>
+                                <button type="button" id="openStudentDeletionBtn" class="btn-warning" onclick="if(window.moodApp) window.moodApp.openStudentDeletionModal();">
+                                    <span>🗑️</span> Manage Student Accounts
+                                </button>
+                            </div>
                         </div>
 
                         <div class="profile-danger-zone">
