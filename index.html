@@ -1449,6 +1449,15 @@
                                 <span>👥</span> Manage Student Classes
                             </button>
                         </div>
+
+                        <!-- View Student Credentials Section -->
+                        <div class="student-credentials-section">
+                            <h5>View Student Credentials</h5>
+                            <p class="profile-section-desc">View and copy student usernames (emails). Reset passwords for students who have forgotten them.</p>
+                            <button type="button" id="openStudentCredentialsBtn" class="btn-secondary" onclick="if(window.moodApp) window.moodApp.openStudentCredentialsModal();">
+                                <span>🔑</span> View Usernames &amp; Reset Passwords
+                            </button>
+                        </div>
                         
                         <!-- Individual Student Deletion Section -->
                         <div class="individual-student-deletion-section">
@@ -1476,6 +1485,28 @@
                             <button type="button" id="deleteAllTeacherDataBtn" class="btn-danger">Delete all teacher data</button>
                         </div>
                     </section>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Credentials Modal -->
+    <div id="studentCredentialsModal" class="modal">
+        <div class="modal-content student-credentials-modal">
+            <div class="modal-header">
+                <h3>🔑 View Student Usernames &amp; Reset Passwords</h3>
+                <button class="modal-close" id="closeStudentCredentialsModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="credentials-info-banner">
+                    <span class="info-icon">ℹ️</span>
+                    <span>Usernames are student email addresses. Passwords cannot be retrieved. Use "Reset Password" to set a new temporary password and copy it to share with the student.</span>
+                </div>
+                <div class="student-credentials-search">
+                    <input type="text" id="studentCredentialsSearch" placeholder="Search students by name or email...">
+                </div>
+                <div class="student-credentials-list" id="studentCredentialsList">
+                    <p class="loading-text">Loading students...</p>
                 </div>
             </div>
         </div>

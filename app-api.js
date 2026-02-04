@@ -237,6 +237,14 @@ class APIUtils {
         });
     }
 
+    // Reset student password (director only) - returns new password for copying
+    static async resetStudentPassword(directorUserId, studentId) {
+        return this.makeRequest(`/director/student/${studentId}/reset-password`, {
+            method: 'POST',
+            body: JSON.stringify({ directorUserId })
+        });
+    }
+
     // Teacher grade analytics (no names)
     static async getGradeAnalytics(grade, period = 'daily') {
         return this.makeRequest(`/teacher/grade-analytics?grade=${grade}&period=${period}`);
@@ -4457,6 +4465,36 @@ class MoodCheckInApp {
                 }, 300);
             });
         }
+
+        // Student Credentials Modal
+        const openStudentCredentialsBtn = document.getElementById('openStudentCredentialsBtn');
+        if (openStudentCredentialsBtn) {
+            openStudentCredentialsBtn.addEventListener('click', () => this.openStudentCredentialsModal());
+        }
+
+        const closeStudentCredentialsModal = document.getElementById('closeStudentCredentialsModal');
+        if (closeStudentCredentialsModal) {
+            closeStudentCredentialsModal.addEventListener('click', () => this.closeStudentCredentialsModal());
+        }
+
+        const studentCredentialsModal = document.getElementById('studentCredentialsModal');
+        if (studentCredentialsModal) {
+            studentCredentialsModal.addEventListener('click', (e) => {
+                if (e.target === studentCredentialsModal) {
+                    this.closeStudentCredentialsModal();
+                }
+            });
+        }
+
+        const studentCredentialsSearch = document.getElementById('studentCredentialsSearch');
+        if (studentCredentialsSearch) {
+            studentCredentialsSearch.addEventListener('input', (e) => {
+                clearTimeout(this.studentCredentialsSearchTimeout);
+                this.studentCredentialsSearchTimeout = setTimeout(() => {
+                    this.loadStudentsForCredentials(e.target.value);
+                }, 300);
+            });
+        }
     }
 
     async openDirectorProfileModal() {
@@ -4943,6 +4981,170 @@ class MoodCheckInApp {
         } catch (error) {
             console.error('Failed to delete student:', error);
             this.showMessage(error.message || 'Failed to delete student.', 'error');
+        }
+    }
+
+    // Student Credentials Modal
+    async openStudentCredentialsModal() {
+        const modal = document.getElementById('studentCredentialsModal');
+        if (!modal) return;
+
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+        await this.loadStudentsForCredentials();
+    }
+
+    closeStudentCredentialsModal() {
+        const modal = document.getElementById('studentCredentialsModal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        }
+    }
+
+    async loadStudentsForCredentials(searchTerm = '') {
+        const listContainer = document.getElementById('studentCredentialsList');
+        if (!listContainer) return;
+
+        listContainer.innerHTML = '<p class="loading-text">Loading students...</p>';
+
+        try {
+            const usersResponse = await APIUtils.getAllUsers();
+
+            if (usersResponse.success) {
+                let students = usersResponse.users.filter(u => u.user_type === 'student');
+
+                if (searchTerm.trim()) {
+                    const term = searchTerm.toLowerCase();
+                    students = students.filter(s =>
+                        `${s.first_name} ${s.surname}`.toLowerCase().includes(term) ||
+                        (s.email && s.email.toLowerCase().includes(term))
+                    );
+                }
+
+                if (students.length === 0) {
+                    listContainer.innerHTML = searchTerm
+                        ? '<p class="no-students-text">No students found matching your search.</p>'
+                        : '<p class="no-students-text">No students registered yet.</p>';
+                    return;
+                }
+
+                students.sort((a, b) => {
+                    const nameA = `${a.first_name} ${a.surname}`.toLowerCase();
+                    const nameB = `${b.first_name} ${b.surname}`.toLowerCase();
+                    return nameA.localeCompare(nameB);
+                });
+
+                listContainer.innerHTML = students.map(student => {
+                    const initials = `${student.first_name.charAt(0)}${student.surname.charAt(0)}`.toUpperCase();
+                    const email = student.email || '';
+                    return `
+                        <div class="student-credentials-item" data-student-id="${student.id}">
+                            <div class="student-credentials-info">
+                                <div class="student-credentials-avatar">${initials}</div>
+                                <div class="student-credentials-details">
+                                    <div class="student-credentials-name">${student.first_name} ${student.surname}</div>
+                                    <div class="student-credentials-meta">${student.class || 'No class'} • ${student.house || 'No house'}</div>
+                                    <div class="student-credentials-email-row">
+                                        <span class="credentials-label">Username:</span>
+                                        <code class="credentials-email">${email}</code>
+                                        <button type="button" class="btn-copy-email" data-email="${email}" title="Copy email">📋 Copy</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn-reset-password" data-student-id="${student.id}" data-student-name="${student.first_name} ${student.surname}">
+                                🔑 Reset Password
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+
+                listContainer.querySelectorAll('.btn-copy-email').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const email = e.target.dataset.email;
+                        if (email && navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(email).then(() => {
+                                this.showMessage('Email copied to clipboard.', 'success');
+                            }).catch(() => this.copyToClipboardFallback(email));
+                        } else {
+                            this.copyToClipboardFallback(email);
+                        }
+                    });
+                });
+
+                listContainer.querySelectorAll('.btn-reset-password').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const studentId = e.target.dataset.studentId;
+                        const studentName = e.target.dataset.studentName;
+                        this.handleResetStudentPassword(studentId, studentName);
+                    });
+                });
+            } else {
+                listContainer.innerHTML = '<p class="error-text">Failed to load students.</p>';
+            }
+        } catch (error) {
+            console.error('Failed to load students for credentials:', error);
+            listContainer.innerHTML = '<p class="error-text">Failed to load students.</p>';
+        }
+    }
+
+    copyToClipboardFallback(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            this.showMessage('Email copied to clipboard.', 'success');
+        } catch (err) {
+            this.showMessage('Could not copy. Please copy manually: ' + text, 'error');
+        }
+        document.body.removeChild(ta);
+    }
+
+    async handleResetStudentPassword(studentId, studentName) {
+        const confirmed = confirm(
+            `Reset password for "${studentName}"?\n\n` +
+            `A new temporary password will be generated. You will be able to copy it to share with the student. ` +
+            `The student can change their password after logging in.`
+        );
+
+        if (!confirmed) return;
+
+        const btn = document.querySelector(`.btn-reset-password[data-student-id="${studentId}"]`);
+        if (btn) btn.disabled = true;
+
+        try {
+            const response = await APIUtils.resetStudentPassword(this.currentUser.id, studentId);
+            if (response.success) {
+                const msg = `New password for ${response.email}: ${response.newPassword}\n\nCopied to clipboard.`;
+                this.showMessage('Password reset. New password copied to clipboard.', 'success');
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(response.newPassword).catch(() => {});
+                } else {
+                    const ta = document.createElement('textarea');
+                    ta.value = response.newPassword;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try { document.execCommand('copy'); } catch (_) {}
+                    document.body.removeChild(ta);
+                }
+
+                const searchInput = document.getElementById('studentCredentialsSearch');
+                await this.loadStudentsForCredentials(searchInput ? searchInput.value : '');
+            } else {
+                this.showMessage(response.error || 'Failed to reset password.', 'error');
+            }
+        } catch (error) {
+            console.error('Failed to reset password:', error);
+            this.showMessage(error.message || 'Failed to reset password.', 'error');
+        } finally {
+            if (btn) btn.disabled = false;
         }
     }
 

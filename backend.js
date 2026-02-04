@@ -2098,6 +2098,64 @@ app.delete('/api/director/student/:studentId', async (req, res) => {
   }
 });
 
+// Reset student password (director only) - generates new temp password, returns it for director to copy
+app.post('/api/director/student/:studentId/reset-password', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ success: false, error: 'Database not available' });
+  }
+
+  try {
+    const { studentId } = req.params;
+    const { directorUserId } = req.body;
+
+    if (!studentId || !directorUserId) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+
+    // Verify director
+    const directorCheck = await pool.query(
+      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
+      [directorUserId, 'director']
+    );
+    if (directorCheck.rows.length === 0) {
+      return res.status(403).json({ success: false, error: 'Only directors can reset student passwords' });
+    }
+
+    // Verify student exists and is a student
+    const studentCheck = await pool.query(
+      'SELECT id, first_name, surname, email FROM users WHERE id = $1 AND user_type = $2',
+      [studentId, 'student']
+    );
+    if (studentCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Student not found' });
+    }
+
+    const student = studentCheck.rows[0];
+
+    // Generate a random password that meets requirements: 8+ chars, upper, lower, number, special
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghjkmnpqrstuvwxyz';
+    const digits = '23456789';
+    const special = '!@#$%^&*';
+    const pick = (str) => str[Math.floor(Math.random() * str.length)];
+    const newPassword = pick(upper) + pick(lower) + pick(digits) + pick(special) +
+      Array.from({ length: 4 }, () => pick(upper + lower + digits + special)).join('');
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [passwordHash, studentId]);
+
+    res.json({
+      success: true,
+      email: student.email,
+      newPassword,
+      message: 'Password reset successfully. Copy the new password to share with the student.'
+    });
+  } catch (error) {
+    console.error('Reset student password error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Reset failed' });
+  }
+});
+
 // Get school house points (totals by house) - for students/teachers
 app.get('/api/school-house-points', async (req, res) => {
   if (!pool) {
