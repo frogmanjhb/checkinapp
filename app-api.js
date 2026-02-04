@@ -237,11 +237,11 @@ class APIUtils {
         });
     }
 
-    // Reset student password (director only) - returns new password for copying
-    static async resetStudentPassword(directorUserId, studentId) {
+    // Reset student password (director only) - optional newPassword for custom value
+    static async resetStudentPassword(directorUserId, studentId, newPassword) {
         return this.makeRequest(`/director/student/${studentId}/reset-password`, {
             method: 'POST',
-            body: JSON.stringify({ directorUserId })
+            body: JSON.stringify({ directorUserId, newPassword: newPassword || undefined })
         });
     }
 
@@ -306,7 +306,6 @@ class SecurityUtils {
         const hasUpperCase = /[A-Z]/.test(password);
         const hasLowerCase = /[a-z]/.test(password);
         const hasNumbers = /\d/.test(password);
-        const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
         const errors = [];
         if (password.length < minLength) {
@@ -321,30 +320,25 @@ class SecurityUtils {
         if (!hasNumbers) {
             errors.push('Password must contain at least one number');
         }
-        if (!hasSpecialChar) {
-            errors.push('Password must contain at least one special character');
-        }
 
         return {
             isValid: errors.length === 0,
             errors: errors,
-            strength: this.calculateStrength(password, hasUpperCase, hasLowerCase, hasNumbers, hasSpecialChar)
+            strength: this.calculateStrength(password, hasUpperCase, hasLowerCase, hasNumbers)
         };
     }
 
-    static calculateStrength(password, hasUpper, hasLower, hasNumber, hasSpecial) {
+    static calculateStrength(password, hasUpper, hasLower, hasNumber) {
         let score = 0;
         if (password.length >= 8) score++;
         if (password.length >= 12) score++;
         if (hasUpper) score++;
         if (hasLower) score++;
         if (hasNumber) score++;
-        if (hasSpecial) score++;
         
         if (score <= 2) return 'Weak';
         if (score <= 4) return 'Medium';
-        if (score <= 5) return 'Strong';
-        return 'Very Strong';
+        return 'Strong';
     }
 
     static sanitizeInput(input) {
@@ -5145,19 +5139,27 @@ class MoodCheckInApp {
     }
 
     async handleResetStudentPassword(studentId, studentName) {
-        const confirmed = confirm(
+        const customPassword = prompt(
             `Reset password for "${studentName}"?\n\n` +
-            `A new temporary password will be generated. You will be able to copy it to share with the student. ` +
-            `The student can change their password after logging in.`
+            `Enter a new password (8+ chars, uppercase, lowercase, number), or leave blank to generate a random one:`
         );
 
-        if (!confirmed) return;
+        if (customPassword === null) return;
+
+        const trimmed = customPassword ? customPassword.trim() : '';
+        if (trimmed) {
+            const validation = SecurityUtils.validatePasswordStrength(trimmed);
+            if (!validation.isValid) {
+                this.showMessage(validation.errors.join('. '), 'error');
+                return;
+            }
+        }
 
         const btn = document.querySelector(`.btn-reset-password[data-student-id="${studentId}"]`);
         if (btn) btn.disabled = true;
 
         try {
-            const response = await APIUtils.resetStudentPassword(this.currentUser.id, studentId);
+            const response = await APIUtils.resetStudentPassword(this.currentUser.id, studentId, trimmed || undefined);
             if (response.success) {
                 this.studentResetPasswords = this.studentResetPasswords || {};
                 this.studentResetPasswords[studentId] = response.newPassword;

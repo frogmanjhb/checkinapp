@@ -2098,7 +2098,16 @@ app.delete('/api/director/student/:studentId', async (req, res) => {
   }
 });
 
-// Reset student password (director only) - generates new temp password, returns it for director to copy
+// Validate password: 8+ chars, upper, lower, number (no special required)
+function validatePasswordFormat(pw) {
+  if (!pw || pw.length < 8) return 'Password must be at least 8 characters long';
+  if (!/[A-Z]/.test(pw)) return 'Password must contain at least one uppercase letter';
+  if (!/[a-z]/.test(pw)) return 'Password must contain at least one lowercase letter';
+  if (!/\d/.test(pw)) return 'Password must contain at least one number';
+  return null;
+}
+
+// Reset student password (director only) - accepts custom password or generates random
 app.post('/api/director/student/:studentId/reset-password', async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
@@ -2106,7 +2115,7 @@ app.post('/api/director/student/:studentId/reset-password', async (req, res) => 
 
   try {
     const { studentId } = req.params;
-    const { directorUserId } = req.body;
+    const { directorUserId, newPassword: customPassword } = req.body;
 
     if (!studentId || !directorUserId) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
@@ -2131,15 +2140,23 @@ app.post('/api/director/student/:studentId/reset-password', async (req, res) => 
     }
 
     const student = studentCheck.rows[0];
+    let newPassword;
 
-    // Generate a random password that meets requirements: 8+ chars, upper, lower, number, special
-    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-    const lower = 'abcdefghjkmnpqrstuvwxyz';
-    const digits = '23456789';
-    const special = '!@#$%^&*';
-    const pick = (str) => str[Math.floor(Math.random() * str.length)];
-    const newPassword = pick(upper) + pick(lower) + pick(digits) + pick(special) +
-      Array.from({ length: 4 }, () => pick(upper + lower + digits + special)).join('');
+    if (customPassword && customPassword.trim()) {
+      const err = validatePasswordFormat(customPassword.trim());
+      if (err) {
+        return res.status(400).json({ success: false, error: err });
+      }
+      newPassword = customPassword.trim();
+    } else {
+      // Generate random password: 8+ chars, upper, lower, number
+      const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+      const lower = 'abcdefghjkmnpqrstuvwxyz';
+      const digits = '23456789';
+      const pick = (str) => str[Math.floor(Math.random() * str.length)];
+      newPassword = pick(upper) + pick(lower) + pick(digits) +
+        Array.from({ length: 5 }, () => pick(upper + lower + digits)).join('');
+    }
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
     await pool.query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [passwordHash, studentId]);
@@ -2148,7 +2165,7 @@ app.post('/api/director/student/:studentId/reset-password', async (req, res) => 
       success: true,
       email: student.email,
       newPassword,
-      message: 'Password reset successfully. Copy the new password to share with the student.'
+      message: 'Password reset successfully.'
     });
   } catch (error) {
     console.error('Reset student password error:', error);
