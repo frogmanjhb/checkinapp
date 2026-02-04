@@ -1508,6 +1508,28 @@
         </div>
     </div>
 
+    <!-- Password Reset Modal -->
+    <div id="passwordResetModal" class="modal">
+        <div class="modal-content password-reset-modal">
+            <div class="modal-header">
+                <h3>🔑 Reset Password</h3>
+                <button class="modal-close" id="closePasswordResetModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="passwordResetStudentName" class="password-reset-student-name"></p>
+                <div class="form-group">
+                    <label for="customPasswordInput">New Password (leave blank to generate random)</label>
+                    <input type="password" id="customPasswordInput" placeholder="Enter password (8+ chars, uppercase, lowercase, number)">
+                    <small class="form-hint">Must be at least 8 characters with uppercase, lowercase, and numbers</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="cancelPasswordResetBtn" class="btn-secondary">Cancel</button>
+                    <button type="button" id="confirmPasswordResetBtn" class="btn-primary">Reset Password</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Individual Student Deletion Modal -->
     <div id="studentDeletionModal" class="modal">
         <div class="modal-content student-deletion-modal">

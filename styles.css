@@ -4960,6 +4960,60 @@ body {
     cursor: not-allowed;
 }
 
+/* Password Reset Modal */
+#passwordResetModal {
+    z-index: 4001 !important;
+}
+
+.password-reset-modal {
+    max-width: 500px;
+    width: 90%;
+}
+
+.password-reset-student-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.password-reset-modal .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.password-reset-modal .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.password-reset-modal .form-group input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.password-reset-modal .form-group input:focus {
+    outline: none;
+    border-color: #2196f3;
+}
+
+.password-reset-modal .modal-footer {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+
+.password-reset-modal .modal-footer button {
+    padding: 0.6rem 1.5rem;
+}
+
 /* Director dashboard: House Points long card (all 5 houses) */
 .director-house-points-card {
     width: 100%;

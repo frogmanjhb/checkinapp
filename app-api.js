@@ -4489,6 +4489,41 @@ class MoodCheckInApp {
                 }, 300);
             });
         }
+
+        // Password Reset Modal
+        const closePasswordResetModal = document.getElementById('closePasswordResetModal');
+        if (closePasswordResetModal) {
+            closePasswordResetModal.addEventListener('click', () => this.closePasswordResetModal());
+        }
+
+        const passwordResetModal = document.getElementById('passwordResetModal');
+        if (passwordResetModal) {
+            passwordResetModal.addEventListener('click', (e) => {
+                if (e.target === passwordResetModal) {
+                    this.closePasswordResetModal();
+                }
+            });
+        }
+
+        const cancelPasswordResetBtn = document.getElementById('cancelPasswordResetBtn');
+        if (cancelPasswordResetBtn) {
+            cancelPasswordResetBtn.addEventListener('click', () => this.closePasswordResetModal());
+        }
+
+        const confirmPasswordResetBtn = document.getElementById('confirmPasswordResetBtn');
+        if (confirmPasswordResetBtn) {
+            confirmPasswordResetBtn.addEventListener('click', () => this.confirmPasswordReset());
+        }
+
+        const customPasswordInput = document.getElementById('customPasswordInput');
+        if (customPasswordInput) {
+            customPasswordInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.confirmPasswordReset();
+                }
+            });
+        }
     }
 
     async openDirectorProfileModal() {
@@ -5092,8 +5127,9 @@ class MoodCheckInApp {
 
                 listContainer.querySelectorAll('.btn-reset-password').forEach(btn => {
                     btn.addEventListener('click', (e) => {
-                        const studentId = e.target.dataset.studentId;
-                        const studentName = e.target.dataset.studentName;
+                        const button = e.currentTarget;
+                        const studentId = button.dataset.studentId;
+                        const studentName = button.dataset.studentName;
                         this.handleResetStudentPassword(studentId, studentName);
                     });
                 });
@@ -5139,14 +5175,41 @@ class MoodCheckInApp {
     }
 
     async handleResetStudentPassword(studentId, studentName) {
-        const customPassword = prompt(
-            `Reset password for "${studentName}"?\n\n` +
-            `Enter a new password (8+ chars, uppercase, lowercase, number), or leave blank to generate a random one:`
-        );
+        this.pendingPasswordReset = { studentId, studentName };
+        const modal = document.getElementById('passwordResetModal');
+        const nameElement = document.getElementById('passwordResetStudentName');
+        const passwordInput = document.getElementById('customPasswordInput');
+        
+        if (!modal || !nameElement || !passwordInput) {
+            console.error('Password reset modal elements not found');
+            return;
+        }
 
-        if (customPassword === null) return;
+        nameElement.textContent = `Reset password for: ${studentName}`;
+        passwordInput.value = '';
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+        passwordInput.focus();
+    }
 
-        const trimmed = customPassword ? customPassword.trim() : '';
+    closePasswordResetModal() {
+        const modal = document.getElementById('passwordResetModal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        }
+        this.pendingPasswordReset = null;
+        const passwordInput = document.getElementById('customPasswordInput');
+        if (passwordInput) passwordInput.value = '';
+    }
+
+    async confirmPasswordReset() {
+        if (!this.pendingPasswordReset) return;
+
+        const { studentId, studentName } = this.pendingPasswordReset;
+        const passwordInput = document.getElementById('customPasswordInput');
+        const trimmed = passwordInput ? passwordInput.value.trim() : '';
+
         if (trimmed) {
             const validation = SecurityUtils.validatePasswordStrength(trimmed);
             if (!validation.isValid) {
@@ -5154,6 +5217,8 @@ class MoodCheckInApp {
                 return;
             }
         }
+
+        this.closePasswordResetModal();
 
         const btn = document.querySelector(`.btn-reset-password[data-student-id="${studentId}"]`);
         if (btn) btn.disabled = true;
