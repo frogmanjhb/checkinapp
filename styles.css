@@ -5459,6 +5459,28 @@ body {
     color: #2c3e50;
 }
 
+.director-group-class-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+.director-group-class-filter label {
+    font-weight: 600;
+    color: #333;
+}
+.group-class-filter-select {
+    padding: 0.5rem 0.75rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    min-width: 160px;
+}
+.group-class-filter-select:focus {
+    border-color: #2196F3;
+    outline: none;
+}
+
 /* Students List in Modal */
 .director-students-list {
     max-height: 400px;
@@ -5576,6 +5598,48 @@ body {
     border-radius: 12px;
     padding: 1.5rem;
     border: 1px solid #e9ecef;
+}
+
+.director-checkins-period-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+.director-checkins-period-row h5 {
+    font-size: 1.3rem;
+    color: #2c3e50;
+    margin: 0;
+    font-weight: 600;
+}
+.director-checkins-period-tabs {
+    display: flex;
+    gap: 0.5rem;
+}
+.director-checkins-period-tab {
+    padding: 0.5rem 1rem;
+    border: 2px solid #e9ecef;
+    background: #fff;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.director-checkins-period-tab:hover {
+    border-color: #2196F3;
+    background: #e3f2fd;
+}
+.director-checkins-period-tab.active {
+    border-color: #2196F3;
+    background: #2196F3;
+    color: white;
+}
+.director-checkins-list {
+    max-height: 320px;
+    overflow-y: auto;
 }
 
 .director-student-checkins h5, .director-student-journal h5 {

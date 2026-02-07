@@ -5418,6 +5418,9 @@ class MoodCheckInApp {
                     groupUsers = users.filter(user => user.user_type === 'teacher');
                 }
                 
+                this.currentGroupUsers = groupUsers;
+                this.currentGroupMoodData = moodData;
+                this.currentGroupType = groupType;
                 this.displayGroupDetailContent(contentElement, groupUsers, moodData, groupType);
             }
             
@@ -5442,6 +5445,28 @@ class MoodCheckInApp {
         
         const topMood = this.getTopMood(groupMoods);
         
+        const distinctClasses = [];
+        if (groupType === 'grade' || groupType === 'house') {
+            const seen = new Set();
+            (users || []).forEach(u => {
+                const c = u.class || 'No class';
+                if (!seen.has(c)) { seen.add(c); distinctClasses.push(c); }
+            });
+            distinctClasses.sort((a, b) => (a || '').localeCompare(b || ''));
+        }
+        
+        const classFilterHTML = (groupType === 'grade' || groupType === 'house') && distinctClasses.length > 0
+            ? `
+                <div class="director-group-class-filter">
+                    <label for="groupClassFilter">Filter by class:</label>
+                    <select id="groupClassFilter" class="group-class-filter-select">
+                        <option value="">All classes</option>
+                        ${distinctClasses.map(c => `<option value="${(c || '').replace(/"/g, '&quot;')}">${c || 'No class'}</option>`).join('')}
+                    </select>
+                </div>
+            `
+            : '';
+        
         contentElement.innerHTML = `
             <div class="director-group-detail-content">
                 <div class="director-group-summary">
@@ -5451,7 +5476,7 @@ class MoodCheckInApp {
                         <div class="director-group-stats">
                             <div class="director-stat-item">
                                 <div class="director-stat-label">Total Members</div>
-                                <div class="director-stat-value">${users.length}</div>
+                                <div class="director-stat-value" id="groupDetailMemberCount">${users.length}</div>
                             </div>
                             <div class="director-stat-item">
                                 <div class="director-stat-label">Top Mood</div>
@@ -5464,14 +5489,34 @@ class MoodCheckInApp {
                         </div>
                     </div>
                 </div>
-                
+                ${classFilterHTML}
                 <div class="director-students-list" id="groupStudentsList">
                     ${this.generateStudentsListHTML(users, moodData)}
                 </div>
             </div>
         `;
         
-        // Setup student click handlers
+        const filterEl = document.getElementById('groupClassFilter');
+        if (filterEl) {
+            filterEl.addEventListener('change', () => this.applyGroupClassFilter());
+        }
+        
+        this.setupStudentClickHandlers();
+    }
+
+    applyGroupClassFilter() {
+        const filterEl = document.getElementById('groupClassFilter');
+        const listEl = document.getElementById('groupStudentsList');
+        const countEl = document.getElementById('groupDetailMemberCount');
+        if (!filterEl || !listEl || !this.currentGroupUsers || !this.currentGroupMoodData) return;
+        const selectedClass = filterEl.value;
+        const users = selectedClass === ''
+            ? this.currentGroupUsers
+            : selectedClass === 'No class'
+                ? this.currentGroupUsers.filter(u => !u.class)
+                : this.currentGroupUsers.filter(u => (u.class || '') === selectedClass);
+        if (countEl) countEl.textContent = users.length;
+        listEl.innerHTML = this.generateStudentsListHTML(users, this.currentGroupMoodData);
         this.setupStudentClickHandlers();
     }
 
@@ -5593,12 +5638,10 @@ class MoodCheckInApp {
                 titleElement.textContent = user.first_name;
                 console.log('Set title to:', titleElement.textContent);
                 
-                const userMoods = moodData.filter(mood => mood.user_id == userId); // Use == for type coercion
                 const userJournals = journalData.filter(journal => journal.user_id == userId); // Use == for type coercion
-                
-                console.log('User moods:', userMoods.length, 'User journals:', userJournals.length);
-                
-                this.displayStudentDetailContent(contentElement, user, userMoods, userJournals);
+                this.currentStudentDetailUserId = user.id;
+                this.displayStudentDetailContent(contentElement, user, [], userJournals);
+                this.loadStudentCheckinsForPeriod(user.id, 'weekly');
                 console.log('Content populated');
             } else {
                 console.error('API responses failed:', { usersResponse, moodResponse, journalResponse });
@@ -5633,8 +5676,17 @@ class MoodCheckInApp {
                 </div>
                 
                 <div class="director-student-checkins">
-                    <h5>Recent Check-ins (${moodData.length})</h5>
-                    ${this.generateCheckinsHTML(moodData)}
+                    <div class="director-checkins-period-row">
+                        <h5>Check-ins</h5>
+                        <div class="director-checkins-period-tabs">
+                            <button type="button" class="director-checkins-period-tab active" data-period="weekly">Weekly</button>
+                            <button type="button" class="director-checkins-period-tab" data-period="monthly">Monthly</button>
+                            <button type="button" class="director-checkins-period-tab" data-period="all">All time</button>
+                        </div>
+                    </div>
+                    <div id="directorStudentCheckinsList" class="director-checkins-list">
+                        <p class="loading-text">Loading check-ins...</p>
+                    </div>
                 </div>
                 
                 <div class="director-student-journal">
@@ -5646,16 +5698,49 @@ class MoodCheckInApp {
         
         console.log('Setting content HTML, length:', contentHTML.length);
         contentElement.innerHTML = contentHTML;
+        
+        document.querySelectorAll('.director-checkins-period-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const period = tab.getAttribute('data-period');
+                if (!this.currentStudentDetailUserId || !period) return;
+                document.querySelectorAll('.director-checkins-period-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                this.loadStudentCheckinsForPeriod(this.currentStudentDetailUserId, period);
+            });
+        });
         console.log('Content set successfully');
     }
 
-    // Generate check-ins HTML
-    generateCheckinsHTML(moodData) {
-        if (moodData.length === 0) {
-            return '<div class="no-checkins">No recent check-ins</div>';
+    async loadStudentCheckinsForPeriod(userId, period) {
+        const container = document.getElementById('directorStudentCheckinsList');
+        if (!container) return;
+        container.innerHTML = '<p class="loading-text">Loading check-ins...</p>';
+        try {
+            const res = await APIUtils.getMoodHistory(userId, period);
+            if (res.success && Array.isArray(res.checkins)) {
+                const count = res.checkins.length;
+                const heading = container.closest('.director-student-checkins')?.querySelector('.director-checkins-period-row h5');
+                if (heading) heading.textContent = `Check-ins (${count})`;
+                container.innerHTML = this.generateCheckinsHTML(res.checkins, true);
+            } else {
+                const heading = container.closest('.director-student-checkins')?.querySelector('.director-checkins-period-row h5');
+                if (heading) heading.textContent = 'Check-ins (0)';
+                container.innerHTML = '<div class="no-checkins">No check-ins for this period.</div>';
+            }
+        } catch (e) {
+            console.error('Load student check-ins error:', e);
+            container.innerHTML = '<div class="no-checkins">Failed to load check-ins.</div>';
         }
-        
-        return moodData.slice(-5).reverse().map(mood => {
+    }
+
+    // Generate check-ins HTML (showAll: if true, show all newest-first; otherwise show last 5 oldest-first)
+    generateCheckinsHTML(moodData, showAll = false) {
+        if (moodData.length === 0) {
+            return '<div class="no-checkins">No check-ins for this period.</div>';
+        }
+        const toShow = showAll ? moodData : moodData.slice(-5);
+        const ordered = showAll ? toShow : toShow.slice().reverse();
+        return ordered.map(mood => {
             const moodEmoji = this.getMoodEmoji(mood.mood);
             const date = new Date(mood.timestamp).toLocaleString();
             
