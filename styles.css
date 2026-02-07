@@ -4023,10 +4023,63 @@ body {
     max-height: 90vh;
 }
 
+.director-modal-small {
+    width: 95%;
+    max-width: 420px;
+    max-height: 80vh;
+}
+
+/* Mood chart: list of students who had this mood (clickable) */
+.mood-students-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.mood-student-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.mood-student-row:hover {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+}
+
+.mood-student-name {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.mood-student-meta {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.mood-students-empty {
+    text-align: center;
+    color: #64748b;
+    padding: 1.5rem;
+    margin: 0;
+}
+
 /* Ensure director modals have higher z-index */
 #directorGroupDetailModal,
 #directorStudentDetailModal,
-#directorProfileModal {
+#directorProfileModal,
+#directorMoodStudentsModal {
     z-index: 3000 !important;
 }
 
@@ -5312,6 +5365,49 @@ body {
     color: white;
 }
 
+/* Chart view tabs: quick switch without scrolling */
+.chart-view-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+}
+
+.chart-view-tab {
+    padding: 0.6rem 1.2rem;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chart-view-tab:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.chart-view-tab.active {
+    background: rgba(255, 255, 255, 0.95);
+    color: #667eea;
+    border-color: white;
+}
+
+.chart-single-view {
+    margin-top: 0;
+}
+
+.chart-no-data {
+    text-align: center;
+    color: #64748b;
+    padding: 3rem 1rem;
+    margin: 0;
+    font-size: 1rem;
+}
+
 .charts-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -5372,8 +5468,7 @@ body {
     min-height: 400px;
 }
 
-.mood-distribution-large #housesMoodDistributionChart,
-.mood-distribution-large #gradesMoodDistributionChart {
+.mood-distribution-large #directorMoodChartContainer {
     min-height: 320px;
 }
 

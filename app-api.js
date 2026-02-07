@@ -4301,6 +4301,22 @@ class MoodCheckInApp {
                 studentModal.classList.remove('active');
             });
         }
+        const moodStudentsModal = document.getElementById('directorMoodStudentsModal');
+        const closeMoodStudentsBtn = document.getElementById('closeDirectorMoodStudentsModal');
+        if (closeMoodStudentsBtn && moodStudentsModal) {
+            closeMoodStudentsBtn.addEventListener('click', () => {
+                moodStudentsModal.style.display = 'none';
+                moodStudentsModal.classList.remove('active');
+            });
+        }
+        if (moodStudentsModal) {
+            moodStudentsModal.addEventListener('click', (e) => {
+                if (e.target === moodStudentsModal) {
+                    moodStudentsModal.style.display = 'none';
+                    moodStudentsModal.classList.remove('active');
+                }
+            });
+        }
         if (closeProfileBtn && profileModal) {
             closeProfileBtn.addEventListener('click', () => {
                 profileModal.style.display = 'none';
@@ -5820,108 +5836,181 @@ class MoodCheckInApp {
         if (periodSelect) {
             periodSelect.addEventListener('change', () => this.updateAllCharts());
         }
+
+        // Chart view tabs: switch view without scrolling
+        document.querySelectorAll('.chart-view-tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const chart = btn.dataset.chart;
+                if (!chart) return;
+                document.querySelectorAll('.chart-view-tab').forEach(b => {
+                    b.classList.toggle('active', b === btn);
+                    b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+                });
+                this.currentChartTab = chart;
+                this.renderActiveMoodChart();
+            });
+        });
     }
 
-    // Update all charts with fresh data
+    // Update all charts with fresh data (builds all views; renders active tab)
     async updateAllCharts() {
         try {
             const period = document.getElementById('chartPeriodSelect')?.value || 'daily';
             console.log('Updating charts with period:', period);
             
-            // Fetch data
             const [usersResponse, moodResponse, journalResponse] = await Promise.all([
                 APIUtils.getAllUsers(),
                 APIUtils.getAllMoodData(period),
                 APIUtils.getAllJournalEntries(period)
             ]);
 
-            console.log('API Responses:', {
-                users: usersResponse,
-                mood: moodResponse,
-                journal: journalResponse
-            });
-
             if (usersResponse.success && moodResponse.success) {
                 const users = usersResponse.users || [];
                 const moodData = moodResponse.checkins || [];
-                const journalData = journalResponse.success ? journalResponse.entries || [] : [];
 
-                console.log('Data extracted:', {
-                    userCount: users.length,
-                    moodCount: moodData.length,
-                    journalCount: journalData.length,
-                    users: users.map(u => ({ id: u.id, name: u.first_name + ' ' + u.surname, type: u.user_type, house: u.house, class: u.class })),
-                    moods: moodData.map(m => ({ user_id: m.user_id, mood: m.mood, timestamp: m.timestamp || m.created_at }))
-                });
+                if (users.length === 0) console.warn('No users found for charts');
+                if (moodData.length === 0) console.warn('No mood data found for charts');
 
-                // Validate we have data before creating charts
-                if (users.length === 0) {
-                    console.warn('No users found for charts');
-                }
-                if (moodData.length === 0) {
-                    console.warn('No mood data found for charts');
-                }
+                // Build and store all four chart datasets
+                const houseGroup = this.aggregateMoodDataByHouses(users, moodData);
+                const gradeGroup = this.aggregateMoodDataByGrades(users, moodData);
+                const schoolGroup = this.aggregateMoodDataBySchool(users, moodData);
+                const classGroup = this.aggregateMoodDataByClass(users, moodData);
 
-                // Create separate charts for houses and grades
-                this.createHousesMoodDistributionChart(users, moodData);
-                this.createGradesMoodDistributionChart(users, moodData);
+                const houseLabels = Object.keys(houseGroup);
+                const gradeLabels = Object.keys(gradeGroup);
+                const schoolLabels = Object.keys(schoolGroup);
+                const classLabels = Object.keys(classGroup);
+
+                this.lastHousesChartData = { labels: houseLabels, ...this.getApexMoodSeries(houseGroup, houseLabels), groupData: houseGroup };
+                this.lastGradesChartData = { labels: gradeLabels, ...this.getApexMoodSeries(gradeGroup, gradeLabels), groupData: gradeGroup };
+                this.lastSchoolChartData = { labels: schoolLabels, ...this.getApexMoodSeries(schoolGroup, schoolLabels), groupData: schoolGroup };
+                this.lastClassChartData = { labels: classLabels, ...this.getApexMoodSeries(classGroup, classLabels), groupData: classGroup };
+
+                this.lastDirectorUsers = users;
+                this.lastDirectorMoodData = moodData;
+
+                this.currentChartTab = document.querySelector('.chart-view-tab.active')?.dataset?.chart || 'house';
+                this.renderActiveMoodChart();
             } else {
                 console.error('API calls failed:', { usersResponse, moodResponse });
-                // Show error message to user
-                const errorMsg = usersResponse.success ? 'Failed to load mood data' : 'Failed to load user data';
-                console.error(errorMsg);
             }
         } catch (error) {
             console.error('Failed to update charts:', error);
         }
     }
 
-    // Create houses mood distribution chart (ApexCharts)
-    createHousesMoodDistributionChart(users, moodData) {
-        const el = document.getElementById('housesMoodDistributionChart');
-        if (!el) {
-            console.error('Houses mood distribution chart container not found');
+    // Render the currently selected mood chart (single container, no scrolling)
+    renderActiveMoodChart() {
+        const container = document.getElementById('directorMoodChartContainer');
+        const titleEl = document.getElementById('directorChartTitle');
+        if (!container || !titleEl) return;
+
+        const tab = this.currentChartTab || 'house';
+        let chartData, title;
+        if (tab === 'house') {
+            chartData = this.lastHousesChartData;
+            title = 'Mood Distribution by House';
+        } else if (tab === 'grade') {
+            chartData = this.lastGradesChartData;
+            title = 'Mood Distribution by Grade';
+        } else if (tab === 'school') {
+            chartData = this.lastSchoolChartData;
+            title = 'Mood Distribution by School';
+        } else if (tab === 'class') {
+            chartData = this.lastClassChartData;
+            title = 'Mood Distribution by Class';
+        } else {
+            chartData = this.lastHousesChartData;
+            title = 'Mood Distribution by House';
+        }
+
+        titleEl.textContent = title;
+
+        if (this.directorMoodChart) {
+            try { this.directorMoodChart.destroy(); } catch (_) {}
+            this.directorMoodChart = null;
+        }
+        container.innerHTML = '';
+
+        if (!chartData || !chartData.labels?.length || !chartData.series?.length) {
+            container.innerHTML = '<p class="chart-no-data">No data for this view.</p>';
             return;
         }
 
-        if (this.housesMoodDistributionChart) {
-            try { this.housesMoodDistributionChart.destroy(); } catch (_) {}
-            this.housesMoodDistributionChart = null;
-        }
-        el.innerHTML = '';
-
-        const groupData = this.aggregateMoodDataByHouses(users, moodData);
-        const labels = Object.keys(groupData);
-        const { series, colors } = this.getApexMoodSeries(groupData, labels);
-        this.lastHousesChartData = { labels, series, groupData };
-
-        const options = this.getApexStackedBarOptions(labels, series, colors);
-        this.housesMoodDistributionChart = new ApexCharts(el, options);
-        this.housesMoodDistributionChart.render();
+        const options = this.getApexStackedBarOptions(chartData.labels, chartData.series, chartData.colors);
+        options.chart.events = {
+            dataPointSelection: (event, chartContext, config) => {
+                this.onMoodChartSegmentClick(config, tab, chartData);
+            }
+        };
+        this.directorMoodChart = new ApexCharts(container, options);
+        this.directorMoodChart.render();
     }
 
-    // Create grades mood distribution chart (ApexCharts)
-    createGradesMoodDistributionChart(users, moodData) {
-        const el = document.getElementById('gradesMoodDistributionChart');
-        if (!el) {
-            console.error('Grades mood distribution chart container not found');
-            return;
+    // Called when user clicks a mood segment on the chart: show list of students who had that mood
+    onMoodChartSegmentClick(config, tab, chartData) {
+        const dataPointIndex = config.dataPointIndex;
+        const seriesIndex = config.seriesIndex;
+        if (dataPointIndex == null || dataPointIndex < 0 || seriesIndex == null || seriesIndex < 0) return;
+        const groupName = chartData.labels[dataPointIndex];
+        const moodName = chartData.series[seriesIndex]?.name;
+        if (!groupName || !moodName) return;
+
+        const users = this.lastDirectorUsers || [];
+        const moodData = this.lastDirectorMoodData || [];
+        const moodLower = moodName.toLowerCase();
+
+        const userInGroup = (user) => {
+            if (user.user_type !== 'student') return false;
+            if (tab === 'house') return user.house === groupName;
+            if (tab === 'grade') return getGradeFromClass(user.class) === groupName;
+            if (tab === 'school') return true;
+            if (tab === 'class') return user.class === groupName;
+            return false;
+        };
+
+        const userIdsWithThisMood = new Set();
+        moodData.forEach(m => {
+            if ((m.mood || '').toLowerCase() !== moodLower) return;
+            const user = users.find(u => u.id == m.user_id);
+            if (user && userInGroup(user)) userIdsWithThisMood.add(Number(m.user_id));
+        });
+
+        const studentUsers = users.filter(u => userIdsWithThisMood.has(Number(u.id)));
+        const groupLabel = tab === 'school' ? 'School' : tab === 'class' ? 'Class' : tab === 'grade' ? 'Grade' : 'House';
+        this.showMoodStudentsModal(moodName, groupName, groupLabel, studentUsers);
+    }
+
+    // Show modal listing students who had a given mood in a group; clicking a student opens their detail modal
+    showMoodStudentsModal(moodName, groupName, groupLabel, studentUsers) {
+        const modal = document.getElementById('directorMoodStudentsModal');
+        const titleEl = document.getElementById('directorMoodStudentsModalTitle');
+        const listEl = document.getElementById('directorMoodStudentsModalList');
+        if (!modal || !titleEl || !listEl) return;
+
+        titleEl.textContent = `Students who felt ${moodName} in ${groupName}`;
+        if (studentUsers.length === 0) {
+            listEl.innerHTML = '<p class="mood-students-empty">No students in this selection.</p>';
+        } else {
+            listEl.innerHTML = studentUsers.map(user => `
+                <button type="button" class="mood-student-row" data-user-id="${user.id}">
+                    <span class="mood-student-name">${user.first_name} ${user.surname}</span>
+                    <span class="mood-student-meta">${user.class || ''} ${user.house || ''}</span>
+                </button>
+            `).join('');
+            listEl.querySelectorAll('.mood-student-row').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const userId = btn.dataset.userId;
+                    modal.style.display = 'none';
+                    modal.classList.remove('active');
+                    if (userId) this.showStudentDetailModal(userId);
+                });
+            });
         }
-
-        if (this.gradesMoodDistributionChart) {
-            try { this.gradesMoodDistributionChart.destroy(); } catch (_) {}
-            this.gradesMoodDistributionChart = null;
-        }
-        el.innerHTML = '';
-
-        const groupData = this.aggregateMoodDataByGrades(users, moodData);
-        const labels = Object.keys(groupData);
-        const { series, colors } = this.getApexMoodSeries(groupData, labels);
-        this.lastGradesChartData = { labels, series, groupData };
-
-        const options = this.getApexStackedBarOptions(labels, series, colors);
-        this.gradesMoodDistributionChart = new ApexCharts(el, options);
-        this.gradesMoodDistributionChart.render();
+        modal.style.display = 'flex';
+        modal.style.zIndex = '3001';
+        modal.classList.add('active');
     }
 
     // Build ApexCharts series and colors from groupData (for stacked bar)
@@ -6142,6 +6231,49 @@ class MoodCheckInApp {
         return groupData;
     }
 
+    // Aggregate mood data for whole school (single bar)
+    aggregateMoodDataBySchool(users, moodData) {
+        const groupData = { 'School': {} };
+        users.forEach(user => {
+            if (user.user_type !== 'student') return;
+            const userMoods = moodData.filter(m => m.user_id == user.id);
+            userMoods.forEach(mood => {
+                const moodType = mood.mood ? mood.mood.charAt(0).toUpperCase() + mood.mood.slice(1) : 'Unknown';
+                if (!groupData['School'][moodType]) groupData['School'][moodType] = 0;
+                groupData['School'][moodType]++;
+            });
+        });
+        if (Object.keys(groupData['School']).length === 0) {
+            groupData['School'] = { 'Happy': 0, 'Calm': 0, 'Excited': 0, 'Sad': 0, 'Anxious': 0, 'Angry': 0 };
+        }
+        return groupData;
+    }
+
+    // Aggregate mood data by class (e.g. 5EF, 6AB)
+    aggregateMoodDataByClass(users, moodData) {
+        const groupData = {};
+        const allClasses = new Set();
+        users.forEach(user => {
+            if (user.user_type === 'student' && user.class) allClasses.add(user.class);
+        });
+        allClasses.forEach(c => { groupData[c] = {}; });
+        users.forEach(user => {
+            if (user.user_type !== 'student' || !user.class) return;
+            const userMoods = moodData.filter(m => m.user_id == user.id);
+            userMoods.forEach(mood => {
+                const moodType = mood.mood ? mood.mood.charAt(0).toUpperCase() + mood.mood.slice(1) : 'Unknown';
+                if (!groupData[user.class][moodType]) groupData[user.class][moodType] = 0;
+                groupData[user.class][moodType]++;
+            });
+        });
+        // Sort class names naturally (e.g. 5EF before 6AB)
+        const sorted = {};
+        Object.keys(groupData).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).forEach(k => {
+            sorted[k] = groupData[k];
+        });
+        return sorted;
+    }
+
     // Aggregate mood data by group (grade/house) - DEPRECATED
     aggregateMoodDataByGroup(users, moodData) {
         const groupData = {};
@@ -6291,53 +6423,49 @@ class MoodCheckInApp {
         try {
             const period = document.getElementById('chartPeriodSelect')?.value || 'daily';
             const timestamp = new Date().toISOString().split('T')[0];
-            
             const housesData = this.lastHousesChartData;
             const gradesData = this.lastGradesChartData;
-            
-            if (!housesData || !gradesData || !housesData.series?.length || !gradesData.series?.length) {
+            const schoolData = this.lastSchoolChartData;
+            const classData = this.lastClassChartData;
+
+            const hasAny = [housesData, gradesData, schoolData, classData].some(
+                d => d && d.series?.length && d.labels?.length
+            );
+            if (!hasAny) {
                 this.showMessage('No chart data available to export', 'error');
                 return;
             }
-            
+
             let csvContent = '';
             csvContent += `Mood Analytics Export\n`;
             csvContent += `Period: ${period}\n`;
             csvContent += `Export Date: ${timestamp}\n\n`;
-            
-            csvContent += `HOUSES MOOD DISTRIBUTION\n`;
-            csvContent += `House,`;
-            housesData.series.forEach((s, i) => {
-                csvContent += s.name;
-                if (i < housesData.series.length - 1) csvContent += ',';
-            });
-            csvContent += '\n';
-            housesData.labels.forEach((house, houseIndex) => {
-                csvContent += `${house},`;
-                housesData.series.forEach((s, i) => {
-                    csvContent += s.data[houseIndex] ?? 0;
-                    if (i < housesData.series.length - 1) csvContent += ',';
+
+            const appendSection = (title, rowLabel, data) => {
+                if (!data?.series?.length || !data?.labels?.length) return;
+                csvContent += `${title}\n`;
+                csvContent += `${rowLabel},`;
+                data.series.forEach((s, i) => {
+                    csvContent += s.name;
+                    if (i < data.series.length - 1) csvContent += ',';
                 });
                 csvContent += '\n';
-            });
-            csvContent += '\n';
-            
-            csvContent += `GRADES MOOD DISTRIBUTION\n`;
-            csvContent += `Grade,`;
-            gradesData.series.forEach((s, i) => {
-                csvContent += s.name;
-                if (i < gradesData.series.length - 1) csvContent += ',';
-            });
-            csvContent += '\n';
-            gradesData.labels.forEach((grade, gradeIndex) => {
-                csvContent += `${grade},`;
-                gradesData.series.forEach((s, i) => {
-                    csvContent += s.data[gradeIndex] ?? 0;
-                    if (i < gradesData.series.length - 1) csvContent += ',';
+                data.labels.forEach((label, idx) => {
+                    csvContent += `${label},`;
+                    data.series.forEach((s, i) => {
+                        csvContent += s.data[idx] ?? 0;
+                        if (i < data.series.length - 1) csvContent += ',';
+                    });
+                    csvContent += '\n';
                 });
                 csvContent += '\n';
-            });
-            
+            };
+
+            appendSection('HOUSES MOOD DISTRIBUTION', 'House', housesData);
+            appendSection('GRADES MOOD DISTRIBUTION', 'Grade', gradesData);
+            appendSection('SCHOOL MOOD DISTRIBUTION', 'School', schoolData);
+            appendSection('CLASS MOOD DISTRIBUTION', 'Class', classData);
+
             // Create and download CSV file
             const dataBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(dataBlob);

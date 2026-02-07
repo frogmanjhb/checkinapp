@@ -587,6 +587,38 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Analytics Dashboard (below welcome) -->
+                    <div class="director-charts-section">
+                        <div class="charts-header">
+                            <h2>📊 Analytics Dashboard</h2>
+                            <div class="chart-controls">
+                                <button class="chart-export-btn" id="exportChartsBtn">📥 Export Data</button>
+                                <select class="chart-period-select" id="chartPeriodSelect">
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="chart-view-tabs" role="tablist">
+                            <button type="button" class="chart-view-tab active" data-chart="house" role="tab" aria-selected="true">By House</button>
+                            <button type="button" class="chart-view-tab" data-chart="grade" role="tab" aria-selected="false">By Grade</button>
+                            <button type="button" class="chart-view-tab" data-chart="school" role="tab" aria-selected="false">By School</button>
+                            <button type="button" class="chart-view-tab" data-chart="class" role="tab" aria-selected="false">By Class</button>
+                        </div>
+
+                        <div class="chart-single-view">
+                            <div class="chart-container mood-distribution-large">
+                                <div class="chart-header">
+                                    <h3 id="directorChartTitle">Mood Distribution by House</h3>
+                                </div>
+                                <div id="directorMoodChartContainer"></div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Messages Notification Banner -->
                     <div class="messages-notification-banner" id="directorMessagesBanner" style="display: none;">
                         <div class="notification-content">
@@ -778,41 +810,6 @@
                         </div>
                         <div class="director-journal-list" id="allJournalEntriesList">
                             <p style="text-align: center; color: #666; padding: 2rem;">Loading journal entries...</p>
-                        </div>
-                    </div>
-
-                    <!-- Analytics Charts Section -->
-                    <div class="director-charts-section">
-                        <div class="charts-header">
-                            <h2>📊 Analytics Dashboard</h2>
-                            <div class="chart-controls">
-                                <button class="chart-export-btn" id="exportChartsBtn">📥 Export Data</button>
-                                <select class="chart-period-select" id="chartPeriodSelect">
-                                    <option value="daily">Daily</option>
-                                    <option value="weekly">Weekly</option>
-                                    <option value="monthly">Monthly</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="charts-grid">
-                            <!-- Houses Mood Distribution Chart -->
-                            <div class="chart-container mood-distribution-large">
-                                <div class="chart-header">
-                                    <h3>Mood Distribution by House</h3>
-                                    <div class="chart-legend" id="housesMoodChartLegend"></div>
-                                </div>
-                                <div id="housesMoodDistributionChart"></div>
-                            </div>
-
-                            <!-- Grades Mood Distribution Chart -->
-                            <div class="chart-container mood-distribution-large">
-                                <div class="chart-header">
-                                    <h3>Mood Distribution by Grade</h3>
-                                    <div class="chart-legend" id="gradesMoodChartLegend"></div>
-                                </div>
-                                <div id="gradesMoodDistributionChart"></div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -1327,6 +1324,21 @@
             </div>
             <div class="modal-body" id="directorStudentDetailContent">
                 <!-- Student details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Mood chart: students who had this mood (clickable to open student card) -->
+    <div id="directorMoodStudentsModal" class="modal">
+        <div class="modal-content director-modal-small">
+            <div class="modal-header">
+                <h3 id="directorMoodStudentsModalTitle">Students who felt this mood</h3>
+                <button class="modal-close" id="closeDirectorMoodStudentsModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="directorMoodStudentsModalList" class="mood-students-list">
+                    <!-- Populated on chart segment click -->
+                </div>
             </div>
         </div>
     </div>
