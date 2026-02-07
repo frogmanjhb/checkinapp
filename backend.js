@@ -1232,7 +1232,7 @@ app.get('/api/journal-entries/:userId', async (req, res) => {
     let whereClause = 'WHERE user_id = $1';
     let queryParams = [userId];
     
-    // Add time filtering based on period
+    // Add time filtering based on period (daily, weekly, monthly, all)
     if (period === 'daily') {
       whereClause += ' AND timestamp >= CURRENT_DATE';
     } else if (period === 'weekly') {
@@ -1240,6 +1240,7 @@ app.get('/api/journal-entries/:userId', async (req, res) => {
     } else if (period === 'monthly') {
       whereClause += ' AND timestamp >= CURRENT_DATE - INTERVAL \'30 days\'';
     }
+    // period === 'all': no extra filter
     
     const result = await pool.query(
       `SELECT * FROM journal_entries ${whereClause} ORDER BY timestamp DESC`,

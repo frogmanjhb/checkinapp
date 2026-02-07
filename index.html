@@ -12,8 +12,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Its OK">
     <link rel="stylesheet" href="styles.css">
-    <!-- Chart.js for data visualization -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- ApexCharts for professional data visualization (https://github.com/hal9ai/awesome-dataviz) -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 </head>
 <body>
     <div id="app">
@@ -802,7 +802,7 @@
                                     <h3>Mood Distribution by House</h3>
                                     <div class="chart-legend" id="housesMoodChartLegend"></div>
                                 </div>
-                                <canvas id="housesMoodDistributionChart"></canvas>
+                                <div id="housesMoodDistributionChart"></div>
                             </div>
 
                             <!-- Grades Mood Distribution Chart -->
@@ -811,7 +811,7 @@
                                     <h3>Mood Distribution by Grade</h3>
                                     <div class="chart-legend" id="gradesMoodChartLegend"></div>
                                 </div>
-                                <canvas id="gradesMoodDistributionChart"></canvas>
+                                <div id="gradesMoodDistributionChart"></div>
                             </div>
                         </div>
                     </div>

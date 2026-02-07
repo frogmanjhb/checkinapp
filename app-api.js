@@ -5606,11 +5606,11 @@ class MoodCheckInApp {
             console.log('Modal computed visibility:', window.getComputedStyle(modal).visibility);
             console.log('Modal computed z-index:', window.getComputedStyle(modal).zIndex);
             
-            // Load user and mood data
+            // Load user, mood, and this student's journal entries (all time so director sees full history)
             console.log('Loading user and mood data...');
             const usersResponse = await APIUtils.getAllUsers();
             const moodResponse = await APIUtils.getAllMoodData('daily');
-            const journalResponse = await APIUtils.getAllJournalEntries('daily');
+            const journalResponse = await APIUtils.getJournalEntries(userId, 'all');
             
             console.log('API responses:', {
                 usersSuccess: usersResponse.success,
@@ -5876,156 +5876,144 @@ class MoodCheckInApp {
         }
     }
 
-    // Create houses mood distribution chart
+    // Create houses mood distribution chart (ApexCharts)
     createHousesMoodDistributionChart(users, moodData) {
-        const ctx = document.getElementById('housesMoodDistributionChart');
-        if (!ctx) {
-            console.error('Houses mood distribution chart canvas not found');
+        const el = document.getElementById('housesMoodDistributionChart');
+        if (!el) {
+            console.error('Houses mood distribution chart container not found');
             return;
         }
 
-        console.log('Creating houses mood distribution chart...');
-
-        // Destroy existing chart
         if (this.housesMoodDistributionChart) {
-            this.housesMoodDistributionChart.destroy();
+            try { this.housesMoodDistributionChart.destroy(); } catch (_) {}
+            this.housesMoodDistributionChart = null;
         }
+        el.innerHTML = '';
 
-        // Group data by houses only
         const groupData = this.aggregateMoodDataByHouses(users, moodData);
-        
-        // Prepare chart data
         const labels = Object.keys(groupData);
-        const datasets = this.getMoodDatasets(groupData, labels);
-        
-        console.log('Houses chart labels:', labels);
-        console.log('Houses chart datasets:', datasets);
+        const { series, colors } = this.getApexMoodSeries(groupData, labels);
+        this.lastHousesChartData = { labels, series, groupData };
 
-        this.housesMoodDistributionChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: datasets
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: false
-                    },
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 20
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        stacked: true,
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            maxRotation: 45,
-                            minRotation: 0
-                        }
-                    },
-                    y: {
-                        stacked: true,
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(0,0,0,0.1)'
-                        },
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                },
-                animation: {
-                    duration: 1500,
-                    easing: 'easeInOutQuart'
-                }
-            }
-        });
+        const options = this.getApexStackedBarOptions(labels, series, colors);
+        this.housesMoodDistributionChart = new ApexCharts(el, options);
+        this.housesMoodDistributionChart.render();
     }
 
-    // Create grades mood distribution chart
+    // Create grades mood distribution chart (ApexCharts)
     createGradesMoodDistributionChart(users, moodData) {
-        const ctx = document.getElementById('gradesMoodDistributionChart');
-        if (!ctx) {
-            console.error('Grades mood distribution chart canvas not found');
+        const el = document.getElementById('gradesMoodDistributionChart');
+        if (!el) {
+            console.error('Grades mood distribution chart container not found');
             return;
         }
 
-        console.log('Creating grades mood distribution chart...');
-
-        // Destroy existing chart
         if (this.gradesMoodDistributionChart) {
-            this.gradesMoodDistributionChart.destroy();
+            try { this.gradesMoodDistributionChart.destroy(); } catch (_) {}
+            this.gradesMoodDistributionChart = null;
         }
+        el.innerHTML = '';
 
-        // Group data by grades only
         const groupData = this.aggregateMoodDataByGrades(users, moodData);
-        
-        // Prepare chart data
         const labels = Object.keys(groupData);
-        const datasets = this.getMoodDatasets(groupData, labels);
-        
-        console.log('Grades chart labels:', labels);
-        console.log('Grades chart datasets:', datasets);
+        const { series, colors } = this.getApexMoodSeries(groupData, labels);
+        this.lastGradesChartData = { labels, series, groupData };
 
-        this.gradesMoodDistributionChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: datasets
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: false
-                    },
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 20
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        stacked: true,
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            maxRotation: 45,
-                            minRotation: 0
-                        }
-                    },
-                    y: {
-                        stacked: true,
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(0,0,0,0.1)'
-                        },
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                },
-                animation: {
-                    duration: 1500,
-                    easing: 'easeInOutQuart'
-                }
-            }
+        const options = this.getApexStackedBarOptions(labels, series, colors);
+        this.gradesMoodDistributionChart = new ApexCharts(el, options);
+        this.gradesMoodDistributionChart.render();
+    }
+
+    // Build ApexCharts series and colors from groupData (for stacked bar)
+    getApexMoodSeries(groupData, labels) {
+        const allMoods = new Set();
+        Object.values(groupData).forEach(groupMoods => {
+            Object.keys(groupMoods).forEach(mood => {
+                if (groupMoods[mood] > 0) allMoods.add(mood);
+            });
         });
+        let moodTypes = Array.from(allMoods).sort();
+        if (moodTypes.length === 0) moodTypes = ['Happy', 'Sad', 'Angry', 'Anxious', 'Excited', 'Calm'];
+        const colors = ['#4CAF50', '#F44336', '#FF9800', '#9C27B0', '#2196F3', '#00BCD4', '#FF5722', '#795548', '#607D8B', '#E91E63'];
+        const series = moodTypes.map((mood, index) => ({
+            name: mood,
+            data: labels.map(group => groupData[group]?.[mood] || 0)
+        }));
+        return { series, colors: colors.slice(0, series.length) };
+    }
+
+    // ApexCharts options for stacked bar (professional theme)
+    getApexStackedBarOptions(categories, series, colors) {
+        return {
+            chart: {
+                type: 'bar',
+                height: 320,
+                stacked: true,
+                toolbar: { show: false },
+                zoom: { enabled: false },
+                fontFamily: 'inherit',
+                animations: {
+                    enabled: true,
+                    easing: 'easeinout',
+                    speed: 800
+                }
+            },
+            colors: colors,
+            plotOptions: {
+                bar: {
+                    horizontal: false,
+                    borderRadius: 4,
+                    columnWidth: '65%',
+                    dataLabels: { position: 'top' }
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                show: true,
+                width: 1,
+                colors: ['#fff']
+            },
+            series: series,
+            xaxis: {
+                categories: categories,
+                labels: {
+                    style: { fontSize: '12px', colors: '#64748b' },
+                    rotate: -25,
+                    rotateAlways: false
+                },
+                axisBorder: { show: false },
+                axisTicks: { show: false }
+            },
+            yaxis: {
+                labels: {
+                    style: { fontSize: '12px', colors: '#64748b' }
+                },
+                axisBorder: { show: false },
+                axisTicks: { show: false },
+                crosshairs: { show: false },
+                tickAmount: 6
+            },
+            grid: {
+                borderColor: '#e2e8f0',
+                strokeDashArray: 4,
+                xaxis: { lines: { show: false } },
+                yaxis: { lines: { show: true } }
+            },
+            legend: {
+                position: 'top',
+                horizontalAlign: 'center',
+                fontSize: '13px',
+                fontWeight: 500,
+                itemMargin: { horizontal: 12 },
+                markers: { radius: 4 }
+            },
+            tooltip: {
+                theme: 'light',
+                y: { formatter: (v) => v + ' check-in' + (v !== 1 ? 's' : '') }
+            }
+        };
     }
 
 
@@ -6298,69 +6286,54 @@ class MoodCheckInApp {
     }
 
 
-    // Export chart data
+    // Export chart data (from last ApexCharts data)
     exportChartData() {
         try {
             const period = document.getElementById('chartPeriodSelect')?.value || 'daily';
             const timestamp = new Date().toISOString().split('T')[0];
             
-            // Get chart data
-            const housesData = this.housesMoodDistributionChart?.data;
-            const gradesData = this.gradesMoodDistributionChart?.data;
+            const housesData = this.lastHousesChartData;
+            const gradesData = this.lastGradesChartData;
             
-            if (!housesData || !gradesData) {
+            if (!housesData || !gradesData || !housesData.series?.length || !gradesData.series?.length) {
                 this.showMessage('No chart data available to export', 'error');
                 return;
             }
             
-            // Create CSV content
             let csvContent = '';
-            
-            // Add metadata
             csvContent += `Mood Analytics Export\n`;
             csvContent += `Period: ${period}\n`;
             csvContent += `Export Date: ${timestamp}\n\n`;
             
-            // Houses data
             csvContent += `HOUSES MOOD DISTRIBUTION\n`;
             csvContent += `House,`;
-            
-            // Add mood headers
-            housesData.datasets.forEach((dataset, index) => {
-                csvContent += dataset.label;
-                if (index < housesData.datasets.length - 1) csvContent += ',';
+            housesData.series.forEach((s, i) => {
+                csvContent += s.name;
+                if (i < housesData.series.length - 1) csvContent += ',';
             });
             csvContent += '\n';
-            
-            // Add house data rows
             housesData.labels.forEach((house, houseIndex) => {
                 csvContent += `${house},`;
-                housesData.datasets.forEach((dataset, datasetIndex) => {
-                    csvContent += dataset.data[houseIndex] || 0;
-                    if (datasetIndex < housesData.datasets.length - 1) csvContent += ',';
+                housesData.series.forEach((s, i) => {
+                    csvContent += s.data[houseIndex] ?? 0;
+                    if (i < housesData.series.length - 1) csvContent += ',';
                 });
                 csvContent += '\n';
             });
-            
             csvContent += '\n';
             
-            // Grades data
             csvContent += `GRADES MOOD DISTRIBUTION\n`;
             csvContent += `Grade,`;
-            
-            // Add mood headers
-            gradesData.datasets.forEach((dataset, index) => {
-                csvContent += dataset.label;
-                if (index < gradesData.datasets.length - 1) csvContent += ',';
+            gradesData.series.forEach((s, i) => {
+                csvContent += s.name;
+                if (i < gradesData.series.length - 1) csvContent += ',';
             });
             csvContent += '\n';
-            
-            // Add grade data rows
             gradesData.labels.forEach((grade, gradeIndex) => {
                 csvContent += `${grade},`;
-                gradesData.datasets.forEach((dataset, datasetIndex) => {
-                    csvContent += dataset.data[gradeIndex] || 0;
-                    if (datasetIndex < gradesData.datasets.length - 1) csvContent += ',';
+                gradesData.series.forEach((s, i) => {
+                    csvContent += s.data[gradeIndex] ?? 0;
+                    if (i < gradesData.series.length - 1) csvContent += ',';
                 });
                 csvContent += '\n';
             });

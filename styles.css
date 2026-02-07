@@ -5369,12 +5369,12 @@ body {
 }
 
 .mood-distribution-large {
-    min-height: 600px;
+    min-height: 400px;
 }
 
-.mood-distribution-large canvas {
-    max-height: 500px;
-    min-height: 500px;
+.mood-distribution-large #housesMoodDistributionChart,
+.mood-distribution-large #gradesMoodDistributionChart {
+    min-height: 320px;
 }
 
 /* Responsive Charts */
