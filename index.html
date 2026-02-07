@@ -17,21 +17,6 @@
 </head>
 <body>
     <div id="app">
-        <!-- Navigation -->
-        <nav class="navbar">
-            <div class="nav-container">
-                <h1 class="nav-title"><span id="moodEmoji" class="mood-emoji-animated">😊</span> REACT</h1>
-                <div class="nav-user" id="navUser" style="display: none;">
-                    <button id="messageCenterBtn" class="btn-message-center">
-                        💬 Message Center
-                        <span class="message-badge" id="navMessageBadge" style="display: none;">0</span>
-                    </button>
-                    <span id="userName"></span>
-                    <button id="logoutBtn" class="btn-secondary">Logout</button>
-                </div>
-            </div>
-        </nav>
-
         <!-- Main Content -->
         <main class="main-content">
             <!-- Login Screen -->
@@ -39,7 +24,7 @@
                 <div class="login-container">
                     <div class="login-card">
                         <img src="images/SP Boys Prep Centred Logo-Colour.jpg" alt="SP Boys Prep" class="login-logo">
-                        <h2>Welcome to REACT!</h2>
+                        <h2>Welcome to <span id="moodEmoji" class="mood-emoji-animated">😊</span> REACT!</h2>
                         <p>The Mood Check-In and Well-Being System for Students and Teachers</p>
                         <form id="loginForm">
                             <div class="form-group">
@@ -389,7 +374,9 @@
                             <div class="bento-card-header">
                                 <h3>🎴 Tile Flip</h3>
                                 <div class="tile-flip-status" id="tileFlipStatus">
-                                    <span id="availableFlips">0</span> flips available
+                                    <span class="tile-flip-status-badge" id="tileFlipStatusBadge">
+                                        <span id="availableFlips">0</span> flips available
+                                    </span>
                                 </div>
                             </div>
                             <div class="bento-card-body">
@@ -1113,6 +1100,19 @@
                         <div class="journaling-section">
                             <h4>How are you feeling right now? Share a thought or two:</h4>
                             <p class="journaling-hint">Write 1-2 sentences about your current thoughts or feelings. This is optional but can help you reflect on your day.</p>
+                            <div class="journal-prompts">
+                                <span class="journal-prompts-label">Try these prompts:</span>
+                                <div class="journal-prompts-list">
+                                    <button type="button" class="journal-prompt" data-target="journalEntry" data-text="Today I...">Today I...</button>
+                                    <button type="button" class="journal-prompt" data-target="journalEntry" data-text="I'm feeling...">I'm feeling...</button>
+                                    <button type="button" class="journal-prompt" data-target="journalEntry" data-text="I'm grateful for...">I'm grateful for...</button>
+                                    <button type="button" class="journal-prompt" data-target="journalEntry" data-text="Something good that happened...">Something good that happened...</button>
+                                    <button type="button" class="journal-prompt" data-target="journalEntry" data-text="I'm looking forward to...">I'm looking forward to...</button>
+                                    <button type="button" class="journal-prompt" data-target="journalEntry" data-text="What made you smile today?">What made you smile today?</button>
+                                    <button type="button" class="journal-prompt" data-target="journalEntry" data-text="One thing I learned...">One thing I learned...</button>
+                                    <button type="button" class="journal-prompt" data-target="journalEntry" data-text="I'm proud of...">I'm proud of...</button>
+                                </div>
+                            </div>
                             <textarea id="journalEntry" placeholder="I'm feeling... Today I... I'm grateful for... I'm looking forward to..." rows="4"></textarea>
                             <div class="character-count">
                                 <span id="characterCount">0</span> characters
@@ -1139,6 +1139,21 @@
                         <div class="journal-entry-section">
                             <h4>Share your thoughts and feelings:</h4>
                             <p class="journal-hint">Write about your day, how you're feeling, or anything you'd like to reflect on.</p>
+                            <div class="journal-prompts">
+                                <span class="journal-prompts-label">Try these prompts:</span>
+                                <div class="journal-prompts-list">
+                                    <button type="button" class="journal-prompt" data-target="journalEntryText" data-text="Today I...">Today I...</button>
+                                    <button type="button" class="journal-prompt" data-target="journalEntryText" data-text="I'm feeling...">I'm feeling...</button>
+                                    <button type="button" class="journal-prompt" data-target="journalEntryText" data-text="I'm grateful for...">I'm grateful for...</button>
+                                    <button type="button" class="journal-prompt" data-target="journalEntryText" data-text="Something good that happened...">Something good that happened...</button>
+                                    <button type="button" class="journal-prompt" data-target="journalEntryText" data-text="I'm looking forward to...">I'm looking forward to...</button>
+                                    <button type="button" class="journal-prompt" data-target="journalEntryText" data-text="What made you smile today?">What made you smile today?</button>
+                                    <button type="button" class="journal-prompt" data-target="journalEntryText" data-text="One thing I learned...">One thing I learned...</button>
+                                    <button type="button" class="journal-prompt" data-target="journalEntryText" data-text="I'm proud of...">I'm proud of...</button>
+                                    <button type="button" class="journal-prompt" data-target="journalEntryText" data-text="Right now I...">Right now I...</button>
+                                    <button type="button" class="journal-prompt" data-target="journalEntryText" data-text="Who made a difference in your day?">Who made a difference in your day?</button>
+                                </div>
+                            </div>
                             <textarea id="journalEntryText" placeholder="Today I... I'm feeling... I'm grateful for... I'm looking forward to..." rows="6"></textarea>
                             <div class="character-count">
                                 <span id="journalCharacterCount">0</span> characters

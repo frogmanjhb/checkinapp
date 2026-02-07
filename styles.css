@@ -2185,6 +2185,48 @@ body {
     line-height: 1.5;
 }
 
+/* Journal Prompts (sentence starters and questions) */
+.journal-prompts {
+    margin-bottom: 1.25rem;
+}
+
+.journal-prompts-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 0.6rem;
+}
+
+.journal-prompts-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.journal-prompt {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
+    font-family: inherit;
+    background: #f0f7ff;
+    color: #1976d2;
+    border: 1px solid #bbdefb;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.journal-prompt:hover {
+    background: #e3f2fd;
+    border-color: #90caf9;
+    transform: translateY(-1px);
+}
+
+.journal-prompt:active {
+    transform: translateY(0);
+}
+
 .journaling-section textarea {
     width: 100%;
     padding: 1.25rem;
@@ -2235,8 +2277,12 @@ body {
 .journal-hint {
     color: #666;
     font-size: 0.95rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     line-height: 1.5;
+}
+
+.journal-entry-section .journal-prompts {
+    margin-bottom: 1.25rem;
 }
 
 .journal-entry-section textarea {
@@ -6119,6 +6165,35 @@ body {
     font-size: 0.9rem;
     color: #666;
     font-weight: 600;
+}
+
+.tile-flip-status-badge {
+    display: inline-block;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+}
+
+.tile-flip-status-badge.has-flips {
+    background: linear-gradient(135deg, #2196F3, #1976D2);
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+    animation: tile-flip-wiggle 0.6s ease-in-out;
+}
+
+.tile-flip-status-badge.has-flips:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(33, 150, 243, 0.5);
+}
+
+@keyframes tile-flip-wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    15% { transform: rotate(-4deg); }
+    30% { transform: rotate(4deg); }
+    45% { transform: rotate(-3deg); }
+    60% { transform: rotate(2deg); }
+    75% { transform: rotate(-1deg); }
 }
 
 .tile-flip-instructions {

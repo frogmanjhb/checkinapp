@@ -847,6 +847,24 @@ class MoodCheckInApp {
             });
         }
 
+        // Journal prompt suggestions - insert sentence starters/questions into textarea
+        document.addEventListener('click', (e) => {
+            const promptBtn = e.target.closest('.journal-prompt');
+            if (!promptBtn) return;
+            const targetId = promptBtn.dataset.target;
+            const text = promptBtn.dataset.text;
+            if (!targetId || !text) return;
+            const textarea = document.getElementById(targetId);
+            if (!textarea) return;
+            e.preventDefault();
+            const currentVal = textarea.value;
+            const prefix = currentVal ? currentVal + ' ' : '';
+            textarea.value = prefix + text;
+            textarea.focus();
+            const countElement = targetId === 'journalEntry' ? document.getElementById('characterCount') : document.getElementById('journalCharacterCount');
+            if (countElement) countElement.textContent = textarea.value.length;
+        });
+
         // Analytics tabs
         document.querySelectorAll('.analytics-tab').forEach(tab => {
             tab.addEventListener('click', (e) => {
@@ -1269,7 +1287,8 @@ class MoodCheckInApp {
         this.applyHousePointsVisibility();
         document.getElementById('loginScreen').classList.remove('active');
         document.getElementById('registerScreen').classList.remove('active');
-        document.getElementById('navUser').style.display = 'flex';
+        const navUser = document.getElementById('navUser');
+        if (navUser) navUser.style.display = 'flex';
         
         if (this.currentUser.user_type === 'student') {
             this.showStudentDashboard();
@@ -2004,6 +2023,7 @@ class MoodCheckInApp {
                     if (response.journalEntry) this.studentJournalEntriesToday.push(response.journalEntry);
                     this.updateJournalButtonState();
                     this.updateStudentJournalList();
+                    this.refreshTileFlipStatus(); // Fetch fresh status so flips are immediately usable
                 } else if (this.currentUser.user_type === 'teacher') {
                     this.updateTeacherJournalList();
                     this.updateTeacherStatusDisplay(); // Update the journal counter
@@ -3042,7 +3062,7 @@ class MoodCheckInApp {
                     this.studentJournalEntriesToday.push(response.journalEntry);
                     this.updateJournalButtonState();
                     this.updateStudentJournalList();
-                    this.updateTileFlipStatus(); // Update tile flip status after journal entry
+                    this.refreshTileFlipStatus(); // Fetch fresh status so flips are immediately usable
                     this.updateHousePoints(); // Update house points after journal entry
                 } else if (this.currentUser.user_type === 'teacher') {
                     this.updateTeacherJournalList();
@@ -3206,14 +3226,36 @@ class MoodCheckInApp {
         };
     }
 
+    async refreshTileFlipStatus() {
+        if (!this.currentUser || this.currentUser.user_type !== 'student') return;
+        if (!this.pluginSettings.tileFlipEnabled) return;
+
+        try {
+            const statusResponse = await APIUtils.getTileFlipStatus(this.currentUser.id);
+            if (statusResponse.success) {
+                this.tileFlipStatus = statusResponse;
+                this.availableFlips = statusResponse.availableFlips;
+                this.renderTileGrid();
+                this.updateTileFlipStatus();
+            }
+        } catch (error) {
+            console.error('Failed to refresh tile flip status:', error);
+        }
+    }
+
     async updateTileFlipStatus() {
         if (!this.currentUser || this.currentUser.user_type !== 'student') return;
 
         const statusElement = document.getElementById('tileFlipStatus');
+        const badgeElement = document.getElementById('tileFlipStatusBadge');
         const availableFlipsElement = document.getElementById('availableFlips');
-        
-        if (statusElement && availableFlipsElement) {
-            availableFlipsElement.textContent = this.availableFlips || 0;
+        const count = this.availableFlips || 0;
+
+        if (availableFlipsElement) {
+            availableFlipsElement.textContent = count;
+        }
+        if (badgeElement) {
+            badgeElement.classList.toggle('has-flips', count > 0);
         }
     }
 
