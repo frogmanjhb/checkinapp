@@ -46,17 +46,23 @@ function normalise(text) {
  * Returns true if any ignore context is found (e.g., "hurt my leg" in game context)
  */
 async function shouldIgnoreContext(text, normalized) {
-    const keywords = await loadFlagKeywords();
-    const ignoreContexts = keywords.context_rules?.ignore_contexts || [];
-    
-    for (const ignorePhrase of ignoreContexts) {
-        const normalizedIgnore = normalise(ignorePhrase);
-        if (normalized.includes(normalizedIgnore)) {
-            // If ignore context is present, skip flagging for this entry
-            return true;
+    try {
+        const keywords = await loadFlagKeywords();
+        const ignoreContexts = keywords.context_rules?.ignore_contexts || [];
+        
+        for (const ignorePhrase of ignoreContexts) {
+            const normalizedIgnore = normalise(ignorePhrase);
+            if (normalized.includes(normalizedIgnore)) {
+                // If ignore context is present, skip flagging for this entry
+                console.log('Flagging ignored due to context:', ignorePhrase);
+                return true;
+            }
         }
+        return false;
+    } catch (error) {
+        console.error('Error checking ignore context:', error);
+        return false;
     }
-    return false;
 }
 
 /**
@@ -105,56 +111,78 @@ async function requiresIntentPhrase(phrase, normalized) {
  * Returns matches grouped by severity: { red: [], amber: [], yellow: [] }
  */
 async function detectMatches(text) {
-    const keywords = await loadFlagKeywords();
-    const normalized = normalise(text);
-    const matches = { red: [], amber: [], yellow: [] };
-    
-    // Check ignore contexts first - if text should be ignored, return empty matches
-    if (shouldIgnoreContext(text, normalized)) {
-        return matches;
-    }
-    
-    // Check each severity level
-    for (const severity of ['red', 'amber', 'yellow']) {
-        if (!keywords[severity]) continue;
+    try {
+        const keywords = await loadFlagKeywords();
+        const normalized = normalise(text);
+        const matches = { red: [], amber: [], yellow: [] };
         
-        // Check each category in this severity
-        for (const [category, phrases] of Object.entries(keywords[severity])) {
-            for (const phrase of phrases) {
-                const normalizedPhrase = normalise(phrase);
-                let isMatch = false;
-                
-                // Multi-word phrases: use includes() on normalized text
-                if (normalizedPhrase.includes(' ')) {
-                    if (normalized.includes(normalizedPhrase)) {
-                        isMatch = true;
-                    }
-                } else {
-                    // Single words: use word boundary regex
-                    const escapedPhrase = normalizedPhrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const regex = new RegExp(`\\b${escapedPhrase}\\b`, 'i');
-                    if (regex.test(normalized)) {
-                        isMatch = true;
-                    }
-                }
-                
-                // If match found, check context rules
-                if (isMatch) {
-                    // Check if self-reference is required (for phrases like "hurt myself")
-                    const hasSelfRef = await requiresSelfReference(phrase, normalized);
-                    // Check if intent phrase is required (for phrases that need "want to", etc.)
-                    const hasIntent = await requiresIntentPhrase(phrase, normalized);
+        console.log('Detecting matches for text:', text);
+        console.log('Normalized text:', normalized);
+        console.log('Keywords loaded:', !!keywords);
+        
+        // Check ignore contexts first - if text should be ignored, return empty matches
+        const shouldIgnore = await shouldIgnoreContext(text, normalized);
+        if (shouldIgnore) {
+            console.log('Text ignored due to context rules');
+            return matches;
+        }
+        
+        // Check each severity level
+        for (const severity of ['red', 'amber', 'yellow']) {
+            if (!keywords[severity]) {
+                console.log(`No keywords for severity: ${severity}`);
+                continue;
+            }
+            
+            // Check each category in this severity
+            for (const [category, phrases] of Object.entries(keywords[severity])) {
+                for (const phrase of phrases) {
+                    const normalizedPhrase = normalise(phrase);
+                    let isMatch = false;
                     
-                    // Only add match if context requirements are met
-                    if (hasSelfRef && hasIntent) {
-                        matches[severity].push(phrase);
+                    // Multi-word phrases: use includes() on normalized text
+                    if (normalizedPhrase.includes(' ')) {
+                        if (normalized.includes(normalizedPhrase)) {
+                            isMatch = true;
+                            console.log(`Multi-word match found: "${phrase}" in "${text}"`);
+                        }
+                    } else {
+                        // Single words: use word boundary regex
+                        const escapedPhrase = normalizedPhrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const regex = new RegExp(`\\b${escapedPhrase}\\b`, 'i');
+                        if (regex.test(normalized)) {
+                            isMatch = true;
+                            console.log(`Single-word match found: "${phrase}" in "${text}"`);
+                        }
+                    }
+                    
+                    // If match found, check context rules
+                    if (isMatch) {
+                        // Check if self-reference is required (for phrases like "hurt myself")
+                        const hasSelfRef = await requiresSelfReference(phrase, normalized);
+                        // Check if intent phrase is required (for phrases that need "want to", etc.)
+                        const hasIntent = await requiresIntentPhrase(phrase, normalized);
+                        
+                        console.log(`Match "${phrase}": hasSelfRef=${hasSelfRef}, hasIntent=${hasIntent}`);
+                        
+                        // Only add match if context requirements are met
+                        if (hasSelfRef && hasIntent) {
+                            matches[severity].push(phrase);
+                            console.log(`Added match: ${severity} - ${phrase}`);
+                        } else {
+                            console.log(`Match rejected due to context rules: ${phrase}`);
+                        }
                     }
                 }
             }
         }
+        
+        console.log('Final matches:', matches);
+        return matches;
+    } catch (error) {
+        console.error('Error in detectMatches:', error);
+        return { red: [], amber: [], yellow: [] };
     }
-    
-    return matches;
 }
 
 /**
@@ -343,25 +371,39 @@ function applyFrequencyRules(studentId, newSeverity) {
  */
 async function processJournalEntryFlagging(entryText, user, isGhostMode = false, skipSave = false) {
     try {
+        console.log('Processing journal entry flagging:', { entryText, userId: user.id, isGhostMode });
+        
         const flag = await createFlagRecord(entryText, user, isGhostMode);
         
         if (!flag) {
+            console.log('No flag created - no matches found');
             return null; // No flag needed
         }
         
+        console.log('Flag created:', flag);
+        
         // Save flag to localStorage unless skipSave is true
         if (!skipSave) {
+            if (typeof loadJson === 'undefined' || typeof saveJson === 'undefined') {
+                console.error('Storage functions not available');
+                return flag;
+            }
+            
             const flags = loadJson('journalFlags', []);
             flags.push(flag);
             saveJson('journalFlags', flags);
+            console.log('Flag saved to localStorage. Total flags:', flags.length);
             
             // Apply frequency escalation rules
-            applyFrequencyRules(user.id, flag.severity);
+            if (typeof applyFrequencyRules === 'function') {
+                applyFrequencyRules(user.id, flag.severity);
+            }
         }
         
         return flag;
     } catch (error) {
         console.error('Error processing journal entry flagging:', error);
+        console.error('Error stack:', error.stack);
         return null;
     }
 }
@@ -385,4 +427,15 @@ if (typeof window !== 'undefined') {
     window.detectMatches = detectMatches;
     window.normalise = normalise;
     window.computeSeverity = computeSeverity;
+    window.loadFlagKeywords = loadFlagKeywords;
+    
+    // Test function for debugging
+    window.testFlagging = async function(text) {
+        console.log('Testing flagging for text:', text);
+        const matches = await detectMatches(text);
+        console.log('Matches found:', matches);
+        const severity = computeSeverity(matches);
+        console.log('Severity:', severity);
+        return { matches, severity };
+    };
 }

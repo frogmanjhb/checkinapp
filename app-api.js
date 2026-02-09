@@ -2034,12 +2034,18 @@ class MoodCheckInApp {
 
             if (response.success) {
                 // Process flagging for journal entry (only for students)
-                if (this.currentUser.user_type === 'student' && typeof processJournalEntryFlagging === 'function') {
-                    try {
-                        await processJournalEntryFlagging(entryText, this.currentUser, this.isGhostMode || false);
-                    } catch (flagError) {
-                        console.error('Error processing journal entry flagging:', flagError);
-                        // Don't block journal entry save if flagging fails
+                if (this.currentUser.user_type === 'student') {
+                    if (typeof processJournalEntryFlagging === 'function') {
+                        try {
+                            console.log('Calling processJournalEntryFlagging for entry:', entryText);
+                            await processJournalEntryFlagging(entryText, this.currentUser, this.isGhostMode || false);
+                        } catch (flagError) {
+                            console.error('Error processing journal entry flagging:', flagError);
+                            console.error('Error details:', flagError.message, flagError.stack);
+                            // Don't block journal entry save if flagging fails
+                        }
+                    } else {
+                        console.warn('processJournalEntryFlagging function not available');
                     }
                 }
                 
@@ -3083,12 +3089,18 @@ class MoodCheckInApp {
 
             if (response.success) {
                 // Process flagging for journal entry (only for students)
-                if (this.currentUser.user_type === 'student' && typeof processJournalEntryFlagging === 'function') {
-                    try {
-                        await processJournalEntryFlagging(entryText, this.currentUser, this.isGhostMode || false);
-                    } catch (flagError) {
-                        console.error('Error processing journal entry flagging:', flagError);
-                        // Don't block journal entry save if flagging fails
+                if (this.currentUser.user_type === 'student') {
+                    if (typeof processJournalEntryFlagging === 'function') {
+                        try {
+                            console.log('Calling processJournalEntryFlagging for entry:', entryText);
+                            await processJournalEntryFlagging(entryText, this.currentUser, this.isGhostMode || false);
+                        } catch (flagError) {
+                            console.error('Error processing journal entry flagging:', flagError);
+                            console.error('Error details:', flagError.message, flagError.stack);
+                            // Don't block journal entry save if flagging fails
+                        }
+                    } else {
+                        console.warn('processJournalEntryFlagging function not available');
                     }
                 }
                 
