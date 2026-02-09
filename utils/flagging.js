@@ -42,6 +42,65 @@ function normalise(text) {
 }
 
 /**
+ * Check if text should be ignored based on ignore contexts
+ * Returns true if any ignore context is found (e.g., "hurt my leg" in game context)
+ */
+async function shouldIgnoreContext(text, normalized) {
+    const keywords = await loadFlagKeywords();
+    const ignoreContexts = keywords.context_rules?.ignore_contexts || [];
+    
+    for (const ignorePhrase of ignoreContexts) {
+        const normalizedIgnore = normalise(ignorePhrase);
+        if (normalized.includes(normalizedIgnore)) {
+            // If ignore context is present, skip flagging for this entry
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Check if phrase requires self-reference (e.g., "hurt myself" requires "myself")
+ * Returns true if self-reference is not required OR if it's present
+ */
+async function requiresSelfReference(phrase, normalized) {
+    const keywords = await loadFlagKeywords();
+    const selfRefRequired = keywords.context_rules?.self_reference_required || [];
+    const normalizedPhrase = normalise(phrase);
+    
+    // Check if this phrase contains words that require "myself"
+    let needsSelfRef = false;
+    for (const selfRefWord of selfRefRequired) {
+        if (normalizedPhrase.includes(selfRefWord)) {
+            needsSelfRef = true;
+            break;
+        }
+    }
+    
+    // If self-reference is needed, check if it's present in the text
+    if (needsSelfRef) {
+        // Check for "myself" or first-person pronouns near the phrase
+        const selfRefRegex = /\b(myself|i|me|my)\b/i;
+        return selfRefRegex.test(normalized);
+    }
+    
+    // No self-reference requirement - allow the match
+    return true;
+}
+
+/**
+ * Check if phrase requires intent indicator (e.g., "want to", "going to")
+ * Some phrases are only concerning when combined with intent indicators
+ * For now, we'll allow all matches but this can be enhanced for proximity checking
+ */
+async function requiresIntentPhrase(phrase, normalized) {
+    // Most phrases already contain intent indicators (e.g., "want to die")
+    // For phrases without explicit intent, we'll still flag them for safety
+    // This can be enhanced later to check for intent phrases in proximity
+    return true;
+}
+
+/**
  * Detect matches in normalized text
  * Returns matches grouped by severity: { red: [], amber: [], yellow: [] }
  */
@@ -49,6 +108,11 @@ async function detectMatches(text) {
     const keywords = await loadFlagKeywords();
     const normalized = normalise(text);
     const matches = { red: [], amber: [], yellow: [] };
+    
+    // Check ignore contexts first - if text should be ignored, return empty matches
+    if (shouldIgnoreContext(text, normalized)) {
+        return matches;
+    }
     
     // Check each severity level
     for (const severity of ['red', 'amber', 'yellow']) {
@@ -58,17 +122,31 @@ async function detectMatches(text) {
         for (const [category, phrases] of Object.entries(keywords[severity])) {
             for (const phrase of phrases) {
                 const normalizedPhrase = normalise(phrase);
+                let isMatch = false;
                 
                 // Multi-word phrases: use includes() on normalized text
                 if (normalizedPhrase.includes(' ')) {
                     if (normalized.includes(normalizedPhrase)) {
-                        matches[severity].push(phrase);
+                        isMatch = true;
                     }
                 } else {
                     // Single words: use word boundary regex
                     const escapedPhrase = normalizedPhrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     const regex = new RegExp(`\\b${escapedPhrase}\\b`, 'i');
                     if (regex.test(normalized)) {
+                        isMatch = true;
+                    }
+                }
+                
+                // If match found, check context rules
+                if (isMatch) {
+                    // Check if self-reference is required (for phrases like "hurt myself")
+                    const hasSelfRef = await requiresSelfReference(phrase, normalized);
+                    // Check if intent phrase is required (for phrases that need "want to", etc.)
+                    const hasIntent = await requiresIntentPhrase(phrase, normalized);
+                    
+                    // Only add match if context requirements are met
+                    if (hasSelfRef && hasIntent) {
                         matches[severity].push(phrase);
                     }
                 }

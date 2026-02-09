@@ -1,107 +1,207 @@
 {
   "red": {
-    "direct": [
+    "self_harm_direct": [
       "kill myself",
+      "killing myself",
       "want to die",
+      "wanna die",
+      "wish i was dead",
       "end it all",
+      "end everything",
+      "end my life",
       "suicide",
       "self harm",
       "self-harm",
       "hurt myself",
+      "hurting myself",
       "cut myself",
-      "cutting",
+      "cutting myself",
+      "cut myself again",
       "overdose",
-      "jump off",
+      "overdosing",
+      "take too many pills",
       "hang myself",
+      "hanging myself",
+      "jump off",
+      "jumping off",
       "not worth living",
-      "better off dead"
+      "life is not worth it",
+      "better off dead",
+      "should be dead"
     ],
-    "hopelessness": [
+    "hopelessness_passive": [
       "i can't go on",
       "cant go on",
+      "can't do this anymore",
+      "cant do this anymore",
       "there's no point",
       "theres no point",
       "nothing matters anymore",
+      "nothing matters",
       "i don't want to be here",
       "i dont want to be here",
-      "everyone would be better without me"
+      "i wish i wasn't here",
+      "i want to disappear",
+      "i want everything to stop",
+      "everyone would be better without me",
+      "nobody would miss me"
     ]
   },
   "amber": {
-    "distress": [
+    "emotional_distress": [
       "depressed",
+      "really sad",
+      "very sad",
       "hopeless",
       "helpless",
       "empty",
+      "feel empty",
       "numb",
+      "feel numb",
       "worthless",
       "useless",
+      "pointless",
+      "meaningless",
       "alone",
       "lonely",
+      "so lonely",
       "invisible",
+      "forgotten",
       "nobody cares",
+      "no one cares",
+      "nobody listens",
       "breaking down",
+      "falling apart",
       "losing control",
+      "out of control",
       "freaking out",
       "panic",
       "panicking",
+      "panic attack",
       "can't breathe",
       "cant breathe",
+      "feel trapped",
       "overwhelmed"
     ],
-    "anger_violence": [
+    "anger_loss_of_control": [
       "rage",
       "furious",
+      "so angry",
+      "really angry",
       "hate everything",
-      "out of control",
-      "want to smash",
+      "hate everyone",
+      "losing my temper",
+      "want to scream",
+      "want to explode",
+      "can't control myself",
+      "cant control myself"
+    ],
+    "violence_intent": [
       "want to hurt someone",
-      "hurt someone"
+      "want to hit someone",
+      "want to punch someone",
+      "want to kick someone",
+      "feel like hurting someone",
+      "feel like hitting someone",
+      "feel like punching someone",
+      "i will hurt someone",
+      "i'm going to hurt someone",
+      "i am going to hurt someone"
     ],
     "home_safety": [
       "scared at home",
+      "afraid at home",
       "don't like being at home",
       "dont like being at home",
+      "hate being at home",
       "fighting at home",
       "parents fighting",
+      "always fighting at home",
       "angry parents",
       "shouting",
+      "yelling",
       "always arguing",
       "feel unsafe",
       "unsafe at home",
-      "no one listens at home"
+      "home feels unsafe",
+      "no one listens at home",
+      "i hide in my room"
     ],
-    "social": [
+    "social_distress": [
       "bullied",
       "bullying",
+      "being bullied",
       "teased",
       "picked on",
       "laughed at",
+      "made fun of",
       "excluded",
       "left out",
+      "ignored",
       "ganged up on",
       "no friends",
+      "i have no friends",
       "everyone hates me",
-      "ignored",
-      "betrayed"
+      "nobody likes me",
+      "betrayed",
+      "backstabbed",
+      "feel rejected"
     ]
   },
   "yellow": {
-    "burnout": [
+    "burnout_pressure": [
       "exhausted",
+      "so tired",
+      "really tired",
       "burned out",
       "burnt out",
       "drained",
+      "worn out",
       "can't keep up",
       "cant keep up",
       "too much work",
+      "too much homework",
+      "too many tests",
       "never rest",
       "always tired",
-      "pressure"
+      "no break",
+      "pressure",
+      "too much pressure",
+      "stressed all the time"
     ],
     "absolutes": [
       "always",
-      "never"
+      "never",
+      "everyone",
+      "nobody",
+      "nothing",
+      "everything"
+    ]
+  },
+  "context_rules": {
+    "self_reference_required": [
+      "myself"
+    ],
+    "intent_phrases": [
+      "want to",
+      "going to",
+      "feel like",
+      "i will",
+      "i might"
+    ],
+    "ignore_contexts": [
+      "game",
+      "ball",
+      "rugby",
+      "soccer",
+      "match",
+      "sport",
+      "accident",
+      "by accident",
+      "hurt my leg",
+      "hurt my arm",
+      "killed my energy",
+      "that test killed me"
     ]
   }
 }
