@@ -17,6 +17,21 @@
 </head>
 <body>
     <div id="app">
+        <!-- Navigation Bar -->
+        <nav class="navbar" id="navbar" style="display: none;">
+            <div class="nav-container">
+                <div class="nav-title">
+                    <span class="mood-emoji-animated">😊</span> REACT
+                </div>
+                <div class="nav-user" id="navUser" style="display: none;">
+                    <button class="btn-message-center" id="messageCenterBtn" style="display: none;">
+                        💬 Message Center
+                        <span class="message-badge" id="navMessageBadge" style="display: none;">0</span>
+                    </button>
+                    <button class="btn-primary" id="logoutBtn">🚪 Logout</button>
+                </div>
+            </div>
+        </nav>
         <!-- Main Content -->
         <main class="main-content">
             <!-- Login Screen -->

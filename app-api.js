@@ -1152,6 +1152,8 @@ class MoodCheckInApp {
         this.currentUser = null;
         localStorage.removeItem('checkinUser');
         this.moodHistory = [];
+        const navbar = document.getElementById('navbar');
+        if (navbar) navbar.style.display = 'none';
         this.showLoginScreen();
         this.showMessage('Logged out successfully!', 'success');
     }
@@ -1197,6 +1199,7 @@ class MoodCheckInApp {
         const teacherScreen = document.getElementById('teacherDashboardScreen');
         const directorScreen = document.getElementById('directorDashboardScreen');
         const navUser = document.getElementById('navUser');
+        const navbar = document.getElementById('navbar');
         const loginForm = document.getElementById('loginForm');
         
         if (!loginScreen || !registerScreen || !studentScreen || !teacherScreen) {
@@ -1215,6 +1218,9 @@ class MoodCheckInApp {
         if (navUser) {
             navUser.style.display = 'none';
         }
+        if (navbar) {
+            navbar.style.display = 'none';
+        }
         
         // Clear form
         if (loginForm) {
@@ -1229,6 +1235,7 @@ class MoodCheckInApp {
         const teacherScreen = document.getElementById('teacherDashboardScreen');
         const directorScreen = document.getElementById('directorDashboardScreen');
         const navUser = document.getElementById('navUser');
+        const navbar = document.getElementById('navbar');
         
         if (!loginScreen || !registerScreen || !studentScreen || !teacherScreen) {
             console.error('Required screens not found in DOM');
@@ -1245,6 +1252,9 @@ class MoodCheckInApp {
         
         if (navUser) {
             navUser.style.display = 'none';
+        }
+        if (navbar) {
+            navbar.style.display = 'none';
         }
     }
 
@@ -1288,7 +1298,9 @@ class MoodCheckInApp {
         document.getElementById('loginScreen').classList.remove('active');
         document.getElementById('registerScreen').classList.remove('active');
         const navUser = document.getElementById('navUser');
+        const navbar = document.getElementById('navbar');
         if (navUser) navUser.style.display = 'flex';
+        if (navbar) navbar.style.display = 'block';
         
         if (this.currentUser.user_type === 'student') {
             this.showStudentDashboard();
