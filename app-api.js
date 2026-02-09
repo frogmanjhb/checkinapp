@@ -1669,8 +1669,15 @@ class MoodCheckInApp {
         directorScreen.classList.add('active');
         
         // Update user info
-        document.getElementById('directorName').textContent = this.currentUser.first_name;
-        document.getElementById('userName').textContent = this.currentUser.first_name;
+        const directorNameElement = document.getElementById('directorName');
+        const userNameElement = document.getElementById('userName');
+        
+        if (directorNameElement) {
+            directorNameElement.textContent = this.currentUser.first_name;
+        }
+        if (userNameElement) {
+            userNameElement.textContent = this.currentUser.first_name;
+        }
         
         // Update date and time
         this.updateDirectorDateTime();
