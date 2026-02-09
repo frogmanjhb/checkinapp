@@ -1694,6 +1694,13 @@ class MoodCheckInApp {
         // Initialize charts
         this.initializeDirectorCharts();
         
+        // Load journal entries
+        this.loadDirectorJournalEntries();
+        
+        // Load flags
+        this.loadDirectorFlags();
+        this.setupFlagsHandlers();
+        
         if (this.pluginSettings.messageCenterEnabled) {
             this.updateUnreadCount();
             this.updateNavUnreadCount();
@@ -2023,6 +2030,16 @@ class MoodCheckInApp {
             });
 
             if (response.success) {
+                // Process flagging for journal entry (only for students)
+                if (this.currentUser.user_type === 'student' && typeof processJournalEntryFlagging === 'function') {
+                    try {
+                        await processJournalEntryFlagging(entryText, this.currentUser, this.isGhostMode || false);
+                    } catch (flagError) {
+                        console.error('Error processing journal entry flagging:', flagError);
+                        // Don't block journal entry save if flagging fails
+                    }
+                }
+                
                 // Add new entry to journalEntries array
                 const newEntry = {
                     id: Date.now(), // Simple ID generation
@@ -3062,6 +3079,16 @@ class MoodCheckInApp {
             });
 
             if (response.success) {
+                // Process flagging for journal entry (only for students)
+                if (this.currentUser.user_type === 'student' && typeof processJournalEntryFlagging === 'function') {
+                    try {
+                        await processJournalEntryFlagging(entryText, this.currentUser, this.isGhostMode || false);
+                    } catch (flagError) {
+                        console.error('Error processing journal entry flagging:', flagError);
+                        // Don't block journal entry save if flagging fails
+                    }
+                }
+                
                 // Add new entry to journalEntries array
                 const newEntry = {
                     id: Date.now(), // Simple ID generation
@@ -4119,6 +4146,397 @@ class MoodCheckInApp {
             
             journalList.appendChild(entryItem);
         });
+    }
+
+    // Load director journal entries
+    async loadDirectorJournalEntries() {
+        try {
+            const journalResponse = await APIUtils.getAllJournalEntries('daily');
+            if (journalResponse.success) {
+                this.updateAllJournalEntriesList(journalResponse.entries);
+            } else {
+                const journalList = document.getElementById('allJournalEntriesList');
+                if (journalList) {
+                    journalList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Failed to load journal entries.</p>';
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load director journal entries:', error);
+            const journalList = document.getElementById('allJournalEntriesList');
+            if (journalList) {
+                journalList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Error loading journal entries.</p>';
+            }
+        }
+    }
+
+    // Load director flags
+    loadDirectorFlags() {
+        if (typeof loadJson === 'undefined') {
+            console.warn('Flagging utilities not loaded');
+            return;
+        }
+        
+        const flags = loadJson('journalFlags', []);
+        const events = loadJson('flagEvents', []);
+        
+        this.renderFlags(flags);
+        this.renderEvents(events);
+    }
+
+    // Render flags list
+    renderFlags(flags) {
+        const flagsList = document.getElementById('flagsList');
+        if (!flagsList) return;
+        
+        if (flags.length === 0) {
+            flagsList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No flagged entries.</p>';
+            return;
+        }
+        
+        // Sort by newest first
+        const sortedFlags = [...flags].sort((a, b) => 
+            new Date(b.createdAt) - new Date(a.createdAt)
+        );
+        
+        flagsList.innerHTML = sortedFlags.map(flag => {
+            const severityColors = {
+                red: '#f44336',
+                amber: '#ff9800',
+                yellow: '#ffeb3b'
+            };
+            const severityBg = {
+                red: '#ffebee',
+                amber: '#fff3e0',
+                yellow: '#fffde7'
+            };
+            const statusColors = {
+                new: '#2196f3',
+                viewed: '#9e9e9e',
+                followed_up: '#4caf50'
+            };
+            
+            const date = new Date(flag.createdAt).toLocaleString();
+            const matchesDisplay = [
+                ...(flag.matches.red || []).map(m => `<span class="match-tag red">${m}</span>`),
+                ...(flag.matches.amber || []).map(m => `<span class="match-tag amber">${m}</span>`),
+                ...(flag.matches.yellow || []).map(m => `<span class="match-tag yellow">${m}</span>`)
+            ].join('');
+            
+            return `
+                <div class="flag-item" data-flag-id="${flag.id}" 
+                     data-severity="${flag.severity}" 
+                     data-grade="${flag.grade || ''}" 
+                     data-house="${flag.house || ''}" 
+                     data-ghost="${flag.ghost}" 
+                     data-status="${flag.status}">
+                    <div class="flag-header">
+                        <div class="flag-severity-badge" style="background-color: ${severityBg[flag.severity]}; color: ${severityColors[flag.severity]}">
+                            ${flag.severity === 'red' ? '🔴' : flag.severity === 'amber' ? '🟠' : '🟡'} ${flag.severity.toUpperCase()}
+                        </div>
+                        <div class="flag-status-badge" style="color: ${statusColors[flag.status]}">
+                            ${flag.status === 'new' ? '🆕' : flag.status === 'viewed' ? '👁️' : '✅'} ${flag.status.replace('_', ' ')}
+                        </div>
+                    </div>
+                    <div class="flag-info">
+                        <div class="flag-student">
+                            ${flag.ghost ? '👻 Anonymous' : (flag.studentName || 'Unknown')}
+                            ${flag.grade ? ` • Grade ${flag.grade}` : ''}
+                            ${flag.house ? ` • ${flag.house}` : ''}
+                        </div>
+                        <div class="flag-matches">${matchesDisplay || 'No matches'}</div>
+                        <div class="flag-entry-preview">${flag.entryText.substring(0, 150)}${flag.entryText.length > 150 ? '...' : ''}</div>
+                        <div class="flag-date">${date}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        // Add click handlers
+        flagsList.querySelectorAll('.flag-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const flagId = item.dataset.flagId;
+                const flag = flags.find(f => f.id === flagId);
+                if (flag) {
+                    this.showFlagDetail(flag);
+                }
+            });
+        });
+    }
+
+    // Render events list
+    renderEvents(events) {
+        const eventsList = document.getElementById('eventsList');
+        if (!eventsList) return;
+        
+        if (events.length === 0) {
+            eventsList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No pattern events.</p>';
+            return;
+        }
+        
+        const sortedEvents = [...events].sort((a, b) => 
+            new Date(b.createdAt) - new Date(a.createdAt)
+        );
+        
+        eventsList.innerHTML = sortedEvents.map(event => {
+            const date = new Date(event.createdAt).toLocaleString();
+            const eventTypeLabel = event.type === 'amberPattern' ? '🟠 Amber Pattern' : '🟡 Yellow Pattern';
+            const eventColor = event.type === 'amberPattern' ? '#ff9800' : '#ffeb3b';
+            
+            return `
+                <div class="event-item" style="border-left: 4px solid ${eventColor}">
+                    <div class="event-header">
+                        <span class="event-type">${eventTypeLabel}</span>
+                        <span class="event-date">${date}</span>
+                    </div>
+                    <div class="event-details">
+                        Student ID: ${event.studentId}<br>
+                        Count: ${event.count} occurrences in last ${event.windowDays} days
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Show flag detail modal
+    showFlagDetail(flag) {
+        const modal = document.getElementById('flagDetailModal');
+        const content = document.getElementById('flagDetailContent');
+        if (!modal || !content) return;
+        
+        const severityColors = {
+            red: '#f44336',
+            amber: '#ff9800',
+            yellow: '#ffeb3b'
+        };
+        
+        const date = new Date(flag.createdAt).toLocaleString();
+        const matchesDisplay = [
+            ...(flag.matches.red || []).map(m => `<span class="match-tag red">${m}</span>`),
+            ...(flag.matches.amber || []).map(m => `<span class="match-tag amber">${m}</span>`),
+            ...(flag.matches.yellow || []).map(m => `<span class="match-tag yellow">${m}</span>`)
+        ].join('') || 'No matches';
+        
+        content.innerHTML = `
+            <div class="flag-detail-section">
+                <h4>Severity</h4>
+                <div class="flag-severity-badge-large" style="background-color: ${severityColors[flag.severity]}20; color: ${severityColors[flag.severity]}">
+                    ${flag.severity === 'red' ? '🔴' : flag.severity === 'amber' ? '🟠' : '🟡'} ${flag.severity.toUpperCase()}
+                </div>
+            </div>
+            <div class="flag-detail-section">
+                <h4>Student Information</h4>
+                <p><strong>Name:</strong> ${flag.ghost ? '👻 Anonymous (Ghost Mode)' : (flag.studentName || 'Unknown')}</p>
+                <p><strong>Student ID:</strong> ${flag.studentId}</p>
+                <p><strong>Grade:</strong> ${flag.grade || 'N/A'}</p>
+                <p><strong>House:</strong> ${flag.house || 'N/A'}</p>
+            </div>
+            <div class="flag-detail-section">
+                <h4>Matched Terms</h4>
+                <div class="flag-matches-container">${matchesDisplay}</div>
+            </div>
+            <div class="flag-detail-section">
+                <h4>Journal Entry</h4>
+                <div class="flag-entry-full">${flag.entryText}</div>
+            </div>
+            <div class="flag-detail-section">
+                <h4>Timestamp</h4>
+                <p>${date}</p>
+            </div>
+            <div class="flag-detail-section">
+                <h4>Status</h4>
+                <select id="flagStatusSelect" class="flag-status-select">
+                    <option value="new" ${flag.status === 'new' ? 'selected' : ''}>New</option>
+                    <option value="viewed" ${flag.status === 'viewed' ? 'selected' : ''}>Viewed</option>
+                    <option value="followed_up" ${flag.status === 'followed_up' ? 'selected' : ''}>Followed Up</option>
+                </select>
+            </div>
+            <div class="flag-detail-section">
+                <h4>Notes</h4>
+                <textarea id="flagNotesTextarea" class="flag-notes-textarea" rows="4" placeholder="Add notes about follow-up actions...">${flag.notes || ''}</textarea>
+            </div>
+            <div class="flag-detail-actions">
+                <button class="btn-primary" id="saveFlagChangesBtn" data-flag-id="${flag.id}">Save Changes</button>
+            </div>
+        `;
+        
+        modal.style.display = 'block';
+        modal.classList.add('active');
+        
+        // Setup save button handler
+        const saveBtn = document.getElementById('saveFlagChangesBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                this.saveFlagChanges(flag.id);
+            });
+        }
+    }
+
+    // Save flag changes
+    saveFlagChanges(flagId) {
+        if (typeof loadJson === 'undefined' || typeof saveJson === 'undefined') {
+            console.error('Storage utilities not available');
+            return;
+        }
+        
+        const flags = loadJson('journalFlags', []);
+        const flag = flags.find(f => f.id === flagId);
+        if (!flag) return;
+        
+        const statusSelect = document.getElementById('flagStatusSelect');
+        const notesTextarea = document.getElementById('flagNotesTextarea');
+        
+        if (statusSelect) {
+            flag.status = statusSelect.value;
+        }
+        if (notesTextarea) {
+            flag.notes = notesTextarea.value;
+        }
+        
+        saveJson('journalFlags', flags);
+        
+        // Reload flags display
+        this.loadDirectorFlags();
+        
+        // Close modal
+        const modal = document.getElementById('flagDetailModal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        }
+        
+        this.showMessage('Flag updated successfully.', 'success');
+    }
+
+    // Setup flags handlers
+    setupFlagsHandlers() {
+        // Tab switching
+        document.querySelectorAll('.flags-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetTab = tab.dataset.tab;
+                
+                // Update tab buttons
+                document.querySelectorAll('.flags-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Update tab content
+                document.querySelectorAll('.flags-tab-content').forEach(c => c.classList.remove('active'));
+                if (targetTab === 'flags') {
+                    document.getElementById('flagsTabContent')?.classList.add('active');
+                } else if (targetTab === 'events') {
+                    document.getElementById('eventsTabContent')?.classList.add('active');
+                }
+            });
+        });
+        
+        // Filter handlers
+        const filters = ['flagsSeverityFilter', 'flagsGradeFilter', 'flagsHouseFilter', 'flagsGhostFilter', 'flagsStatusFilter'];
+        filters.forEach(filterId => {
+            const filter = document.getElementById(filterId);
+            if (filter) {
+                filter.addEventListener('change', () => {
+                    this.applyFlagsFilters();
+                });
+            }
+        });
+        
+        // Export CSV button
+        const exportBtn = document.getElementById('exportFlagsBtn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => {
+                this.exportFlagsCSV();
+            });
+        }
+        
+        // Close flag detail modal
+        const closeBtn = document.getElementById('closeFlagDetailModal');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                const modal = document.getElementById('flagDetailModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                    modal.classList.remove('active');
+                }
+            });
+        }
+    }
+
+    // Apply flags filters
+    applyFlagsFilters() {
+        if (typeof loadJson === 'undefined') return;
+        
+        const flags = loadJson('journalFlags', []);
+        const severityFilter = document.getElementById('flagsSeverityFilter')?.value || 'all';
+        const gradeFilter = document.getElementById('flagsGradeFilter')?.value || 'all';
+        const houseFilter = document.getElementById('flagsHouseFilter')?.value || 'all';
+        const ghostFilter = document.getElementById('flagsGhostFilter')?.value || 'all';
+        const statusFilter = document.getElementById('flagsStatusFilter')?.value || 'all';
+        
+        let filtered = flags.filter(flag => {
+            if (severityFilter !== 'all' && flag.severity !== severityFilter) return false;
+            if (gradeFilter !== 'all' && flag.grade !== gradeFilter) return false;
+            if (houseFilter !== 'all' && flag.house !== houseFilter) return false;
+            if (ghostFilter !== 'all' && String(flag.ghost) !== ghostFilter) return false;
+            if (statusFilter !== 'all' && flag.status !== statusFilter) return false;
+            return true;
+        });
+        
+        this.renderFlags(filtered);
+    }
+
+    // Export flags to CSV
+    exportFlagsCSV() {
+        if (typeof loadJson === 'undefined') return;
+        
+        const flags = loadJson('journalFlags', []);
+        if (flags.length === 0) {
+            this.showMessage('No flags to export.', 'info');
+            return;
+        }
+        
+        // CSV header
+        const headers = ['Created At', 'Severity', 'Status', 'Grade', 'House', 'Ghost', 'Student Name', 'Matches (Red)', 'Matches (Amber)', 'Matches (Yellow)', 'Entry Text'];
+        
+        // CSV rows
+        const rows = flags.map(flag => {
+            const date = new Date(flag.createdAt).toLocaleString();
+            const redMatches = (flag.matches.red || []).join('|');
+            const amberMatches = (flag.matches.amber || []).join('|');
+            const yellowMatches = (flag.matches.yellow || []).join('|');
+            const entryText = (flag.entryText || '').replace(/"/g, '""'); // Escape quotes
+            
+            return [
+                date,
+                flag.severity,
+                flag.status,
+                flag.grade || '',
+                flag.house || '',
+                flag.ghost ? 'Yes' : 'No',
+                flag.studentName || '',
+                redMatches,
+                amberMatches,
+                yellowMatches,
+                `"${entryText}"`
+            ];
+        });
+        
+        // Combine header and rows
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.join(','))
+        ].join('\n');
+        
+        // Create download link
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `journal_flags_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        this.showMessage('Flags exported successfully.', 'success');
     }
 
     // Update director date and time display

@@ -814,6 +814,78 @@
                             <p style="text-align: center; color: #666; padding: 2rem;">Loading journal entries...</p>
                         </div>
                     </div>
+
+                    <!-- Flags Section -->
+                    <div class="director-flags-section">
+                        <div class="flags-section-header">
+                            <h2>🚩 Flagged Journal Entries</h2>
+                            <div class="flags-header-actions">
+                                <button class="btn-export-flags" id="exportFlagsBtn">📥 Export CSV</button>
+                            </div>
+                        </div>
+                        <div class="flags-tabs">
+                            <button class="flags-tab active" data-tab="flags">Flags</button>
+                            <button class="flags-tab" data-tab="events">Events</button>
+                        </div>
+                        <div class="flags-filters" id="flagsFilters">
+                            <select id="flagsSeverityFilter" class="flags-filter">
+                                <option value="all">All Severities</option>
+                                <option value="red">🔴 Red</option>
+                                <option value="amber">🟠 Amber</option>
+                                <option value="yellow">🟡 Yellow</option>
+                            </select>
+                            <select id="flagsGradeFilter" class="flags-filter">
+                                <option value="all">All Grades</option>
+                                <option value="5">Grade 5</option>
+                                <option value="6">Grade 6</option>
+                                <option value="7">Grade 7</option>
+                            </select>
+                            <select id="flagsHouseFilter" class="flags-filter">
+                                <option value="all">All Houses</option>
+                                <option value="Bavin">Bavin</option>
+                                <option value="Bishops">Bishops</option>
+                                <option value="Dodson">Dodson</option>
+                                <option value="Mirfield">Mirfield</option>
+                                <option value="Sage">Sage</option>
+                            </select>
+                            <select id="flagsGhostFilter" class="flags-filter">
+                                <option value="all">All</option>
+                                <option value="true">Ghost Mode</option>
+                                <option value="false">Named</option>
+                            </select>
+                            <select id="flagsStatusFilter" class="flags-filter">
+                                <option value="all">All Statuses</option>
+                                <option value="new">New</option>
+                                <option value="viewed">Viewed</option>
+                                <option value="followed_up">Followed Up</option>
+                            </select>
+                        </div>
+                        <div class="flags-content">
+                            <div class="flags-tab-content active" id="flagsTabContent">
+                                <div class="flags-list" id="flagsList">
+                                    <p style="text-align: center; color: #666; padding: 2rem;">Loading flags...</p>
+                                </div>
+                            </div>
+                            <div class="flags-tab-content" id="eventsTabContent">
+                                <div class="events-list" id="eventsList">
+                                    <p style="text-align: center; color: #666; padding: 2rem;">Loading events...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Flag Detail Modal -->
+            <div id="flagDetailModal" class="modal">
+                <div class="modal-content flag-detail-modal">
+                    <div class="modal-header">
+                        <h3>🚩 Flagged Entry Details</h3>
+                        <button class="close-btn" id="closeFlagDetailModal">&times;</button>
+                    </div>
+                    <div class="modal-body" id="flagDetailContent">
+                        <!-- Flag details will be populated here -->
+                    </div>
                 </div>
             </div>
 
@@ -1666,6 +1738,8 @@
     </div>
 
     <!-- API is same-origin by default. If the app is served elsewhere (e.g. Live Server on :3000), set window.REACT_API_BASE to the backend URL (e.g. "http://localhost:3001") before loading app-api.js. -->
+    <script src="utils/storage.js"></script>
+    <script src="utils/flagging.js"></script>
     <script src="app-api.js"></script>
 </body>
 </html>

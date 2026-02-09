@@ -1,0 +1,107 @@
+{
+  "red": {
+    "direct": [
+      "kill myself",
+      "want to die",
+      "end it all",
+      "suicide",
+      "self harm",
+      "self-harm",
+      "hurt myself",
+      "cut myself",
+      "cutting",
+      "overdose",
+      "jump off",
+      "hang myself",
+      "not worth living",
+      "better off dead"
+    ],
+    "hopelessness": [
+      "i can't go on",
+      "cant go on",
+      "there's no point",
+      "theres no point",
+      "nothing matters anymore",
+      "i don't want to be here",
+      "i dont want to be here",
+      "everyone would be better without me"
+    ]
+  },
+  "amber": {
+    "distress": [
+      "depressed",
+      "hopeless",
+      "helpless",
+      "empty",
+      "numb",
+      "worthless",
+      "useless",
+      "alone",
+      "lonely",
+      "invisible",
+      "nobody cares",
+      "breaking down",
+      "losing control",
+      "freaking out",
+      "panic",
+      "panicking",
+      "can't breathe",
+      "cant breathe",
+      "overwhelmed"
+    ],
+    "anger_violence": [
+      "rage",
+      "furious",
+      "hate everything",
+      "out of control",
+      "want to smash",
+      "want to hurt someone",
+      "hurt someone"
+    ],
+    "home_safety": [
+      "scared at home",
+      "don't like being at home",
+      "dont like being at home",
+      "fighting at home",
+      "parents fighting",
+      "angry parents",
+      "shouting",
+      "always arguing",
+      "feel unsafe",
+      "unsafe at home",
+      "no one listens at home"
+    ],
+    "social": [
+      "bullied",
+      "bullying",
+      "teased",
+      "picked on",
+      "laughed at",
+      "excluded",
+      "left out",
+      "ganged up on",
+      "no friends",
+      "everyone hates me",
+      "ignored",
+      "betrayed"
+    ]
+  },
+  "yellow": {
+    "burnout": [
+      "exhausted",
+      "burned out",
+      "burnt out",
+      "drained",
+      "can't keep up",
+      "cant keep up",
+      "too much work",
+      "never rest",
+      "always tired",
+      "pressure"
+    ],
+    "absolutes": [
+      "always",
+      "never"
+    ]
+  }
+}
