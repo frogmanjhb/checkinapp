@@ -1701,6 +1701,9 @@ class MoodCheckInApp {
         this.loadDirectorFlags();
         this.setupFlagsHandlers();
         
+        // Scan existing journal entries for flags (retroactive)
+        this.scanExistingJournalEntries();
+        
         if (this.pluginSettings.messageCenterEnabled) {
             this.updateUnreadCount();
             this.updateNavUnreadCount();
@@ -4166,6 +4169,95 @@ class MoodCheckInApp {
             if (journalList) {
                 journalList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Error loading journal entries.</p>';
             }
+        }
+    }
+
+    // Scan existing journal entries retroactively for flags
+    async scanExistingJournalEntries() {
+        if (typeof processJournalEntryFlagging === 'undefined' || typeof loadJson === 'undefined' || typeof saveJson === 'undefined') {
+            console.warn('Flagging utilities not loaded');
+            return;
+        }
+        
+        try {
+            // Get all journal entries - use a period that returns all entries
+            // Try 'all' first, if that doesn't work, we'll fetch without period filter
+            let journalResponse = await APIUtils.getAllJournalEntries('all');
+            
+            // If 'all' doesn't work, try fetching with a very old date or modify the API call
+            // For now, let's try monthly which should get more entries
+            if (!journalResponse.success) {
+                journalResponse = await APIUtils.getAllJournalEntries('monthly');
+            }
+            
+            if (!journalResponse.success || !journalResponse.entries || journalResponse.entries.length === 0) {
+                return;
+            }
+            
+            // Get existing flags to avoid duplicates
+            const existingFlags = loadJson('journalFlags', []);
+            
+            let newFlagsCount = 0;
+            const newFlags = [];
+            
+            // Process each entry
+            for (const entry of journalResponse.entries) {
+                // Skip if not a student entry
+                if (entry.user_type !== 'student') {
+                    continue;
+                }
+                
+                // Check if this entry is already flagged
+                // We'll match by checking if there's a flag with same entry text and user ID
+                const entryTimestamp = new Date(entry.timestamp).toISOString();
+                const alreadyFlagged = existingFlags.some(flag => 
+                    flag.studentId === entry.user_id && 
+                    flag.entryText === entry.entry &&
+                    Math.abs(new Date(flag.createdAt).getTime() - new Date(entryTimestamp).getTime()) < 60000 // Within 1 minute
+                );
+                
+                if (alreadyFlagged) {
+                    continue;
+                }
+                
+                // Create user object for flagging
+                const user = {
+                    id: entry.user_id,
+                    first_name: entry.first_name || '',
+                    surname: entry.surname || '',
+                    class: entry.class || '',
+                    house: entry.house || '',
+                    user_type: entry.user_type || 'student'
+                };
+                
+                // Process flagging (ghost mode unknown for old entries, default to false)
+                const flag = await processJournalEntryFlagging(entry.entry, user, false);
+                if (flag) {
+                    // Add entry ID and timestamp to flag for tracking
+                    flag.entryId = entry.id;
+                    flag.entryTimestamp = entry.timestamp;
+                    newFlags.push(flag);
+                    newFlagsCount++;
+                }
+            }
+            
+            if (newFlagsCount > 0) {
+                console.log(`Retroactively flagged ${newFlagsCount} existing journal entries`);
+                // Save all new flags at once
+                const allFlags = loadJson('journalFlags', []);
+                allFlags.push(...newFlags);
+                saveJson('journalFlags', allFlags);
+                
+                // Apply frequency escalation for each new flag
+                for (const flag of newFlags) {
+                    applyFrequencyRules(flag.studentId, flag.severity);
+                }
+                
+                // Reload flags display
+                this.loadDirectorFlags();
+            }
+        } catch (error) {
+            console.error('Error scanning existing journal entries:', error);
         }
     }
 

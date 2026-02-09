@@ -1550,6 +1550,9 @@ app.get('/api/director/all-journal-entries', async (req, res) => {
       whereClause = 'WHERE je.timestamp >= CURRENT_DATE - INTERVAL \'7 days\'';
     } else if (period === 'monthly') {
       whereClause = 'WHERE je.timestamp >= CURRENT_DATE - INTERVAL \'30 days\'';
+    } else if (period === 'all') {
+      // No time filter - get all entries
+      whereClause = '';
     }
     
     const result = await pool.query(

@@ -335,8 +335,13 @@ function applyFrequencyRules(studentId, newSeverity) {
 /**
  * Process journal entry and create flag if needed
  * Called after journal entry is successfully saved
+ * @param {string} entryText - The journal entry text
+ * @param {Object} user - User object with id, first_name, surname, class, house, user_type
+ * @param {boolean} isGhostMode - Whether ghost mode was enabled
+ * @param {boolean} skipSave - If true, don't save to localStorage (for testing/scanning)
+ * @returns {Object|null} Flag record or null if no flag needed
  */
-async function processJournalEntryFlagging(entryText, user, isGhostMode = false) {
+async function processJournalEntryFlagging(entryText, user, isGhostMode = false, skipSave = false) {
     try {
         const flag = await createFlagRecord(entryText, user, isGhostMode);
         
@@ -344,13 +349,15 @@ async function processJournalEntryFlagging(entryText, user, isGhostMode = false)
             return null; // No flag needed
         }
         
-        // Save flag to localStorage
-        const flags = loadJson('journalFlags', []);
-        flags.push(flag);
-        saveJson('journalFlags', flags);
-        
-        // Apply frequency escalation rules
-        applyFrequencyRules(user.id, flag.severity);
+        // Save flag to localStorage unless skipSave is true
+        if (!skipSave) {
+            const flags = loadJson('journalFlags', []);
+            flags.push(flag);
+            saveJson('journalFlags', flags);
+            
+            // Apply frequency escalation rules
+            applyFrequencyRules(user.id, flag.severity);
+        }
         
         return flag;
     } catch (error) {
