@@ -1183,6 +1183,87 @@ app.get('/api/all-mood-checkins', async (req, res) => {
   }
 });
 
+// Update teacher's class assignment
+app.put('/api/teacher/class/:teacherId', async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const { className } = req.body;
+    
+    if (!teacherId) {
+      return res.status(400).json({ success: false, error: 'Missing teacher ID' });
+    }
+    
+    // Verify teacher exists and is a teacher
+    const teacherResult = await pool.query('SELECT id, user_type FROM users WHERE id = $1', [teacherId]);
+    if (teacherResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Teacher not found' });
+    }
+    if (teacherResult.rows[0].user_type !== 'teacher') {
+      return res.status(400).json({ success: false, error: 'User is not a teacher' });
+    }
+    
+    // Update the teacher's class
+    const updateResult = await pool.query(
+      'UPDATE users SET class = $1, updated_at = NOW() WHERE id = $2 RETURNING id, first_name, surname, class, house',
+      [className || null, teacherId]
+    );
+    
+    res.json({ success: true, teacher: updateResult.rows[0] });
+  } catch (error) {
+    console.error('Update teacher class error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get mood check-ins for teacher's class
+app.get('/api/teacher/class-checkins/:teacherId', async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const { period = 'daily' } = req.query;
+    
+    // Get teacher's class
+    const teacherResult = await pool.query(
+      'SELECT class FROM users WHERE id = $1 AND user_type = $2',
+      [teacherId, 'teacher']
+    );
+    
+    if (teacherResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Teacher not found' });
+    }
+    
+    const teacherClass = teacherResult.rows[0].class;
+    
+    if (!teacherClass) {
+      return res.json({ success: true, checkins: [], message: 'Teacher has no class assigned' });
+    }
+    
+    // Build time filter
+    let timeFilter = '';
+    if (period === 'daily') {
+      timeFilter = 'AND mc.timestamp >= CURRENT_DATE';
+    } else if (period === 'weekly') {
+      timeFilter = 'AND mc.timestamp >= CURRENT_DATE - INTERVAL \'7 days\'';
+    } else if (period === 'monthly') {
+      timeFilter = 'AND mc.timestamp >= CURRENT_DATE - INTERVAL \'30 days\'';
+    }
+    
+    // Get check-ins for students in teacher's class
+    const result = await pool.query(
+      `SELECT mc.*, u.first_name, u.surname, u.class, u.house, u.user_type
+       FROM mood_checkins mc 
+       JOIN users u ON mc.user_id = u.id 
+       WHERE u.user_type = 'student' AND u.class = $1 ${timeFilter}
+       ORDER BY mc.timestamp DESC`,
+      [teacherClass]
+    );
+    
+    res.json({ success: true, checkins: result.rows, className: teacherClass });
+  } catch (error) {
+    console.error('Teacher class check-ins error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Journal entry endpoints (students: 1 per day)
 app.post('/api/journal-entry', async (req, res) => {
   try {

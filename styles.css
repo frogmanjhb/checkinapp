@@ -3345,6 +3345,24 @@ body {
     }
 }
 
+/* Teacher Class Section */
+.teacher-class-section {
+    grid-column: 1;
+    grid-row: 3;
+}
+
+.teacher-class-display {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.class-hint {
+    font-size: 12px;
+    color: #666;
+    margin-top: 8px;
+}
+
 /* Your Students Section */
 .student-filters-section {
     grid-column: 2;
@@ -3709,6 +3727,168 @@ body {
     .house-analytics-section {
         grid-column: 1;
         grid-row: 5;
+    }
+    
+    .teacher-class-checkins-section {
+        grid-column: 1;
+        grid-row: 6;
+    }
+}
+
+/* Teacher Class Check-ins Section */
+.teacher-class-checkins-section {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    margin-top: 1rem;
+}
+
+.class-checkins-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.class-checkins-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #2c3e50;
+}
+
+.period-filter {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.period-btn {
+    padding: 0.5rem 1rem;
+    border: 2px solid #e1e5e9;
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #666;
+    transition: all 0.3s ease;
+}
+
+.period-btn:hover {
+    border-color: #2196F3;
+    color: #2196F3;
+}
+
+.period-btn.active {
+    background: #2196F3;
+    color: white;
+    border-color: #2196F3;
+}
+
+.class-checkins-list {
+    max-height: 500px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.class-checkin-item {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.5rem;
+    border-left: 4px solid #2196F3;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.class-checkin-item:hover {
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.checkin-student-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.checkin-mood-emoji {
+    font-size: 2rem;
+}
+
+.checkin-student-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.checkin-student-name {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 1.1rem;
+}
+
+.checkin-student-meta {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.checkin-details {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+}
+
+.checkin-mood {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 1rem;
+}
+
+.checkin-time {
+    font-size: 0.85rem;
+    color: #999;
+}
+
+/* Teacher Class Modal */
+.teacher-class-modal {
+    max-width: 500px;
+}
+
+.teacher-class-modal .form-select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: white;
+    cursor: pointer;
+}
+
+.teacher-class-modal .form-select:focus {
+    outline: none;
+    border-color: #2196F3;
+}
+
+@media (max-width: 768px) {
+    .class-checkins-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .class-checkin-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .checkin-details {
+        align-items: flex-start;
+        width: 100%;
     }
 }
 

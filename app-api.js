@@ -229,6 +229,18 @@ class APIUtils {
         });
     }
 
+    // Teacher class management
+    static async updateTeacherClass(teacherId, className) {
+        return this.makeRequest(`/teacher/class/${teacherId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ className })
+        });
+    }
+
+    static async getTeacherClassCheckins(teacherId, period = 'daily') {
+        return this.makeRequest(`/teacher/class-checkins/${teacherId}?period=${period}`);
+    }
+
     // Delete individual student
     static async deleteStudent(directorUserId, studentId) {
         return this.makeRequest(`/director/student/${studentId}`, {
@@ -1636,6 +1648,10 @@ class MoodCheckInApp {
         this.updateTeacherJournalList();
         this.updateGradeAnalytics();
         this.updateTeacherStatusDisplay();
+        
+        // Update teacher class display and load check-ins
+        this.updateTeacherClassDisplay();
+        this.loadTeacherClassCheckins('daily');
         
         // Update teacher filters with a delay to ensure DOM is ready
         setTimeout(() => {
@@ -5152,6 +5168,46 @@ class MoodCheckInApp {
                 }
             });
         }
+
+        // Teacher Class Selection Modal
+        const teacherClassButton = document.getElementById('teacherClassButton');
+        if (teacherClassButton) {
+            teacherClassButton.addEventListener('click', () => this.openTeacherClassModal());
+        }
+
+        const closeTeacherClassModal = document.getElementById('closeTeacherClassModal');
+        if (closeTeacherClassModal) {
+            closeTeacherClassModal.addEventListener('click', () => this.closeTeacherClassModal());
+        }
+
+        const teacherClassModal = document.getElementById('teacherClassModal');
+        if (teacherClassModal) {
+            teacherClassModal.addEventListener('click', (e) => {
+                if (e.target === teacherClassModal) {
+                    this.closeTeacherClassModal();
+                }
+            });
+        }
+
+        const cancelTeacherClassBtn = document.getElementById('cancelTeacherClassBtn');
+        if (cancelTeacherClassBtn) {
+            cancelTeacherClassBtn.addEventListener('click', () => this.closeTeacherClassModal());
+        }
+
+        const saveTeacherClassBtn = document.getElementById('saveTeacherClassBtn');
+        if (saveTeacherClassBtn) {
+            saveTeacherClassBtn.addEventListener('click', () => this.saveTeacherClass());
+        }
+
+        // Period filter buttons for class check-ins (delegated event listener)
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('period-btn') && e.target.dataset.period) {
+                if (this.currentUser && this.currentUser.user_type === 'teacher') {
+                    const period = e.target.dataset.period;
+                    this.loadTeacherClassCheckins(period);
+                }
+            }
+        });
     }
 
     async openDirectorProfileModal() {
@@ -8144,6 +8200,201 @@ function updateAnalyticsDisplays(houseFilter, gradeFilter) {
         element.textContent = moodEmojis[randomMood] || '😊';
     });
 }
+
+    // Teacher Class Management
+    async updateTeacherClassDisplay() {
+        if (!this.currentUser || this.currentUser.user_type !== 'teacher') return;
+        
+        const teacherClassDisplay = document.getElementById('teacherClassDisplay');
+        const teacherClassHint = document.getElementById('teacherClassHint');
+        
+        if (teacherClassDisplay) {
+            const className = this.currentUser.class || 'Not Set';
+            teacherClassDisplay.textContent = `Class: ${className}`;
+        }
+        
+        if (teacherClassHint) {
+            if (this.currentUser.class) {
+                teacherClassHint.textContent = `Viewing check-ins for ${this.currentUser.class}`;
+            } else {
+                teacherClassHint.textContent = 'Select your class to view student check-ins';
+            }
+        }
+    }
+
+    async openTeacherClassModal() {
+        if (!this.currentUser || this.currentUser.user_type !== 'teacher') return;
+        
+        const modal = document.getElementById('teacherClassModal');
+        const classSelect = document.getElementById('teacherClassSelect');
+        
+        if (!modal || !classSelect) return;
+        
+        // Load available classes
+        try {
+            const response = await APIUtils.getClassNames();
+            if (response.success && response.classNames) {
+                classSelect.innerHTML = '<option value="">-- Select a class --</option>';
+                response.classNames.forEach(className => {
+                    const option = document.createElement('option');
+                    option.value = className;
+                    option.textContent = className;
+                    if (this.currentUser.class === className) {
+                        option.selected = true;
+                    }
+                    classSelect.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Failed to load class names:', error);
+            this.showMessage('Failed to load classes', 'error');
+        }
+        
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+    }
+
+    closeTeacherClassModal() {
+        const modal = document.getElementById('teacherClassModal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        }
+    }
+
+    async saveTeacherClass() {
+        if (!this.currentUser || this.currentUser.user_type !== 'teacher') return;
+        
+        const classSelect = document.getElementById('teacherClassSelect');
+        if (!classSelect) return;
+        
+        const className = classSelect.value;
+        
+        try {
+            const response = await APIUtils.updateTeacherClass(this.currentUser.id, className);
+            if (response.success) {
+                // Update current user
+                this.currentUser.class = className;
+                // Update display
+                this.updateTeacherClassDisplay();
+                // Reload check-ins
+                this.loadTeacherClassCheckins('daily');
+                // Close modal
+                this.closeTeacherClassModal();
+                this.showMessage('Class updated successfully', 'success');
+            } else {
+                this.showMessage(response.error || 'Failed to update class', 'error');
+            }
+        } catch (error) {
+            console.error('Failed to update teacher class:', error);
+            this.showMessage('Failed to update class', 'error');
+        }
+    }
+
+    async loadTeacherClassCheckins(period = 'daily') {
+        if (!this.currentUser || this.currentUser.user_type !== 'teacher') return;
+        
+        if (!this.currentUser.class) {
+            // Hide check-ins section if no class is set
+            const section = document.getElementById('teacherClassCheckinsSection');
+            if (section) {
+                section.style.display = 'none';
+            }
+            return;
+        }
+        
+        const section = document.getElementById('teacherClassCheckinsSection');
+        const checkinsList = document.getElementById('classCheckinsList');
+        const classNameDisplay = document.getElementById('classCheckinsClassName');
+        
+        if (!section || !checkinsList) return;
+        
+        // Show section
+        section.style.display = 'block';
+        
+        // Update period buttons in the class check-ins section
+        const checkinsSection = document.getElementById('teacherClassCheckinsSection');
+        if (checkinsSection) {
+            checkinsSection.querySelectorAll('.period-btn').forEach(btn => {
+                if (btn.dataset.period === period) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+        
+        // Update class name display
+        if (classNameDisplay) {
+            classNameDisplay.textContent = this.currentUser.class;
+        }
+        
+        // Show loading
+        checkinsList.innerHTML = '<p class="loading-text">Loading check-ins...</p>';
+        
+        try {
+            const response = await APIUtils.getTeacherClassCheckins(this.currentUser.id, period);
+            if (response.success) {
+                const checkins = response.checkins || [];
+                
+                if (checkins.length === 0) {
+                    checkinsList.innerHTML = '<p class="loading-text">No check-ins found for this period.</p>';
+                    return;
+                }
+                
+                // Group check-ins by student
+                const checkinsByStudent = {};
+                checkins.forEach(checkin => {
+                    const studentId = checkin.user_id;
+                    if (!checkinsByStudent[studentId]) {
+                        checkinsByStudent[studentId] = {
+                            student: {
+                                first_name: checkin.first_name,
+                                surname: checkin.surname,
+                                class: checkin.class,
+                                house: checkin.house
+                            },
+                            checkins: []
+                        };
+                    }
+                    checkinsByStudent[studentId].checkins.push(checkin);
+                });
+                
+                // Render check-ins
+                checkinsList.innerHTML = Object.values(checkinsByStudent).map(({ student, checkins }) => {
+                    const latestCheckin = checkins[0]; // Already sorted by timestamp DESC
+                    const moodEmojis = {
+                        'Happy': '😊', 'Excited': '🤩', 'Calm': '😌', 'Tired': '😴',
+                        'Anxious': '😰', 'Sad': '😢', 'Angry': '😠', 'Confused': '😕'
+                    };
+                    const moodEmoji = moodEmojis[latestCheckin.mood] || '😊';
+                    const timestamp = new Date(latestCheckin.timestamp);
+                    const timeStr = timestamp.toLocaleString();
+                    
+                    return `
+                        <div class="class-checkin-item">
+                            <div class="checkin-student-info">
+                                <span class="checkin-mood-emoji">${moodEmoji}</span>
+                                <div class="checkin-student-details">
+                                    <span class="checkin-student-name">${student.first_name} ${student.surname}</span>
+                                    <span class="checkin-student-meta">${student.class || ''} ${student.house || ''}</span>
+                                </div>
+                            </div>
+                            <div class="checkin-details">
+                                <span class="checkin-mood">${latestCheckin.mood}</span>
+                                <span class="checkin-time">${timeStr}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                checkinsList.innerHTML = '<p class="loading-text">Failed to load check-ins.</p>';
+            }
+        } catch (error) {
+            console.error('Failed to load teacher class check-ins:', error);
+            checkinsList.innerHTML = '<p class="loading-text">Failed to load check-ins.</p>';
+        }
+    }
 
 // Initialize the app when the page loads
 document.addEventListener('DOMContentLoaded', () => {

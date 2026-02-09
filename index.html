@@ -475,6 +475,22 @@
                             </div>
                         </div>
 
+                        <!-- Teacher Class Section -->
+                        <div class="teacher-class-section">
+                            <div class="filters-card">
+                                <h3>Your Class</h3>
+                                <div class="teacher-class-display">
+                                    <button class="student-info-button" id="teacherClassButton">
+                                        <span id="teacherClassDisplay">Class: Not Set</span>
+                                        <span class="button-arrow">▼</span>
+                                    </button>
+                                    <p class="class-hint" id="teacherClassHint" style="margin-top: 8px; font-size: 12px; color: #666;">
+                                        Select your class to view student check-ins
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Your Students Section -->
                         <div class="student-filters-section">
                             <div class="filters-card">
@@ -496,6 +512,24 @@
                                     <div class="student-list" id="studentListContent">
                                         <!-- Student list will be populated here -->
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Class Check-ins Section -->
+                        <div class="teacher-class-checkins-section" id="teacherClassCheckinsSection" style="display: none;">
+                            <div class="analytics-card">
+                                <h3>Class Check-ins</h3>
+                                <div class="class-checkins-header">
+                                    <span id="classCheckinsTitle">Check-ins for <span id="classCheckinsClassName"></span></span>
+                                    <div class="period-filter">
+                                        <button class="period-btn active" data-period="daily">Daily</button>
+                                        <button class="period-btn" data-period="weekly">Weekly</button>
+                                        <button class="period-btn" data-period="monthly">Monthly</button>
+                                    </div>
+                                </div>
+                                <div class="class-checkins-list" id="classCheckinsList">
+                                    <!-- Class check-ins will be populated here -->
                                 </div>
                             </div>
                         </div>
@@ -1617,6 +1651,30 @@
                 </div>
                 <div class="student-credentials-list" id="studentCredentialsList">
                     <p class="loading-text">Loading students...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Teacher Class Selection Modal -->
+    <div id="teacherClassModal" class="modal">
+        <div class="modal-content teacher-class-modal">
+            <div class="modal-header">
+                <h3>📚 Select Your Class</h3>
+                <button class="modal-close" id="closeTeacherClassModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="profile-section-desc">Choose the class you teach to view student check-ins for that class.</p>
+                <div class="form-group">
+                    <label for="teacherClassSelect">Class</label>
+                    <select id="teacherClassSelect" class="form-select">
+                        <option value="">-- Select a class --</option>
+                        <!-- Class options will be populated dynamically -->
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="cancelTeacherClassBtn" class="btn-secondary">Cancel</button>
+                    <button type="button" id="saveTeacherClassBtn" class="btn-primary">Save</button>
                 </div>
             </div>
         </div>
