@@ -359,7 +359,7 @@ async function processJournalEntryFlagging(entryText, user, isGhostMode = false)
     }
 }
 
-// Export functions for use in other files
+// Export functions for use in other files (Node.js)
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         normalise,
@@ -370,4 +370,12 @@ if (typeof module !== 'undefined' && module.exports) {
         processJournalEntryFlagging,
         loadFlagKeywords
     };
+}
+
+// Make functions globally available in browser
+if (typeof window !== 'undefined') {
+    window.processJournalEntryFlagging = processJournalEntryFlagging;
+    window.detectMatches = detectMatches;
+    window.normalise = normalise;
+    window.computeSeverity = computeSeverity;
 }

@@ -59,7 +59,7 @@ function clearFlaggingData() {
     removeJson('flagEvents');
 }
 
-// Export functions for use in other files
+// Export functions for use in other files (Node.js)
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         loadJson,
@@ -67,4 +67,12 @@ if (typeof module !== 'undefined' && module.exports) {
         removeJson,
         clearFlaggingData
     };
+}
+
+// Make functions globally available in browser
+if (typeof window !== 'undefined') {
+    window.loadJson = loadJson;
+    window.saveJson = saveJson;
+    window.removeJson = removeJson;
+    window.clearFlaggingData = clearFlaggingData;
 }
