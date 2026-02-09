@@ -8140,67 +8140,6 @@ async function updateTeacherAnalyticsWithFilters(houseFilter, gradeFilter) {
     }
 }
 
-// Update analytics displays with mock data
-function updateAnalyticsDisplays(houseFilter, gradeFilter) {
-    const moods = ['Happy', 'Excited', 'Calm', 'Tired', 'Anxious', 'Sad', 'Angry', 'Confused'];
-    const randomMood = moods[Math.floor(Math.random() * moods.length)];
-    const moodEmojis = {
-        'Happy': '😊', 'Excited': '🤩', 'Calm': '😌', 'Tired': '😴',
-        'Anxious': '😰', 'Sad': '😢', 'Angry': '😠', 'Confused': '😕'
-    };
-
-    // Update student analytics
-    const studentHighestMood = document.getElementById('studentHighestMood');
-    const studentAnalyticsContent = document.getElementById('studentAnalyticsContent');
-    if (studentHighestMood) {
-        studentHighestMood.textContent = randomMood;
-    }
-    if (studentAnalyticsContent) {
-        studentAnalyticsContent.innerHTML = `
-            <div style="text-align: center; color: #666;">
-                <p>Total students: ${Math.floor(Math.random() * 50) + 20}</p>
-                <p>Check-ins today: ${Math.floor(Math.random() * 30) + 10}</p>
-            </div>
-        `;
-    }
-
-    // Update grade analytics
-    const gradeHighestMood = document.getElementById('gradeHighestMood');
-    const gradeAnalyticsContent = document.getElementById('gradeAnalyticsContent');
-    if (gradeHighestMood) {
-        gradeHighestMood.textContent = randomMood;
-    }
-    if (gradeAnalyticsContent) {
-        gradeAnalyticsContent.innerHTML = `
-            <div style="text-align: center; color: #666;">
-                <p>Grade: ${gradeFilter}</p>
-                <p>Average mood: ${randomMood}</p>
-            </div>
-        `;
-    }
-
-    // Update house analytics
-    const houseHighestMood = document.getElementById('houseHighestMood');
-    const houseAnalyticsContent = document.getElementById('houseAnalyticsContent');
-    if (houseHighestMood) {
-        houseHighestMood.textContent = randomMood;
-    }
-    if (houseAnalyticsContent) {
-        houseAnalyticsContent.innerHTML = `
-            <div style="text-align: center; color: #666;">
-                <p>House: ${houseFilter}</p>
-                <p>Average mood: ${randomMood}</p>
-            </div>
-        `;
-    }
-
-    // Update mood emojis
-    const moodEmojiElements = document.querySelectorAll('.mood-emoji-large');
-    moodEmojiElements.forEach(element => {
-        element.textContent = moodEmojis[randomMood] || '😊';
-    });
-}
-
     // Teacher Class Management
     async updateTeacherClassDisplay() {
         if (!this.currentUser || this.currentUser.user_type !== 'teacher') return;
@@ -8313,9 +8252,8 @@ function updateAnalyticsDisplays(houseFilter, gradeFilter) {
         section.style.display = 'block';
         
         // Update period buttons in the class check-ins section
-        const checkinsSection = document.getElementById('teacherClassCheckinsSection');
-        if (checkinsSection) {
-            checkinsSection.querySelectorAll('.period-btn').forEach(btn => {
+        if (section) {
+            section.querySelectorAll('.period-btn').forEach(btn => {
                 if (btn.dataset.period === period) {
                     btn.classList.add('active');
                 } else {
@@ -8395,6 +8333,68 @@ function updateAnalyticsDisplays(houseFilter, gradeFilter) {
             checkinsList.innerHTML = '<p class="loading-text">Failed to load check-ins.</p>';
         }
     }
+}
+
+// Update analytics displays with mock data
+function updateAnalyticsDisplays(houseFilter, gradeFilter) {
+    const moods = ['Happy', 'Excited', 'Calm', 'Tired', 'Anxious', 'Sad', 'Angry', 'Confused'];
+    const randomMood = moods[Math.floor(Math.random() * moods.length)];
+    const moodEmojis = {
+        'Happy': '😊', 'Excited': '🤩', 'Calm': '😌', 'Tired': '😴',
+        'Anxious': '😰', 'Sad': '😢', 'Angry': '😠', 'Confused': '😕'
+    };
+
+    // Update student analytics
+    const studentHighestMood = document.getElementById('studentHighestMood');
+    const studentAnalyticsContent = document.getElementById('studentAnalyticsContent');
+    if (studentHighestMood) {
+        studentHighestMood.textContent = randomMood;
+    }
+    if (studentAnalyticsContent) {
+        studentAnalyticsContent.innerHTML = `
+            <div style="text-align: center; color: #666;">
+                <p>Total students: ${Math.floor(Math.random() * 50) + 20}</p>
+                <p>Check-ins today: ${Math.floor(Math.random() * 30) + 10}</p>
+            </div>
+        `;
+    }
+
+    // Update grade analytics
+    const gradeHighestMood = document.getElementById('gradeHighestMood');
+    const gradeAnalyticsContent = document.getElementById('gradeAnalyticsContent');
+    if (gradeHighestMood) {
+        gradeHighestMood.textContent = randomMood;
+    }
+    if (gradeAnalyticsContent) {
+        gradeAnalyticsContent.innerHTML = `
+            <div style="text-align: center; color: #666;">
+                <p>Grade: ${gradeFilter}</p>
+                <p>Average mood: ${randomMood}</p>
+            </div>
+        `;
+    }
+
+    // Update house analytics
+    const houseHighestMood = document.getElementById('houseHighestMood');
+    const houseAnalyticsContent = document.getElementById('houseAnalyticsContent');
+    if (houseHighestMood) {
+        houseHighestMood.textContent = randomMood;
+    }
+    if (houseAnalyticsContent) {
+        houseAnalyticsContent.innerHTML = `
+            <div style="text-align: center; color: #666;">
+                <p>House: ${houseFilter}</p>
+                <p>Average mood: ${randomMood}</p>
+            </div>
+        `;
+    }
+
+    // Update mood emojis
+    const moodEmojiElements = document.querySelectorAll('.mood-emoji-large');
+    moodEmojiElements.forEach(element => {
+        element.textContent = moodEmojis[randomMood] || '😊';
+    });
+}
 
 // Initialize the app when the page loads
 document.addEventListener('DOMContentLoaded', () => {
