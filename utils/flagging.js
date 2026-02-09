@@ -361,17 +361,60 @@ function applyFrequencyRules(studentId, newSeverity) {
 }
 
 /**
+ * Generate a unique key for a flag to prevent duplicates
+ */
+function generateFlagKey(entryText, userId, entryTimestamp) {
+    // Create a hash-like key from entry text, user ID, and timestamp
+    const timestamp = entryTimestamp ? new Date(entryTimestamp).toISOString() : new Date().toISOString();
+    return `${userId}_${timestamp}_${entryText.substring(0, 50).replace(/\s+/g, '_')}`;
+}
+
+/**
+ * Check if a flag already exists for this entry
+ */
+function flagExists(flags, entryText, userId, entryTimestamp, entryId) {
+    // Check by entry ID if available
+    if (entryId) {
+        const existsById = flags.some(f => f.entryId === entryId);
+        if (existsById) return true;
+    }
+    
+    // Check by entry text, user ID, and timestamp (within 5 minutes)
+    const entryTime = entryTimestamp ? new Date(entryTimestamp).getTime() : Date.now();
+    return flags.some(flag => {
+        if (flag.studentId !== userId) return false;
+        if (flag.entryText !== entryText) return false;
+        
+        const flagTime = new Date(flag.createdAt || flag.entryTimestamp).getTime();
+        const timeDiff = Math.abs(entryTime - flagTime);
+        // Consider duplicate if within 5 minutes
+        return timeDiff < 5 * 60 * 1000;
+    });
+}
+
+/**
  * Process journal entry and create flag if needed
  * Called after journal entry is successfully saved
  * @param {string} entryText - The journal entry text
  * @param {Object} user - User object with id, first_name, surname, class, house, user_type
  * @param {boolean} isGhostMode - Whether ghost mode was enabled
  * @param {boolean} skipSave - If true, don't save to localStorage (for testing/scanning)
+ * @param {string|number} entryId - Optional entry ID from database
+ * @param {string} entryTimestamp - Optional entry timestamp from database
  * @returns {Object|null} Flag record or null if no flag needed
  */
-async function processJournalEntryFlagging(entryText, user, isGhostMode = false, skipSave = false) {
+async function processJournalEntryFlagging(entryText, user, isGhostMode = false, skipSave = false, entryId = null, entryTimestamp = null) {
     try {
-        console.log('Processing journal entry flagging:', { entryText, userId: user.id, isGhostMode });
+        console.log('Processing journal entry flagging:', { entryText, userId: user.id, isGhostMode, entryId });
+        
+        // Check for duplicates before creating flag
+        if (!skipSave && typeof loadJson !== 'undefined') {
+            const existingFlags = loadJson('journalFlags', []);
+            if (flagExists(existingFlags, entryText, user.id, entryTimestamp, entryId)) {
+                console.log('Flag already exists for this entry, skipping');
+                return null;
+            }
+        }
         
         const flag = await createFlagRecord(entryText, user, isGhostMode);
         
@@ -379,6 +422,19 @@ async function processJournalEntryFlagging(entryText, user, isGhostMode = false,
             console.log('No flag created - no matches found');
             return null; // No flag needed
         }
+        
+        // Add entry ID and timestamp if provided
+        if (entryId) {
+            flag.entryId = entryId;
+        }
+        if (entryTimestamp) {
+            flag.entryTimestamp = entryTimestamp;
+            // Also update createdAt to match entry timestamp for consistency
+            flag.createdAt = new Date(entryTimestamp).toISOString();
+        }
+        
+        // Generate unique key for duplicate detection
+        flag.flagKey = generateFlagKey(entryText, user.id, entryTimestamp || flag.createdAt);
         
         console.log('Flag created:', flag);
         
@@ -390,13 +446,19 @@ async function processJournalEntryFlagging(entryText, user, isGhostMode = false,
             }
             
             const flags = loadJson('journalFlags', []);
-            flags.push(flag);
-            saveJson('journalFlags', flags);
-            console.log('Flag saved to localStorage. Total flags:', flags.length);
             
-            // Apply frequency escalation rules
-            if (typeof applyFrequencyRules === 'function') {
-                applyFrequencyRules(user.id, flag.severity);
+            // Double-check for duplicates before saving
+            if (!flagExists(flags, entryText, user.id, entryTimestamp, entryId)) {
+                flags.push(flag);
+                saveJson('journalFlags', flags);
+                console.log('Flag saved to localStorage. Total flags:', flags.length);
+                
+                // Apply frequency escalation rules
+                if (typeof applyFrequencyRules === 'function') {
+                    applyFrequencyRules(user.id, flag.severity);
+                }
+            } else {
+                console.log('Duplicate flag detected, not saving');
             }
         }
         

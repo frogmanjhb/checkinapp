@@ -2038,7 +2038,10 @@ class MoodCheckInApp {
                     if (typeof processJournalEntryFlagging === 'function') {
                         try {
                             console.log('Calling processJournalEntryFlagging for entry:', entryText);
-                            await processJournalEntryFlagging(entryText, this.currentUser, this.isGhostMode || false);
+                            // Pass entry ID and timestamp from response to prevent duplicates
+                            const entryId = response.journalEntry?.id || null;
+                            const entryTimestamp = response.journalEntry?.timestamp || null;
+                            await processJournalEntryFlagging(entryText, this.currentUser, this.isGhostMode || false, false, entryId, entryTimestamp);
                         } catch (flagError) {
                             console.error('Error processing journal entry flagging:', flagError);
                             console.error('Error details:', flagError.message, flagError.stack);
@@ -3093,7 +3096,10 @@ class MoodCheckInApp {
                     if (typeof processJournalEntryFlagging === 'function') {
                         try {
                             console.log('Calling processJournalEntryFlagging for entry:', entryText);
-                            await processJournalEntryFlagging(entryText, this.currentUser, this.isGhostMode || false);
+                            // Pass entry ID and timestamp from response to prevent duplicates
+                            const entryId = response.journalEntry?.id || null;
+                            const entryTimestamp = response.journalEntry?.timestamp || null;
+                            await processJournalEntryFlagging(entryText, this.currentUser, this.isGhostMode || false, false, entryId, entryTimestamp);
                         } catch (flagError) {
                             console.error('Error processing journal entry flagging:', flagError);
                             console.error('Error details:', flagError.message, flagError.stack);
@@ -4243,11 +4249,9 @@ class MoodCheckInApp {
                 };
                 
                 // Process flagging (ghost mode unknown for old entries, default to false)
-                const flag = await processJournalEntryFlagging(entry.entry, user, false);
+                // Pass entry ID and timestamp to prevent duplicates
+                const flag = await processJournalEntryFlagging(entry.entry, user, false, false, entry.id, entry.timestamp);
                 if (flag) {
-                    // Add entry ID and timestamp to flag for tracking
-                    flag.entryId = entry.id;
-                    flag.entryTimestamp = entry.timestamp;
                     newFlags.push(flag);
                     newFlagsCount++;
                 }
@@ -4255,22 +4259,40 @@ class MoodCheckInApp {
             
             if (newFlagsCount > 0) {
                 console.log(`Retroactively flagged ${newFlagsCount} existing journal entries`);
-                // Save all new flags at once
-                const allFlags = loadJson('journalFlags', []);
-                allFlags.push(...newFlags);
-                saveJson('journalFlags', allFlags);
-                
-                // Apply frequency escalation for each new flag
-                for (const flag of newFlags) {
-                    applyFrequencyRules(flag.studentId, flag.severity);
-                }
-                
-                // Reload flags display
+                // Flags are already saved by processJournalEntryFlagging, just reload display
                 this.loadDirectorFlags();
             }
         } catch (error) {
             console.error('Error scanning existing journal entries:', error);
         }
+    }
+
+    // Deduplicate flags
+    deduplicateFlags(flags) {
+        const seen = new Set();
+        const unique = [];
+        
+        for (const flag of flags) {
+            // Create a unique key for this flag
+            const key = flag.flagKey || 
+                       (flag.entryId ? `entry_${flag.entryId}` : null) ||
+                       `${flag.studentId}_${flag.createdAt}_${flag.entryText.substring(0, 50)}`;
+            
+            if (!seen.has(key)) {
+                seen.add(key);
+                unique.push(flag);
+            }
+        }
+        
+        // If we removed duplicates, save the deduplicated list
+        if (unique.length < flags.length) {
+            console.log(`Removed ${flags.length - unique.length} duplicate flags`);
+            if (typeof saveJson !== 'undefined') {
+                saveJson('journalFlags', unique);
+            }
+        }
+        
+        return unique;
     }
 
     // Load director flags
@@ -4280,7 +4302,11 @@ class MoodCheckInApp {
             return;
         }
         
-        const flags = loadJson('journalFlags', []);
+        let flags = loadJson('journalFlags', []);
+        
+        // Deduplicate flags on load
+        flags = this.deduplicateFlags(flags);
+        
         const events = loadJson('flagEvents', []);
         
         this.renderFlags(flags);
@@ -4297,8 +4323,11 @@ class MoodCheckInApp {
             return;
         }
         
+        // Remove duplicates before rendering
+        const uniqueFlags = this.deduplicateFlags(flags);
+        
         // Sort by newest first
-        const sortedFlags = [...flags].sort((a, b) => 
+        const sortedFlags = [...uniqueFlags].sort((a, b) => 
             new Date(b.createdAt) - new Date(a.createdAt)
         );
         
