@@ -1,69 +1,128 @@
 ---
-description: Lead engineer guidelines for REACT check-in app - modern, modular, incremental refactoring
+description: Lead engineer guidelines — correct features, reliability, incremental modernisation, TypeScript migration
 alwaysApply: true
 ---
 
 # Lead Engineer Guidelines
 
-## Primary Goals (Priority Order)
+## Primary Priorities (in order)
 
-1. **Correct, working features** - Functionality first
-2. **Simpler architecture over time** - Pay down tech debt incrementally
-3. **Maintainable, testable code** - Write for the future
-4. **Minimal disruption** - Preserve existing behaviour
+1. **Correct, working features**
+2. **Safeguarding reliability and auditability**
+3. **Incremental modernisation**
+4. **Maintainable, testable architecture**
+5. **Minimal disruption to existing behaviour**
 
 ## Operating Mode
 
-### Architecture Philosophy
-- **Default to modern, modular JavaScript** with clear boundaries
-- **Prefer small, composable modules** over "one huge file" (app-api.js is ~8000 lines - extract when safe)
-- **Keep changes incremental**: Ship the feature first, then propose the smallest refactor that improves the area touched
-- **Suggest refactors proactively** but **do not perform large refactors** unless explicitly approved
+- Be opinionated and modern.
+- Default to modular design with clear boundaries.
+- Ship the minimal working implementation first.
+- After each solution, include a section titled **Refactor Suggestions**:
+  - What to extract next
+  - Why it improves the system
+  - Estimated risk (low/medium/high)
+  - Smallest safe steps
 
-### Project Direction
-- **Web PWA** (not React Native/Expo)
-- **Avoid direct DOM manipulation** in new work - prefer state-driven approach
-- **Write migration-friendly code**: Even if not using React yet, write code that could migrate later:
-  - Pure functions where possible
-  - Clear separation of concerns
-  - Explicit data flow
-  - State management patterns
+Do not perform large refactors unless explicitly approved.
 
-### Feature Organization
-Create new feature folders/modules when adding major features:
-```
-/features/journal/
-/features/flags/
-/features/mood-checkin/
-/utils/          # Pure helpers only (e.g., normalise, validation)
-/data/           # JSON config files
-```
+## Architecture Direction
 
-## Refactor Policy
+- **Web PWA** (not React Native/Expo).
+- Avoid direct DOM manipulation in new work.
+- Write new logic in a framework-agnostic, state-driven style.
+- Structure by feature:
 
-### When Touching app-api.js
-1. **Do minimum edits** in app-api.js itself
-2. **Move new logic** into a new module and call it from app-api.js
-3. **Extract at least one chunk** into a module each time we touch app-api.js (when safe)
-4. **Always include "Refactor Suggestions"** section after solution:
-   - **(a)** What to extract next
-   - **(b)** Why it helps
-   - **(c)** Estimated risk: low/medium/high
-   - **(d)** Smallest safe steps
+  ```
+  /features/flags
+  /features/journal
+  /features/mood-checkin
+  /features/dashboard
+  /utils
+  /data
+  ```
 
-### Example Refactor Pattern
+- Prefer small modules over expanding large files.
+- When touching large legacy files (e.g. app-api.js):
+  - Make minimal edits.
+  - Extract new logic into a new module.
+  - Call the new module from the legacy file.
+  - Do not rewrite legacy files unless instructed.
+
+## TypeScript Migration Strategy
+
+We are migrating gradually to TypeScript.
+
+**Rules:**
+
+- All **new** modules must be written in TypeScript (.ts).
+- Existing JS files remain JS unless explicitly migrated.
+- Do not convert large legacy files unless instructed.
+- Extract new functionality into TypeScript modules.
+- Use strict typing assumptions.
+
+**Type discipline:**
+
+- No implicit `any`.
+- Avoid `any` unless unavoidable (and explain why).
+- Use explicit interfaces and domain models.
+- Use union types for fixed states (e.g. `'red' | 'amber' | 'yellow' | 'none'`).
+- Co-locate types within feature folders (e.g. `/features/flags/types.ts`).
+
+**Priority for TypeScript migration:**
+
+1. Flagging logic
+2. Escalation rules
+3. Data models
+4. Storage utilities
+5. UI wiring later
+
+After implementing any feature, include:
+
+**TypeScript Migration Opportunity:**
+
+- Next safest file to convert
+- Risk level
+- Why now
+
+Do not introduce a new build step without explaining required tooling (tsconfig, bundler changes, etc.).
+
+## Code Style
+
+- Functional style for logic.
+- Pure functions wherever possible.
+- Deterministic and explainable safeguarding logic.
+- Use async/await consistently.
+- Consistent error handling with actionable messages.
+- British spelling (`normalise` not `normalize`).
+- Descriptive naming.
+- Avoid clever abstractions.
+
+## Safeguarding Standard
+
+- Safeguarding logic must be **deterministic**.
+- Flagging must be **explainable and auditable**.
+- No probabilistic or black-box behaviour.
+- Add unit tests for flagging and escalation logic whenever possible.
+
+## When Touching app-api.js
+
+1. Do minimum edits in app-api.js itself.
+2. Move new logic into a new module and call it from app-api.js.
+3. Extract at least one chunk into a module each time we touch app-api.js (when safe).
+
+### Example
+
 ```javascript
 // ❌ BAD: Adding everything to app-api.js
 class MoodCheckInApp {
   async handleJournalEntry(text) {
     // 50 lines of flagging logic here
-    // 30 lines of validation here
-    // 20 lines of UI updates here
   }
 }
 
 // ✅ GOOD: Extract to module, call from app-api.js
-// features/journal/journal-handler.js
+// features/journal/journal-handler.ts (or .js if not yet migrated)
 export async function processJournalEntry(text, user, isGhostMode) {
   // Pure logic here
 }
@@ -78,63 +137,18 @@ class MoodCheckInApp {
 }
 ```
 
-## Code Standards
-
-### Style & Patterns
-- **Functional style** for logic (pure functions where possible)
-- **async/await** consistently (no promise chains)
-- **British spelling**: `normalise` not `normalize`, `colour` not `color`
-- **Descriptive names**: Avoid cleverness, prefer clarity
-- **Consistent error handling**: try/catch with `console.error()` and actionable messages
-
-### Testing
-- **Add unit tests** for critical logic:
-  - Flagging/escalation rules
-  - Normalisation functions
-  - Validation logic
-  - Data transformations
-- **If tests aren't possible**, explain why in comments
-
-### Existing Patterns to Match
-- **Class-based static utilities**: `APIUtils`, `SecurityUtils` with static methods
-- **Module-level helpers**: Pure functions at top level (e.g., `getGradeFromClass()`)
-- **JSDoc comments**: Function-level docs with `@param` and `@returns`
-- **localStorage utilities**: Use `loadJson()`/`saveJson()` from `utils/storage.js`
-- **Error handling**: Try/catch with descriptive, actionable error messages
-
 ## When Uncertain
 
-- **Say "I don't know"** rather than guessing
-- **Ask one clarifying question** only if it blocks implementation
-- **Otherwise**: Make a reasonable assumption, state it clearly, and proceed
+- Say "I don't know" rather than guessing.
+- Ask one clarifying question only if it blocks implementation.
+- Otherwise make a reasonable assumption, state it clearly, and proceed.
 
 ## Output Requirements
 
-- **Complete, runnable code changes** - no placeholders like "implement later"
-- **Show file paths** and exact code blocks per file
-- **Include "Refactor Suggestions"** section after each solution
-- **Concrete examples** in code comments for complex logic
-
-## Example: Adding a Feature
-
-```javascript
-// ✅ GOOD: New feature in its own module
-// features/journal/entry-processor.js
-export async function processEntry(text, user, isGhostMode) {
-  // Pure business logic
-  const flag = await createFlagRecord(text, user, isGhostMode);
-  return { flag, processed: true };
-}
-
-// ✅ GOOD: Minimal change to app-api.js
-import { processEntry } from './features/journal/entry-processor.js';
-class MoodCheckInApp {
-  async handleJournalEntry(text) {
-    const result = await processEntry(text, this.currentUser, this.isGhostMode);
-    // Update UI only
-  }
-}
-```
+- Complete, runnable code changes (no placeholders unless explicitly requested).
+- Show file paths and exact code blocks.
+- Start with minimal working implementation.
+- Separate refactor suggestions at the end.
 
 ## Refactor Suggestions Template
 
@@ -143,13 +157,18 @@ After each solution, include:
 ```markdown
 ## Refactor Suggestions
 
-### Next Extraction: [Feature/Function Name]
-- **What**: Extract [specific functionality] from app-api.js
-- **Why**: [Reason - e.g., "Reduces app-api.js by ~200 lines, improves testability"]
+### [Feature/Function Name]
+- **What**: Extract [specific functionality] from [file]
+- **Why**: [Reason - e.g. improves testability, reduces coupling]
 - **Risk**: low/medium/high
 - **Steps**:
-  1. Create `features/[name]/[module].js`
-  2. Move [specific functions] to new module
-  3. Update imports in app-api.js
-  4. Test existing functionality
+  1. [First small step]
+  2. [Second small step]
+  3. [Third small step]
+
+## TypeScript Migration Opportunity
+
+- **Next safest file**: [filename]
+- **Risk**: low/medium/high
+- **Why now**: [Brief reason]
 ```
