@@ -92,6 +92,24 @@ User Interface ← Response Processing ← JSON Response ← Database Query Resu
 - Director registration: Full system access
 - Unique email constraint per user
 
+### Safeguarding, Flags & Escalation
+- Automatic scanning of journal entries for concerning language using a data-driven ruleset.
+- Three severity levels: **red** (immediate concern), **amber** (heightened concern), and **yellow** (watch-list patterns).
+- Matches generate flag records with context (trigger phrase, category, timestamp) and are surfaced in director tooling.
+- Pattern rules detect repeated amber/yellow events over rolling time windows to highlight emerging risks.
+
+### Feature Toggles & Director Settings
+- Central `app_settings` table controls feature flags and global limits.
+- Director can enable/disable: Message Centre, Ghost Mode, Tile Flip, House Points.
+- Daily limits for mood check-ins and journal entries (for example, `max_checkins_per_day`, `max_journal_entries_per_day`).
+- Configurable class names for registration and filtering (flexible beyond fixed “Grade X” labels).
+
+### Plugin Features: Tile Flip & House Points
+- **Tile Flip**: Optional wellness mini-experience with 12 tiles per user, each revealing a supportive quote.
+- Directors manage quote content and can toggle the feature on or off.
+- **House Points**: Optional gamified points system, aggregated per house.
+- Student view shows personal points, grade-level totals, and whole-school standings.
+
 ---
 
 ## Student Features
@@ -155,9 +173,21 @@ Modern card-based layout with:
 ### Analytics & Insights
 - Personal mood trends over time
 - Period-based views (Daily, Weekly, Monthly)
-- Chart.js integration for data visualization
+- Interactive charts using ApexCharts for data visualisation
 - Mood distribution analysis
 - Historical mood patterns
+
+### Tile Flip (Optional)
+
+- Access to a set of tiles that reveal encouraging quotes or prompts.
+- Each tile can only be flipped once, encouraging gradual exploration over time.
+- Content is curated and managed by the director to align with school values.
+
+### House Points (Optional)
+
+- View of current personal house points.
+- Comparative views for the student’s grade and the whole school.
+- Reinforces positive engagement and participation where the feature is enabled.
 
 ---
 
@@ -236,7 +266,7 @@ Clickable modal cards for:
 **Charts & Visualizations:**
 - Mood distribution by House (large chart)
 - Mood distribution by Grade (large chart)
-- Chart.js integration for interactive graphs
+- ApexCharts integration for interactive graphs
 - Period filtering (Daily, Weekly, Monthly)
 - Export functionality for data analysis
 
@@ -245,6 +275,18 @@ Clickable modal cards for:
 - Student-level data access
 - Teacher mood tracking visibility
 - Time-series analysis
+
+### Flag Management & Safeguarding
+- Dedicated flags area listing all journal-derived flags with severity, category, user context, and timestamps.
+- Powerful filters by severity level, grade, house, Ghost Mode status, and follow-up status.
+- Pattern “events” surface repeated amber/yellow concerns over time to make emerging risks visible.
+- CSV export for sharing or further analysis within safeguarding teams.
+
+### Feature Management & Configuration
+- Interface for managing feature toggles (Message Centre, Ghost Mode, Tile Flip, House Points).
+- Control of global daily limits for mood check-ins and journal entries.
+- Management of class names used throughout the system for registration, filters, and analytics.
+- Administrative tools for password reset and targeted deletion of student/teacher data when needed.
 
 ### System-Wide Access
 - View all students and teachers
@@ -300,6 +342,28 @@ Clickable modal cards for:
 
 ---
 
+## Safeguarding & Flagging
+
+### Journal Flagging
+
+- All journal entries are scanned on save using a configurable keyword and phrase list.
+- Keywords are grouped into categories (for example, self-harm, emotional distress, home safety, social distress).
+- Severity levels (red/amber/yellow) determine how prominently flags are surfaced to staff.
+
+### Pattern Events & Escalation
+
+- Rolling time-window checks detect patterns such as multiple amber or yellow flags within a short period.
+- These pattern events are tracked separately so directors can see emerging concerns, not just single incidents.
+- Flags and pattern events are presented in dedicated director tooling for follow-up and recording outcomes.
+
+### Storage Model
+
+- Flag data is currently stored in the browser via `localStorage` (`journalFlags` and `flagEvents` keys).
+- Journal text itself is still stored in the PostgreSQL `journal_entries` table.
+- This design allows retroactive rescanning of historical entries if flagging rules are updated.
+
+---
+
 ## Database Schema
 
 ### Tables
@@ -330,6 +394,23 @@ Clickable modal cards for:
 - Supports conversation threading
 - Read/unread status tracking
 
+#### `app_settings`
+- Application-wide configuration values and feature toggles.
+- Fields include keys for enabling features (Message Centre, Ghost Mode, Tile Flip, House Points), daily limits, and class name configuration.
+- Provides a single source of truth for runtime configuration without code changes.
+
+#### `tile_quotes`
+- Stores the content for tile flip quotes and prompts.
+- Allows directors to curate and update supportive messages over time.
+
+#### `tile_flips`
+- Tracks which tiles each user has already flipped.
+- Supports per-user progression through the tile flip experience.
+
+#### `house_points`
+- Stores points per house (and, where applicable, per student).
+- Supports student, grade, and whole-school house point views.
+
 ### Indexes
 - Performance indexes on frequently queried fields
 - Foreign key relationships with CASCADE deletes
@@ -343,7 +424,7 @@ Clickable modal cards for:
 - **HTML5**: Semantic markup
 - **CSS3**: Modern styling with gradients, animations, flexbox, grid
 - **JavaScript (ES6+)**: Class-based architecture, async/await, fetch API
-- **Chart.js**: Data visualization library
+- **ApexCharts**: Data visualisation library
 - **PWA**: Service worker, manifest.json, offline capabilities
 
 ### Backend
@@ -475,19 +556,25 @@ Clickable modal cards for:
 
 ```
 checkinapp/
-├── index.html              # Main HTML structure
-├── app-api.js             # Frontend JavaScript (main application logic)
-├── backend.js             # Backend server (Express.js, API routes)
-├── styles.css             # All styling and responsive design
-├── package.json           # Node.js dependencies
-├── manifest.json          # PWA manifest
-├── sw.js                  # Service worker (offline support)
-├── migrate-database.js    # Database migration script
-├── env.example            # Environment variable template
-├── DEPLOYMENT.md          # Deployment documentation
-├── README.md              # Quick start guide
-├── APP_OVERVIEW.md        # This comprehensive overview
-└── icons/                 # PWA icons (multiple sizes)
+├── index.html              # Main HTML structure (single-page app)
+├── app-api.js              # Frontend JavaScript (main application logic)
+├── backend.js              # Backend server (Express.js, API routes)
+├── styles.css              # All styling and responsive design
+├── sw.js                   # Service worker (offline support)
+├── manifest.json           # PWA manifest
+├── migrate-database.js     # Database migration script
+├── data/
+│   └── flagKeywords.json   # Journal flag rules and keywords
+├── utils/
+│   ├── flagging.js         # Flag detection and escalation logic
+│   └── storage.js          # localStorage helper functions
+├── icons/                  # PWA icons (multiple sizes)
+├── images/                 # Logos and decorative imagery
+├── package.json            # Node.js dependencies
+├── env.example             # Environment variable template
+├── DEPLOYMENT.md           # Deployment documentation
+├── README.md               # Quick start guide
+└── APP_OVERVIEW.md         # This comprehensive overview
 ```
 
 ---
@@ -588,7 +675,7 @@ checkinapp/
 ### Performance
 - Optimized database queries with indexes
 - Efficient data loading strategies
-- Chart.js for performant visualizations
+- ApexCharts for performant visualisations
 - Responsive image loading
 
 ### Browser Support
@@ -623,7 +710,7 @@ checkinapp/
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2024  
+**Document Version**: 1.1  
+**Last Updated**: 2026  
 **Maintained by**: REACT Development Team
 
