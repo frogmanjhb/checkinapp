@@ -92,16 +92,22 @@ npm run build
 ```
 
 ### Environment Variables
-Create a `.env` file for production:
+Create a `.env` file for production (see also `env.example`):
 ```
 REACT_APP_API_URL=https://your-api.com
 REACT_APP_ENVIRONMENT=production
 
 # Backend (Express + Postgres)
-# If you deploy `backend.js` (Node server), set a Postgres connection string:
 DATABASE_URL=postgresql://user:password@host:port/dbname
 DATABASE_SSL=true
+
+# Security (Phase 1) – set these in production
+SESSION_SECRET=<long-random-string>   # Required for cookie signing; use a strong secret
+REGISTRATION_PASSWORD=<password>     # Required for teacher/director self-registration
+# Optional: DEMO_USERS_ENABLED=false  # Disable demo director/teacher creation (default: off in production)
+# Optional: DIRECTOR_EMAIL=          # Email for message-centre copy-to-director
 ```
+Static assets are served from the `public/` directory only; server code and `.env` are not exposed.
 
 ## 📋 Pre-Deployment Checklist
 

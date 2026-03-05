@@ -9,19 +9,28 @@
     "dev": "node backend.js",
     "migrate": "node migrate-database.js"
   },
-  "keywords": ["mood", "checkin", "feelings", "emoji", "wellness"],
+  "keywords": [
+    "mood",
+    "checkin",
+    "feelings",
+    "emoji",
+    "wellness"
+  ],
   "author": "Your Name",
   "license": "MIT",
   "devDependencies": {
     "http-server": "^0.12.3"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "pg": "^8.11.3",
     "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.3.0",
+    "express-session": "^1.19.0",
     "helmet": "^7.1.0",
+    "pg": "^8.11.3",
     "workbox-webpack-plugin": "^6.0.0"
   }
 }

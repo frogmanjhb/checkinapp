@@ -8,9 +8,18 @@ const bcrypt = require('bcryptjs');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
+const session = require('express-session');
+const cookieParser = require('cookie-parser');
+const rateLimit = require('express-rate-limit');
+const { requireAuth, requireRole } = require('./middleware/auth.js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+const SESSION_SECRET = process.env.SESSION_SECRET || (process.env.NODE_ENV === 'production' ? null : 'dev-secret-change-in-production');
+if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+  log('⚠️ SESSION_SECRET should be set in production');
+}
 
 // Database connection
 const dbUrl = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
@@ -46,8 +55,25 @@ if (pool) {
 app.use(helmet({
   contentSecurityPolicy: false // Allow inline scripts for your app
 }));
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
+app.use(cookieParser());
+app.use(session({
+  secret: SESSION_SECRET || 'fallback-secret',
+  resave: false,
+  saveUninitialized: false,
+  name: 'checkin.sid',
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  }
+}));
 app.use(express.json());
+
+// Rate limit auth and messaging to reduce abuse
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, message: { success: false, error: 'Too many attempts' } });
+const messageLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, message: { success: false, error: 'Too many messages' } });
 
 // Cache control headers to prevent caching during development
 app.use((req, res, next) => {
@@ -355,33 +381,39 @@ async function initializeDatabase() {
 
     console.log('✅ Database tables initialized successfully');
 
-    // Add director user if it doesn't exist
-    const directorExists = await pool.query('SELECT id FROM users WHERE email = $1', ['jatlee@stpeters.co.za']);
-    if (directorExists.rows.length === 0) {
-      try {
-        const hashedPassword = await bcrypt.hash('director123!', 10);
-        await pool.query(`
-          INSERT INTO users (first_name, surname, email, password_hash, user_type)
-          VALUES ($1, $2, $3, $4, $5)
-        `, ['Jat', 'Lee', 'jatlee@stpeters.co.za', hashedPassword, 'director']);
-        console.log('✅ Director user created');
-      } catch (error) {
-        console.log('⚠️ Director user creation failed:', error.message);
+    const demoEnabled = process.env.DEMO_USERS_ENABLED !== 'false' && process.env.NODE_ENV !== 'production';
+    const directorEmail = process.env.DIRECTOR_EMAIL || 'jatlee@stpeters.co.za';
+
+    if (demoEnabled) {
+      const directorExists = await pool.query('SELECT id FROM users WHERE email = $1', [directorEmail]);
+      if (directorExists.rows.length === 0) {
+        try {
+          const demoDirectorPassword = process.env.DEMO_DIRECTOR_PASSWORD || 'director123!';
+          const hashedPassword = await bcrypt.hash(demoDirectorPassword, 10);
+          await pool.query(`
+            INSERT INTO users (first_name, surname, email, password_hash, user_type)
+            VALUES ($1, $2, $3, $4, $5)
+          `, ['Jat', 'Lee', directorEmail, hashedPassword, 'director']);
+          console.log('✅ Demo director user created');
+        } catch (error) {
+          console.log('⚠️ Demo director user creation failed:', error.message);
+        }
+      } else {
+        console.log('✅ Director user already exists');
       }
-    } else {
-      console.log('✅ Director user already exists');
     }
 
-    // Add demo teacher user if it doesn't exist
-    const teacherExists = await pool.query('SELECT id FROM users WHERE email = $1', ['teacher@stpeters.co.za']);
-    if (teacherExists.rows.length === 0) {
+    const teacherEmail = 'teacher@stpeters.co.za';
+    const teacherExists = await pool.query('SELECT id FROM users WHERE email = $1', [teacherEmail]);
+    if (teacherExists.rows.length === 0 && demoEnabled) {
       try {
-        const hashedPassword = await bcrypt.hash('teacher123!', 10);
+        const demoTeacherPassword = process.env.DEMO_TEACHER_PASSWORD || 'teacher123!';
+        const hashedPassword = await bcrypt.hash(demoTeacherPassword, 10);
         const teacherResult = await pool.query(`
           INSERT INTO users (first_name, surname, email, password_hash, user_type, class, house)
           VALUES ($1, $2, $3, $4, $5, $6, $7)
           RETURNING id
-        `, ['Demo', 'Teacher', 'teacher@stpeters.co.za', hashedPassword, 'teacher', 'Grade 6', 'Mirfield']);
+        `, ['Demo', 'Teacher', teacherEmail, hashedPassword, 'teacher', 'Grade 6', 'Mirfield']);
         
         const teacherId = teacherResult.rows[0].id;
         
@@ -395,10 +427,8 @@ async function initializeDatabase() {
       } catch (error) {
         console.log('⚠️ Demo teacher user creation failed:', error.message);
       }
-    } else {
+    } else if (teacherExists.rows.length > 0) {
       console.log('✅ Demo teacher user already exists');
-      
-      // Ensure teacher has assignments in the new table
       const teacherId = teacherExists.rows[0].id;
       const assignmentsExist = await pool.query('SELECT id FROM teacher_assignments WHERE teacher_id = $1', [teacherId]);
       if (assignmentsExist.rows.length === 0) {
@@ -542,12 +572,12 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Email must be a @stpeters.co.za address' });
     }
 
-    // Validate registration password for teacher and director
+    const registrationPasswordRequired = process.env.REGISTRATION_PASSWORD || (process.env.NODE_ENV === 'production' ? null : 'RE@CT2026');
     if (userType === 'teacher' || userType === 'director') {
       if (!registrationPassword) {
         return res.status(400).json({ success: false, error: 'Registration password is required for teacher and director accounts' });
       }
-      if (registrationPassword !== 'RE@CT2026') {
+      if (!registrationPasswordRequired || registrationPassword !== registrationPasswordRequired) {
         return res.status(403).json({ success: false, error: 'Invalid registration password' });
       }
     }
@@ -593,20 +623,22 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// User login
-app.post('/api/login', async (req, res) => {
+// User login (rate-limited, sets session)
+app.post('/api/login', authLimiter, async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
   
   try {
-    const { email, password } = req.body;
-    
+    const email = (req.body.email && typeof req.body.email === 'string') ? req.body.email.trim() : '';
+    const password = req.body.password;
     if (!email || !password) {
       return res.status(400).json({ success: false, error: 'Email and password are required' });
     }
+    if (password.length > 500) {
+      return res.status(400).json({ success: false, error: 'Invalid request' });
+    }
 
-    // Find user
     const result = await pool.query(
       'SELECT * FROM users WHERE email = $1',
       [email]
@@ -617,22 +649,39 @@ app.post('/api/login', async (req, res) => {
     }
     
     const user = result.rows[0];
-    
-    // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     
     if (!isValidPassword) {
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
     }
     
-    // Remove password from response
     const { password_hash, ...userWithoutPassword } = user;
+    req.session.user = userWithoutPassword;
     
     res.json({ success: true, user: userWithoutPassword });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
+});
+
+// Current user (session restore; used by frontend on load)
+app.get('/api/me', (req, res) => {
+  if (req.session && req.session.user) {
+    return res.json({ success: true, user: req.session.user });
+  }
+  return res.status(401).json({ success: false, error: 'Not authenticated' });
+});
+
+// Logout
+app.post('/api/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Logout session destroy error:', err);
+      return res.status(500).json({ success: false, error: 'Logout failed' });
+    }
+    res.json({ success: true });
+  });
 });
 
 // Get app settings (e.g. plugin toggles) — used by all roles for UI visibility
@@ -652,24 +701,14 @@ app.get('/api/settings', async (req, res) => {
 });
 
 // Update app settings (director only)
-app.put('/api/director/settings', async (req, res) => {
+app.put('/api/director/settings', requireAuth, requireRole('director'), async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
   try {
-    const { directorUserId, messageCenterEnabled, ghostModeEnabled, tileFlipEnabled, housePointsEnabled } = req.body;
-    if (directorUserId == null) {
-      return res.status(400).json({ success: false, error: 'Missing directorUserId' });
-    }
+    const { messageCenterEnabled, ghostModeEnabled, tileFlipEnabled, housePointsEnabled } = req.body;
     if (typeof messageCenterEnabled !== 'boolean' && typeof ghostModeEnabled !== 'boolean' && typeof tileFlipEnabled !== 'boolean' && typeof housePointsEnabled !== 'boolean') {
       return res.status(400).json({ success: false, error: 'At least one setting must be provided' });
-    }
-    const check = await pool.query(
-      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
-      [directorUserId, 'director']
-    );
-    if (check.rows.length === 0) {
-      return res.status(403).json({ success: false, error: 'Only directors can update settings' });
     }
     const out = {};
     if (typeof messageCenterEnabled === 'boolean') {
@@ -716,22 +755,11 @@ app.put('/api/director/settings', async (req, res) => {
 });
 
 // Get check-in and journal limits (director only)
-app.get('/api/director/checkin-journal-settings', async (req, res) => {
+app.get('/api/director/checkin-journal-settings', requireAuth, requireRole('director'), async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
   try {
-    const { directorUserId } = req.query;
-    if (!directorUserId) {
-      return res.status(400).json({ success: false, error: 'Missing directorUserId' });
-    }
-    const check = await pool.query(
-      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
-      [directorUserId, 'director']
-    );
-    if (check.rows.length === 0) {
-      return res.status(403).json({ success: false, error: 'Only directors can access these settings' });
-    }
     const [maxCheckinsPerDay, maxJournalEntriesPerDay] = await Promise.all([
       getMaxCheckinsPerDay(),
       getMaxJournalEntriesPerDay()
@@ -744,22 +772,12 @@ app.get('/api/director/checkin-journal-settings', async (req, res) => {
 });
 
 // Update check-in and journal limits (director only)
-app.put('/api/director/checkin-journal-settings', async (req, res) => {
+app.put('/api/director/checkin-journal-settings', requireAuth, requireRole('director'), async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
   try {
-    const { directorUserId, maxCheckinsPerDay, maxJournalEntriesPerDay } = req.body;
-    if (directorUserId == null) {
-      return res.status(400).json({ success: false, error: 'Missing directorUserId' });
-    }
-    const check = await pool.query(
-      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
-      [directorUserId, 'director']
-    );
-    if (check.rows.length === 0) {
-      return res.status(403).json({ success: false, error: 'Only directors can update these settings' });
-    }
+    const { maxCheckinsPerDay, maxJournalEntriesPerDay } = req.body;
     const out = {};
     if (typeof maxCheckinsPerDay === 'number' && maxCheckinsPerDay >= 1) {
       const val = String(Math.min(Math.floor(maxCheckinsPerDay), 999));
@@ -827,19 +845,13 @@ app.get('/api/class-names', async (req, res) => {
 });
 
 // Add a new class name (director only)
-app.post('/api/director/class-names', async (req, res) => {
+app.post('/api/director/class-names', requireAuth, requireRole('director'), async (req, res) => {
   try {
-    const { className, directorUserId } = req.body;
-    
-    if (!className || !directorUserId) {
+    const { className } = req.body;
+    if (!className) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
-    
-    // Verify director
-    const userResult = await pool.query('SELECT user_type FROM users WHERE id = $1', [directorUserId]);
-    if (userResult.rows.length === 0 || userResult.rows[0].user_type !== 'director') {
-      return res.status(403).json({ success: false, error: 'Only directors can manage class names' });
-    }
+    if (!pool) return res.status(503).json({ success: false, error: 'Database not available' });
     
     // Get current class names
     const defaultClassNames = ['5EF', '5AM', '5JS', '6A', '6B', '6C', '7A', '7B', '7C'];
@@ -874,20 +886,13 @@ app.post('/api/director/class-names', async (req, res) => {
 });
 
 // Delete a class name (director only)
-app.delete('/api/director/class-names/:className', async (req, res) => {
+app.delete('/api/director/class-names/:className', requireAuth, requireRole('director'), async (req, res) => {
   try {
     const { className } = req.params;
-    const { directorUserId } = req.body;
-    
-    if (!className || !directorUserId) {
+    if (!className) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
-    
-    // Verify director
-    const userResult = await pool.query('SELECT user_type FROM users WHERE id = $1', [directorUserId]);
-    if (userResult.rows.length === 0 || userResult.rows[0].user_type !== 'director') {
-      return res.status(403).json({ success: false, error: 'Only directors can manage class names' });
-    }
+    if (!pool) return res.status(503).json({ success: false, error: 'Database not available' });
     
     // Get current class names
     const result = await pool.query(`SELECT value FROM app_settings WHERE key = 'class_names'`);
@@ -919,20 +924,14 @@ app.delete('/api/director/class-names/:className', async (req, res) => {
 });
 
 // Update a student's class (director only)
-app.put('/api/director/student-class/:studentId', async (req, res) => {
+app.put('/api/director/student-class/:studentId', requireAuth, requireRole('director'), async (req, res) => {
   try {
     const { studentId } = req.params;
-    const { className, directorUserId } = req.body;
-    
-    if (!studentId || !directorUserId) {
+    const { className } = req.body;
+    if (!studentId) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
-    
-    // Verify director
-    const directorResult = await pool.query('SELECT user_type FROM users WHERE id = $1', [directorUserId]);
-    if (directorResult.rows.length === 0 || directorResult.rows[0].user_type !== 'director') {
-      return res.status(403).json({ success: false, error: 'Only directors can update student classes' });
-    }
+    if (!pool) return res.status(503).json({ success: false, error: 'Database not available' });
     
     // Verify student exists and is a student
     const studentResult = await pool.query('SELECT id, user_type FROM users WHERE id = $1', [studentId]);
@@ -957,19 +956,13 @@ app.put('/api/director/student-class/:studentId', async (req, res) => {
 });
 
 // Bulk update student classes (director only)
-app.put('/api/director/student-classes', async (req, res) => {
+app.put('/api/director/student-classes', requireAuth, requireRole('director'), async (req, res) => {
   try {
-    const { updates, directorUserId } = req.body;
-    
-    if (!updates || !Array.isArray(updates) || !directorUserId) {
+    const { updates } = req.body;
+    if (!updates || !Array.isArray(updates)) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
-    
-    // Verify director
-    const directorResult = await pool.query('SELECT user_type FROM users WHERE id = $1', [directorUserId]);
-    if (directorResult.rows.length === 0 || directorResult.rows[0].user_type !== 'director') {
-      return res.status(403).json({ success: false, error: 'Only directors can update student classes' });
-    }
+    if (!pool) return res.status(503).json({ success: false, error: 'Database not available' });
     
     const results = [];
     for (const update of updates) {
@@ -993,12 +986,11 @@ app.put('/api/director/student-classes', async (req, res) => {
 });
 
 // Mood check-in (students: limit per day from settings)
-app.post('/api/mood-checkin', async (req, res) => {
+app.post('/api/mood-checkin', requireAuth, async (req, res) => {
   try {
-    const { userId, mood, emoji, notes, location, reasons, emotions } = req.body;
-    
-    
-    if (!userId || !mood || !emoji) {
+    const userId = req.user.id;
+    const { mood, emoji, notes, location, reasons, emotions } = req.body;
+    if (!mood || !emoji) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
@@ -1023,10 +1015,7 @@ app.post('/api/mood-checkin', async (req, res) => {
       'INSERT INTO mood_checkins (user_id, mood, emoji, notes, location, reasons, emotions) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
       [userId, mood, emoji, notes, location, reasons || [], emotions || []]
     );
-    
-    // Award 1 house point for check-in
     await awardHousePoints(userId, 1);
-    
     res.status(201).json({ success: true, checkin: result.rows[0] });
   } catch (error) {
     console.error('Mood check-in error:', error);
@@ -1034,12 +1023,14 @@ app.post('/api/mood-checkin', async (req, res) => {
   }
 });
 
-// Get mood history for a user
-app.get('/api/mood-history/:userId', async (req, res) => {
+// Get mood history for a user (own data only)
+app.get('/api/mood-history/:userId', requireAuth, async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.user.id;
+    if (parseInt(req.params.userId, 10) !== userId) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
     const { period = 'daily' } = req.query;
-    
     let whereClause = 'WHERE user_id = $1';
     let queryParams = [userId];
     
@@ -1066,7 +1057,7 @@ app.get('/api/mood-history/:userId', async (req, res) => {
 });
 
 // Get all students (for teacher dashboard)
-app.get('/api/students', async (req, res) => {
+app.get('/api/students', requireAuth, async (req, res) => {
   try {
     const { class: classFilter, house: houseFilter } = req.query;
     
@@ -1097,10 +1088,15 @@ app.get('/api/students', async (req, res) => {
 });
 
 // Get students for specific teacher (based on their grade and house assignment)
-app.get('/api/teacher/students/:teacherId', async (req, res) => {
+app.get('/api/teacher/students/:teacherId', requireAuth, async (req, res) => {
   try {
     const { teacherId } = req.params;
-    
+    if (req.user.user_type !== 'teacher' && req.user.user_type !== 'director') {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
+    if (req.user.user_type === 'teacher' && parseInt(teacherId, 10) !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
     // First get the teacher's grade and house assignment
     const teacherResult = await pool.query(
       'SELECT class, house FROM users WHERE id = $1 AND user_type = $2',
@@ -1132,9 +1128,12 @@ app.get('/api/teacher/students/:teacherId', async (req, res) => {
 });
 
 // Get teacher assignments (multiple grades/houses)
-app.get('/api/teacher/assignments/:teacherId', async (req, res) => {
+app.get('/api/teacher/assignments/:teacherId', requireAuth, async (req, res) => {
   try {
     const { teacherId } = req.params;
+    if (req.user.user_type === 'teacher' && parseInt(teacherId, 10) !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
     
     const result = await pool.query(`
       SELECT grade, house 
@@ -1151,7 +1150,7 @@ app.get('/api/teacher/assignments/:teacherId', async (req, res) => {
 });
 
 // Get all mood check-ins (for teacher analytics)
-app.get('/api/all-mood-checkins', async (req, res) => {
+app.get('/api/all-mood-checkins', requireAuth, requireRole('teacher', 'director'), async (req, res) => {
   try {
     const { period = 'daily' } = req.query;
     
@@ -1184,11 +1183,13 @@ app.get('/api/all-mood-checkins', async (req, res) => {
 });
 
 // Update teacher's class assignment
-app.put('/api/teacher/class/:teacherId', async (req, res) => {
+app.put('/api/teacher/class/:teacherId', requireAuth, async (req, res) => {
   try {
     const { teacherId } = req.params;
     const { className } = req.body;
-    
+    if (req.user.user_type === 'teacher' && parseInt(teacherId, 10) !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
     if (!teacherId) {
       return res.status(400).json({ success: false, error: 'Missing teacher ID' });
     }
@@ -1216,9 +1217,12 @@ app.put('/api/teacher/class/:teacherId', async (req, res) => {
 });
 
 // Get mood check-ins for teacher's class
-app.get('/api/teacher/class-checkins/:teacherId', async (req, res) => {
+app.get('/api/teacher/class-checkins/:teacherId', requireAuth, async (req, res) => {
   try {
     const { teacherId } = req.params;
+    if (req.user.user_type === 'teacher' && parseInt(teacherId, 10) !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
     const { period = 'daily' } = req.query;
     
     // Get teacher's class
@@ -1265,11 +1269,11 @@ app.get('/api/teacher/class-checkins/:teacherId', async (req, res) => {
 });
 
 // Journal entry endpoints (students: 1 per day)
-app.post('/api/journal-entry', async (req, res) => {
+app.post('/api/journal-entry', requireAuth, async (req, res) => {
   try {
-    const { userId, entry } = req.body;
-    
-    if (!userId || !entry) {
+    const userId = req.user.id;
+    const { entry } = req.body;
+    if (!entry) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
@@ -1294,10 +1298,7 @@ app.post('/api/journal-entry', async (req, res) => {
       'INSERT INTO journal_entries (user_id, entry) VALUES ($1, $2) RETURNING *',
       [userId, entry]
     );
-    
-    // Award 2 house points for journal entry
     await awardHousePoints(userId, 2);
-    
     res.status(201).json({ success: true, journalEntry: result.rows[0] });
   } catch (error) {
     console.error('Journal entry error:', error);
@@ -1305,11 +1306,13 @@ app.post('/api/journal-entry', async (req, res) => {
   }
 });
 
-app.get('/api/journal-entries/:userId', async (req, res) => {
+app.get('/api/journal-entries/:userId', requireAuth, async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.user.id;
+    if (parseInt(req.params.userId, 10) !== userId) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
     const { period = 'daily' } = req.query;
-    
     let whereClause = 'WHERE user_id = $1';
     let queryParams = [userId];
     
@@ -1336,7 +1339,7 @@ app.get('/api/journal-entries/:userId', async (req, res) => {
 });
 
 // Tile Flip endpoints
-app.get('/api/tile-flip/quotes', async (req, res) => {
+app.get('/api/tile-flip/quotes', requireAuth, async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
@@ -1351,14 +1354,15 @@ app.get('/api/tile-flip/quotes', async (req, res) => {
   }
 });
 
-app.get('/api/tile-flip/status/:userId', async (req, res) => {
+app.get('/api/tile-flip/status/:userId', requireAuth, async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
   try {
-    const { userId } = req.params;
-    
-    // Get flipped tiles
+    const userId = req.user.id;
+    if (parseInt(req.params.userId, 10) !== userId) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
     const flippedResult = await pool.query(
       'SELECT tile_index FROM tile_flips WHERE user_id = $1',
       [userId]
@@ -1412,22 +1416,19 @@ app.get('/api/tile-flip/status/:userId', async (req, res) => {
   }
 });
 
-app.post('/api/tile-flip/flip', async (req, res) => {
+app.post('/api/tile-flip/flip', requireAuth, async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
   try {
-    const { userId, tileIndex } = req.body;
-    
-    if (userId == null || tileIndex == null) {
+    const userId = req.user.id;
+    const { tileIndex } = req.body;
+    if (tileIndex == null) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
-    
     if (tileIndex < 0 || tileIndex > 11) {
       return res.status(400).json({ success: false, error: 'Invalid tile index' });
     }
-    
-    // Check if tile already flipped
     const existingFlip = await pool.query(
       'SELECT id FROM tile_flips WHERE user_id = $1 AND tile_index = $2',
       [userId, tileIndex]
@@ -1542,14 +1543,15 @@ app.post('/api/tile-flip/flip', async (req, res) => {
   }
 });
 
-app.post('/api/tile-flip/reset/:userId', async (req, res) => {
+app.post('/api/tile-flip/reset/:userId', requireAuth, async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
   try {
-    const { userId } = req.params;
-    
-    // Delete all flips for user
+    const userId = req.user.id;
+    if (parseInt(req.params.userId, 10) !== userId) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
     await pool.query('DELETE FROM tile_flips WHERE user_id = $1', [userId]);
     
     // Update reset record
@@ -1569,8 +1571,9 @@ app.post('/api/tile-flip/reset/:userId', async (req, res) => {
 });
 
 // Director endpoints
-app.get('/api/director/all-users', async (req, res) => {
+app.get('/api/director/all-users', requireAuth, requireRole('director'), async (req, res) => {
   try {
+    if (!pool) return res.status(503).json({ success: false, error: 'Database not available' });
     const result = await pool.query(
       `SELECT id, first_name, surname, email, user_type, class, house, created_at 
        FROM users 
@@ -1585,8 +1588,9 @@ app.get('/api/director/all-users', async (req, res) => {
   }
 });
 
-app.get('/api/director/all-mood-data', async (req, res) => {
+app.get('/api/director/all-mood-data', requireAuth, requireRole('director'), async (req, res) => {
   try {
+    if (!pool) return res.status(503).json({ success: false, error: 'Database not available' });
     const { period = 'daily' } = req.query;
     
     let whereClause = '';
@@ -1617,8 +1621,9 @@ app.get('/api/director/all-mood-data', async (req, res) => {
   }
 });
 
-app.get('/api/director/all-journal-entries', async (req, res) => {
+app.get('/api/director/all-journal-entries', requireAuth, requireRole('director'), async (req, res) => {
   try {
+    if (!pool) return res.status(503).json({ success: false, error: 'Database not available' });
     const { period = 'daily' } = req.query;
     
     let whereClause = '';
@@ -1653,24 +1658,11 @@ app.get('/api/director/all-journal-entries', async (req, res) => {
 });
 
 // Director tile quote management
-app.get('/api/director/tile-quotes', async (req, res) => {
+app.get('/api/director/tile-quotes', requireAuth, requireRole('director'), async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
   try {
-    const { directorUserId } = req.query;
-    if (!directorUserId) {
-      return res.status(400).json({ success: false, error: 'Missing directorUserId' });
-    }
-    
-    const check = await pool.query(
-      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
-      [directorUserId, 'director']
-    );
-    if (check.rows.length === 0) {
-      return res.status(403).json({ success: false, error: 'Only directors can access quotes' });
-    }
-    
     const result = await pool.query(
       'SELECT quote_index, quote_text, author FROM tile_quotes ORDER BY quote_index ASC'
     );
@@ -1682,27 +1674,15 @@ app.get('/api/director/tile-quotes', async (req, res) => {
   }
 });
 
-app.put('/api/director/tile-quotes', async (req, res) => {
+app.put('/api/director/tile-quotes', requireAuth, requireRole('director'), async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
   try {
-    const { directorUserId, quotes } = req.body;
-    if (!directorUserId) {
-      return res.status(400).json({ success: false, error: 'Missing directorUserId' });
-    }
+    const { quotes } = req.body;
     if (!quotes || !Array.isArray(quotes)) {
       return res.status(400).json({ success: false, error: 'Missing or invalid quotes array' });
     }
-    
-    const check = await pool.query(
-      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
-      [directorUserId, 'director']
-    );
-    if (check.rows.length === 0) {
-      return res.status(403).json({ success: false, error: 'Only directors can update quotes' });
-    }
-    
     // Update each quote
     for (const quote of quotes) {
       if (quote.quoteIndex == null || quote.quoteText == null) {
@@ -1725,8 +1705,9 @@ app.put('/api/director/tile-quotes', async (req, res) => {
 });
 
 // Teacher grade analytics (no names, just emotions)
-app.get('/api/teacher/grade-analytics', async (req, res) => {
+app.get('/api/teacher/grade-analytics', requireAuth, requireRole('teacher', 'director'), async (req, res) => {
   try {
+    if (!pool) return res.status(503).json({ success: false, error: 'Database not available' });
     const { grade, period = 'daily' } = req.query;
     
     if (!grade) {
@@ -1763,11 +1744,10 @@ app.get('/api/teacher/grade-analytics', async (req, res) => {
 });
 
 // Get all teachers (for student to select)
-app.get('/api/teachers', async (req, res) => {
+app.get('/api/teachers', requireAuth, async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
-  
   try {
     const result = await pool.query(
       `SELECT id, first_name, surname, email, class, house 
@@ -1784,7 +1764,7 @@ app.get('/api/teachers', async (req, res) => {
 });
 
 // Send a message (student to teacher, also sends to director)
-app.post('/api/messages', async (req, res) => {
+app.post('/api/messages', messageLimiter, requireAuth, async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
@@ -1793,24 +1773,26 @@ app.post('/api/messages', async (req, res) => {
     return res.status(503).json({ success: false, error: 'Message center is currently disabled' });
   }
   try {
-    const { fromUserId, toUserId, message } = req.body;
-    
-    if (!fromUserId || !toUserId || !message) {
+    const fromUserId = req.user.id;
+    const { toUserId, message } = req.body;
+    if (!toUserId || !message || typeof message !== 'string') {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
+    const messageText = message.trim();
+    if (messageText.length === 0 || messageText.length > 5000) {
+      return res.status(400).json({ success: false, error: 'Message must be 1–5000 characters' });
+    }
 
-    // Get director user ID (Justin Atlee)
+    const directorEmail = process.env.DIRECTOR_EMAIL || 'jatlee@stpeters.co.za';
     const directorResult = await pool.query(
       'SELECT id FROM users WHERE email = $1 AND user_type = $2',
-      ['jatlee@stpeters.co.za', 'director']
+      [directorEmail, 'director']
     );
-    
     const directorId = directorResult.rows.length > 0 ? directorResult.rows[0].id : null;
 
-    // Insert message to teacher
     const teacherMessageResult = await pool.query(
       'INSERT INTO messages (from_user_id, to_user_id, message) VALUES ($1, $2, $3) RETURNING *',
-      [fromUserId, toUserId, message]
+      [fromUserId, toUserId, messageText]
     );
 
     // Also send to director if exists
@@ -1818,7 +1800,7 @@ app.post('/api/messages', async (req, res) => {
     if (directorId) {
       const directorMessageResult = await pool.query(
         'INSERT INTO messages (from_user_id, to_user_id, message, thread_id) VALUES ($1, $2, $3, $4) RETURNING *',
-        [fromUserId, directorId, message, teacherMessageResult.rows[0].id]
+        [fromUserId, directorId, messageText, teacherMessageResult.rows[0].id]
       );
       directorMessage = directorMessageResult.rows[0];
     }
@@ -1835,7 +1817,7 @@ app.post('/api/messages', async (req, res) => {
 });
 
 // Get messages for a user
-app.get('/api/messages/:userId', async (req, res) => {
+app.get('/api/messages/:userId', requireAuth, async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
@@ -1844,8 +1826,10 @@ app.get('/api/messages/:userId', async (req, res) => {
     return res.status(503).json({ success: false, error: 'Message center is currently disabled' });
   }
   try {
-    const { userId } = req.params;
-    
+    const userId = req.user.id;
+    if (parseInt(req.params.userId, 10) !== userId) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
     const result = await pool.query(
       `SELECT m.*, 
               from_user.first_name as from_first_name, 
@@ -1870,7 +1854,7 @@ app.get('/api/messages/:userId', async (req, res) => {
 });
 
 // Mark message as read
-app.put('/api/messages/:messageId/read', async (req, res) => {
+app.put('/api/messages/:messageId/read', requireAuth, async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
@@ -1898,7 +1882,7 @@ app.put('/api/messages/:messageId/read', async (req, res) => {
 });
 
 // Get unread message count for a user
-app.get('/api/messages/:userId/unread-count', async (req, res) => {
+app.get('/api/messages/:userId/unread-count', requireAuth, async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
@@ -1907,8 +1891,10 @@ app.get('/api/messages/:userId/unread-count', async (req, res) => {
     return res.status(503).json({ success: false, error: 'Message center is currently disabled' });
   }
   try {
-    const { userId } = req.params;
-    
+    const userId = req.user.id;
+    if (parseInt(req.params.userId, 10) !== userId) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
     const result = await pool.query(
       'SELECT COUNT(*) as count FROM messages WHERE to_user_id = $1 AND is_read = FALSE',
       [userId]
@@ -1922,13 +1908,15 @@ app.get('/api/messages/:userId/unread-count', async (req, res) => {
 });
 
 // Get house points for a user
-app.get('/api/house-points/:userId', async (req, res) => {
+app.get('/api/house-points/:userId', requireAuth, async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
   try {
-    const { userId } = req.params;
-    
+    const userId = req.user.id;
+    if (parseInt(req.params.userId, 10) !== userId) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
     // Get user's house
     const userResult = await pool.query(
       'SELECT house FROM users WHERE id = $1',
@@ -1957,27 +1945,11 @@ app.get('/api/house-points/:userId', async (req, res) => {
 });
 
 // Get house points totals by house (for director)
-app.get('/api/director/house-points', async (req, res) => {
+app.get('/api/director/house-points', requireAuth, requireRole('director'), async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
   try {
-    const { directorUserId } = req.query;
-    
-    if (!directorUserId) {
-      return res.status(400).json({ success: false, error: 'Missing directorUserId' });
-    }
-    
-    // Verify user is a director
-    const check = await pool.query(
-      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
-      [directorUserId, 'director']
-    );
-    
-    if (check.rows.length === 0) {
-      return res.status(403).json({ success: false, error: 'Only directors can access house points' });
-    }
-    
     // Get total points for each house
     const result = await pool.query(`
       SELECT 
@@ -1999,22 +1971,11 @@ app.get('/api/director/house-points', async (req, res) => {
 });
 
 // Delete all student data (director only): students, check-ins, journals, house points, tile flips, messages
-app.post('/api/director/delete-all-student-data', async (req, res) => {
+app.post('/api/director/delete-all-student-data', requireAuth, requireRole('director'), async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
   try {
-    const directorUserId = req.body.directorUserId != null ? Number(req.body.directorUserId) : null;
-    if (directorUserId == null || Number.isNaN(directorUserId)) {
-      return res.status(400).json({ success: false, error: 'Missing or invalid directorUserId' });
-    }
-    const check = await pool.query(
-      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
-      [directorUserId, 'director']
-    );
-    if (check.rows.length === 0) {
-      return res.status(403).json({ success: false, error: 'Only directors can delete student data' });
-    }
     const countResult = await pool.query(
       "SELECT COUNT(*)::int AS count FROM users WHERE user_type = 'student'"
     );
@@ -2053,22 +2014,11 @@ app.post('/api/director/delete-all-student-data', async (req, res) => {
 });
 
 // Delete all teacher data (director only): teachers, check-ins, journals, messages, teacher_assignments
-app.post('/api/director/delete-all-teacher-data', async (req, res) => {
+app.post('/api/director/delete-all-teacher-data', requireAuth, requireRole('director'), async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
   try {
-    const directorUserId = req.body.directorUserId != null ? Number(req.body.directorUserId) : null;
-    if (directorUserId == null || Number.isNaN(directorUserId)) {
-      return res.status(400).json({ success: false, error: 'Missing or invalid directorUserId' });
-    }
-    const check = await pool.query(
-      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
-      [directorUserId, 'director']
-    );
-    if (check.rows.length === 0) {
-      return res.status(403).json({ success: false, error: 'Only directors can delete teacher data' });
-    }
     const countResult = await pool.query(
       "SELECT COUNT(*)::int AS count FROM users WHERE user_type = 'teacher'"
     );
@@ -2107,28 +2057,15 @@ app.post('/api/director/delete-all-teacher-data', async (req, res) => {
 });
 
 // Delete individual student (director only)
-app.delete('/api/director/student/:studentId', async (req, res) => {
+app.delete('/api/director/student/:studentId', requireAuth, requireRole('director'), async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
-  
   try {
     const { studentId } = req.params;
-    const { directorUserId } = req.body;
-    
-    if (!studentId || !directorUserId) {
+    if (!studentId) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
-    
-    // Verify director
-    const directorCheck = await pool.query(
-      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
-      [directorUserId, 'director']
-    );
-    if (directorCheck.rows.length === 0) {
-      return res.status(403).json({ success: false, error: 'Only directors can delete students' });
-    }
-    
     // Verify student exists and is a student
     const studentCheck = await pool.query(
       'SELECT id, first_name, surname FROM users WHERE id = $1 AND user_type = $2',
@@ -2194,28 +2131,16 @@ function validatePasswordFormat(pw) {
 }
 
 // Reset student password (director only) - accepts custom password or generates random
-app.post('/api/director/student/:studentId/reset-password', async (req, res) => {
+app.post('/api/director/student/:studentId/reset-password', requireAuth, requireRole('director'), async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
-
   try {
     const { studentId } = req.params;
-    const { directorUserId, newPassword: customPassword } = req.body;
-
-    if (!studentId || !directorUserId) {
+    const { newPassword: customPassword } = req.body;
+    if (!studentId) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
-
-    // Verify director
-    const directorCheck = await pool.query(
-      'SELECT id FROM users WHERE id = $1 AND user_type = $2',
-      [directorUserId, 'director']
-    );
-    if (directorCheck.rows.length === 0) {
-      return res.status(403).json({ success: false, error: 'Only directors can reset student passwords' });
-    }
-
     // Verify student exists and is a student
     const studentCheck = await pool.query(
       'SELECT id, first_name, surname, email FROM users WHERE id = $1 AND user_type = $2',
@@ -2260,7 +2185,7 @@ app.post('/api/director/student/:studentId/reset-password', async (req, res) => 
 });
 
 // Get school house points (totals by house) - for students/teachers
-app.get('/api/school-house-points', async (req, res) => {
+app.get('/api/school-house-points', requireAuth, async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
@@ -2284,7 +2209,7 @@ app.get('/api/school-house-points', async (req, res) => {
 });
 
 // Get grade house points (totals by class/grade) - for students/teachers
-app.get('/api/grade-house-points', async (req, res) => {
+app.get('/api/grade-house-points', requireAuth, async (req, res) => {
   if (!pool) {
     return res.status(503).json({ success: false, error: 'Database not available' });
   }
@@ -2307,12 +2232,12 @@ app.get('/api/grade-house-points', async (req, res) => {
   }
 });
 
-// Serve static files (must be after API routes)
-app.use(express.static('.'));
+// Serve static files from public only (no exposure of server code or .env)
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Handle all other routes by serving index.html (for SPA routing)
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Start server
