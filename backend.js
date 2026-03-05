@@ -9,6 +9,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
 const session = require('express-session');
+const pgSession = require('connect-pg-simple');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const { requireAuth, requireRole } = require('./middleware/auth.js');
@@ -16,10 +17,20 @@ const { requireAuth, requireRole } = require('./middleware/auth.js');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Required behind Railway/Heroku/etc. so req.secure and cookies work correctly over HTTPS
+app.set('trust proxy', 1);
+
 const SESSION_SECRET = process.env.SESSION_SECRET || (process.env.NODE_ENV === 'production' ? null : 'dev-secret-change-in-production');
 if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
   log('⚠️ SESSION_SECRET should be set in production');
 }
+
+// Cross-origin: set FRONTEND_ORIGIN if frontend is on a different host (e.g. Vercel + Railway API)
+const frontendOrigin = process.env.FRONTEND_ORIGIN || null;
+const isCrossOrigin = Boolean(frontendOrigin);
+const corsOptions = isCrossOrigin
+  ? { origin: frontendOrigin, credentials: true }
+  : { origin: true, credentials: true };
 
 // Database connection
 const dbUrl = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
@@ -55,19 +66,24 @@ if (pool) {
 app.use(helmet({
   contentSecurityPolicy: false // Allow inline scripts for your app
 }));
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors(corsOptions));
 app.use(cookieParser());
+
+const sessionCookie = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' && isCrossOrigin ? 'none' : 'lax',
+  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+};
+
+const sessionStore = pool ? new (pgSession(session))({ pool, createTableIfMissing: true }) : undefined;
 app.use(session({
   secret: SESSION_SECRET || 'fallback-secret',
   resave: false,
   saveUninitialized: false,
+  store: sessionStore,
   name: 'checkin.sid',
-  cookie: {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-  }
+  cookie: sessionCookie
 }));
 app.use(express.json());
 
