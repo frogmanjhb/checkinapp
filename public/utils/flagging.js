@@ -4,20 +4,30 @@
  * and creates flag records with severity levels.
  */
 
-// Load flag keywords from JSON
+// Set localStorage.debugFlagging = 'true' in the console to see verbose flagging logs
+const FLAGGING_DEBUG = typeof localStorage !== 'undefined' && localStorage.getItem('debugFlagging') === 'true';
+function debugLog(...args) { if (FLAGGING_DEBUG) console.log(...args); }
+function debugWarn(...args) { if (FLAGGING_DEBUG) console.warn(...args); }
+function debugError(...args) { if (FLAGGING_DEBUG) console.error(...args); }
+
+// Load flag keywords from JSON (cached; on failure cache empty so we don't retry or log repeatedly)
 let flagKeywords = null;
+let flagKeywordsLoadFailed = false;
 
 async function loadFlagKeywords() {
     if (flagKeywords) return flagKeywords;
-    
+    if (flagKeywordsLoadFailed) return { red: {}, amber: {}, yellow: {} };
+
     try {
         const response = await fetch('data/flagKeywords.json');
+        if (!response.ok) throw new Error(response.statusText);
         flagKeywords = await response.json();
         return flagKeywords;
     } catch (error) {
-        console.error('Failed to load flag keywords:', error);
-        // Return empty structure if file not found
-        return { red: {}, amber: {}, yellow: {} };
+        flagKeywordsLoadFailed = true;
+        flagKeywords = { red: {}, amber: {}, yellow: {} };
+        console.warn('Flag keywords not loaded (data/flagKeywords.json missing or invalid). Flagging will be disabled.', error.message);
+        return flagKeywords;
     }
 }
 
@@ -54,13 +64,13 @@ async function shouldIgnoreContext(text, normalized) {
             const normalizedIgnore = normalise(ignorePhrase);
             if (normalized.includes(normalizedIgnore)) {
                 // If ignore context is present, skip flagging for this entry
-                console.log('Flagging ignored due to context:', ignorePhrase);
+                debugLog('Flagging ignored due to context:', ignorePhrase);
                 return true;
             }
         }
         return false;
     } catch (error) {
-        console.error('Error checking ignore context:', error);
+        debugError('Error checking ignore context:', error);
         return false;
     }
 }
@@ -116,21 +126,21 @@ async function detectMatches(text) {
         const normalized = normalise(text);
         const matches = { red: [], amber: [], yellow: [] };
         
-        console.log('Detecting matches for text:', text);
-        console.log('Normalized text:', normalized);
-        console.log('Keywords loaded:', !!keywords);
+        debugLog('Detecting matches for text:', text);
+        debugLog('Normalized text:', normalized);
+        debugLog('Keywords loaded:', !!keywords);
         
         // Check ignore contexts first - if text should be ignored, return empty matches
         const shouldIgnore = await shouldIgnoreContext(text, normalized);
         if (shouldIgnore) {
-            console.log('Text ignored due to context rules');
+            debugLog('Text ignored due to context rules');
             return matches;
         }
         
         // Check each severity level
         for (const severity of ['red', 'amber', 'yellow']) {
             if (!keywords[severity]) {
-                console.log(`No keywords for severity: ${severity}`);
+                debugLog(`No keywords for severity: ${severity}`);
                 continue;
             }
             
@@ -144,7 +154,7 @@ async function detectMatches(text) {
                     if (normalizedPhrase.includes(' ')) {
                         if (normalized.includes(normalizedPhrase)) {
                             isMatch = true;
-                            console.log(`Multi-word match found: "${phrase}" in "${text}"`);
+                            debugLog(`Multi-word match found: "${phrase}" in "${text}"`);
                         }
                     } else {
                         // Single words: use word boundary regex
@@ -152,7 +162,7 @@ async function detectMatches(text) {
                         const regex = new RegExp(`\\b${escapedPhrase}\\b`, 'i');
                         if (regex.test(normalized)) {
                             isMatch = true;
-                            console.log(`Single-word match found: "${phrase}" in "${text}"`);
+                            debugLog(`Single-word match found: "${phrase}" in "${text}"`);
                         }
                     }
                     
@@ -163,24 +173,24 @@ async function detectMatches(text) {
                         // Check if intent phrase is required (for phrases that need "want to", etc.)
                         const hasIntent = await requiresIntentPhrase(phrase, normalized);
                         
-                        console.log(`Match "${phrase}": hasSelfRef=${hasSelfRef}, hasIntent=${hasIntent}`);
+                        debugLog(`Match "${phrase}": hasSelfRef=${hasSelfRef}, hasIntent=${hasIntent}`);
                         
                         // Only add match if context requirements are met
                         if (hasSelfRef && hasIntent) {
                             matches[severity].push(phrase);
-                            console.log(`Added match: ${severity} - ${phrase}`);
+                            debugLog(`Added match: ${severity} - ${phrase}`);
                         } else {
-                            console.log(`Match rejected due to context rules: ${phrase}`);
+                            debugLog(`Match rejected due to context rules: ${phrase}`);
                         }
                     }
                 }
             }
         }
         
-        console.log('Final matches:', matches);
+        debugLog('Final matches:', matches);
         return matches;
     } catch (error) {
-        console.error('Error in detectMatches:', error);
+        debugError('Error in detectMatches:', error);
         return { red: [], amber: [], yellow: [] };
     }
 }
@@ -405,13 +415,13 @@ function flagExists(flags, entryText, userId, entryTimestamp, entryId) {
  */
 async function processJournalEntryFlagging(entryText, user, isGhostMode = false, skipSave = false, entryId = null, entryTimestamp = null) {
     try {
-        console.log('Processing journal entry flagging:', { entryText, userId: user.id, isGhostMode, entryId });
+        debugLog('Processing journal entry flagging:', { entryText, userId: user.id, isGhostMode, entryId });
         
         // Check for duplicates before creating flag
         if (!skipSave && typeof loadJson !== 'undefined') {
             const existingFlags = loadJson('journalFlags', []);
             if (flagExists(existingFlags, entryText, user.id, entryTimestamp, entryId)) {
-                console.log('Flag already exists for this entry, skipping');
+                debugLog('Flag already exists for this entry, skipping');
                 return null;
             }
         }
@@ -419,7 +429,7 @@ async function processJournalEntryFlagging(entryText, user, isGhostMode = false,
         const flag = await createFlagRecord(entryText, user, isGhostMode);
         
         if (!flag) {
-            console.log('No flag created - no matches found');
+            debugLog('No flag created - no matches found');
             return null; // No flag needed
         }
         
@@ -436,12 +446,12 @@ async function processJournalEntryFlagging(entryText, user, isGhostMode = false,
         // Generate unique key for duplicate detection
         flag.flagKey = generateFlagKey(entryText, user.id, entryTimestamp || flag.createdAt);
         
-        console.log('Flag created:', flag);
+        debugLog('Flag created:', flag);
         
         // Save flag to localStorage unless skipSave is true
         if (!skipSave) {
             if (typeof loadJson === 'undefined' || typeof saveJson === 'undefined') {
-                console.error('Storage functions not available');
+                debugError('Storage functions not available');
                 return flag;
             }
             
@@ -451,21 +461,21 @@ async function processJournalEntryFlagging(entryText, user, isGhostMode = false,
             if (!flagExists(flags, entryText, user.id, entryTimestamp, entryId)) {
                 flags.push(flag);
                 saveJson('journalFlags', flags);
-                console.log('Flag saved to localStorage. Total flags:', flags.length);
+                debugLog('Flag saved to localStorage. Total flags:', flags.length);
                 
                 // Apply frequency escalation rules
                 if (typeof applyFrequencyRules === 'function') {
                     applyFrequencyRules(user.id, flag.severity);
                 }
             } else {
-                console.log('Duplicate flag detected, not saving');
+                debugLog('Duplicate flag detected, not saving');
             }
         }
         
         return flag;
     } catch (error) {
-        console.error('Error processing journal entry flagging:', error);
-        console.error('Error stack:', error.stack);
+        debugError('Error processing journal entry flagging:', error);
+        debugError('Error stack:', error.stack);
         return null;
     }
 }
@@ -493,11 +503,11 @@ if (typeof window !== 'undefined') {
     
     // Test function for debugging
     window.testFlagging = async function(text) {
-        console.log('Testing flagging for text:', text);
+        debugLog('Testing flagging for text:', text);
         const matches = await detectMatches(text);
-        console.log('Matches found:', matches);
+        debugLog('Matches found:', matches);
         const severity = computeSeverity(matches);
-        console.log('Severity:', severity);
+        debugLog('Severity:', severity);
         return { matches, severity };
     };
 }
