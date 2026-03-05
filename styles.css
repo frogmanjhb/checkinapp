@@ -6597,6 +6597,85 @@ body {
     padding: 1rem 1.25rem 1.25rem;
 }
 
+/* Student dashboard tabs (student screen only) */
+.student-tab-shell {
+    margin-top: 1.25rem;
+    background: #f4f5f7;
+    border-radius: 18px;
+    padding: 1rem 1.25rem 1.5rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+.student-tab-shell .student-bento-grid {
+    display: block;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.student-tab-shell .bento-card {
+    width: 100%;
+    min-height: 360px;
+    display: flex;
+    flex-direction: column;
+}
+
+.student-tab-shell .bento-card .bento-card-body {
+    flex: 1;
+    min-height: 0;
+}
+
+/* Tab bar */
+.student-dashboard-tabs {
+    margin: 0 0 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    border-bottom: 1px solid #d0d7e2;
+}
+
+.student-tab {
+    position: relative;
+    border: 1px solid transparent;
+    border-bottom: none;
+    background: #f3f4f6;
+    color: #4b5563;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    padding: 0.5rem 1.05rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.student-tab:hover {
+    background: #e5e7eb;
+    color: #111827;
+}
+
+.student-tab.active {
+    background: #ffffff;
+    color: #111827;
+    border-color: #cbd5e1;
+    border-bottom: 1px solid #ffffff;
+    box-shadow: 0 -1px 0 #ffffff;
+}
+
+.student-tab-hidden {
+    display: none !important;
+}
+
+/* Inside the tab shell, ignore legacy grid placement */
+.student-tab-shell .bento-checkin,
+.student-tab-shell .bento-analytics,
+.student-tab-shell .bento-history,
+.student-tab-shell .bento-journal,
+.student-tab-shell .bento-house-points,
+.student-tab-shell .bento-tile-flip {
+    grid-column: auto !important;
+    grid-row: auto !important;
+}
+
 /* Grid placement */
 .bento-checkin { grid-column: 1; grid-row: 1; }
 .bento-analytics { grid-column: 2; grid-row: 1; }

@@ -381,6 +381,7 @@ class MoodCheckInApp {
         this.availableFlips = 0;
         this.nextQuoteIndex = 0;
         this.studentJournalEntriesToday = [];
+        this._studentTabsInitialized = false;
         
         this.initializeApp();
         this.setupEventListeners();
@@ -1407,6 +1408,8 @@ class MoodCheckInApp {
             directorScreen.classList.remove('active');
         }
         
+        this.setupStudentDashboardTabs();
+        
         // Update user info with multiple attempts to ensure it gets set
         this.updateStudentName();
         setTimeout(() => {
@@ -1427,6 +1430,49 @@ class MoodCheckInApp {
             this.updateHousePoints();
         }
         this.showScrollPrompt();
+    }
+
+    setupStudentDashboardTabs() {
+        if (this._studentTabsInitialized) return;
+
+        const tabsContainer = document.getElementById('studentDashboardTabs');
+        const grid = document.querySelector('#studentDashboardScreen .student-bento-grid');
+        if (!tabsContainer || !grid) return;
+
+        const tabButtons = Array.from(tabsContainer.querySelectorAll('.student-tab'));
+        const cards = Array.from(grid.querySelectorAll('[data-student-tab]'));
+        if (!tabButtons.length || !cards.length) return;
+
+        this._studentTabsInitialized = true;
+
+        const showTab = (tabId) => {
+            cards.forEach(card => {
+                const id = card.getAttribute('data-student-tab');
+                if (id === tabId) {
+                    card.classList.remove('student-tab-hidden');
+                } else {
+                    card.classList.add('student-tab-hidden');
+                }
+            });
+        };
+
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const target = btn.getAttribute('data-target');
+                if (!target) return;
+
+                tabButtons.forEach(b => b.classList.toggle('active', b === btn));
+                showTab(target);
+            });
+        });
+
+        const initialButton = tabButtons.find(b => b.classList.contains('active')) || tabButtons[0];
+        if (initialButton) {
+            const target = initialButton.getAttribute('data-target');
+            if (target) {
+                showTab(target);
+            }
+        }
     }
 
     showScrollPrompt() {
