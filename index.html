@@ -9,6 +9,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
     <meta name="theme-color" content="#2196F3">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Its OK">
     <link rel="stylesheet" href="styles.css">
@@ -1825,7 +1826,7 @@
         </div>
     </div>
 
-    <!-- API is same-origin by default. If the app is served elsewhere, set window.REACT_API_BASE before loading. Served app uses public/index.html with main.js (module). -->
+    <!-- API is same-origin by default. If the app is served elsewhere (e.g. Live Server on :3000), set window.REACT_API_BASE to the backend URL (e.g. "http://localhost:3001") before loading app-api.js. -->
     <script src="utils/storage.js"></script>
     <script src="utils/flagging.js"></script>
     <script src="app-api.js"></script>

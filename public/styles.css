@@ -6671,7 +6671,8 @@ body {
 .student-tab-shell .bento-history,
 .student-tab-shell .bento-journal,
 .student-tab-shell .bento-house-points,
-.student-tab-shell .bento-tile-flip {
+.student-tab-shell .bento-tile-flip,
+.student-tab-shell .bento-quotes {
     grid-column: auto !important;
     grid-row: auto !important;
 }
@@ -6683,6 +6684,77 @@ body {
 .bento-journal { grid-column: 2; grid-row: 2; }
 .bento-house-points { grid-column: 2; grid-row: 3; }
 .bento-tile-flip { grid-column: 1 / -1; grid-row: 4; }
+
+/* Quotes tab (collected from tile flips) – arrows left/right, quote fills space */
+.quote-collection-view {
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.quote-collection-empty {
+    color: #666;
+    font-size: 1rem;
+    text-align: center;
+    padding: 1.5rem;
+}
+.quote-collection-content {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 1.25rem;
+    width: 100%;
+    padding: 1rem 0.5rem;
+}
+.quote-nav-button {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid #2196F3;
+    background: #fff;
+    color: #2196F3;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
+}
+.quote-nav-button:hover:not(:disabled) {
+    background: #2196F3;
+    color: #fff;
+}
+.quote-nav-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.quote-display {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    padding: 0 0.25rem;
+}
+.quote-display .quote-text {
+    margin: 0 0 0.75rem;
+    font-size: clamp(1.25rem, 3.5vw, 2rem);
+    line-height: 1.5;
+    font-style: italic;
+    color: #333;
+}
+.quote-display .quote-author {
+    display: block;
+    font-size: clamp(1rem, 2vw, 1.35rem);
+    color: #666;
+    font-style: normal;
+}
+.quote-display .quote-counter {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 1rem;
+    color: #888;
+}
 
 /* Compact check-in layout */
 .student-checkin-layout {

@@ -1666,18 +1666,17 @@ class MoodCheckInApp {
                 if (studentNameElement.textContent !== fullName) {
                     studentNameElement.innerHTML = fullName;
                 }
-            } else {
-                console.error('Student name element not found!');
             }
-            
             if (userNameElement) {
                 userNameElement.textContent = fullName;
                 // Fallback to innerHTML if textContent doesn't work
                 if (userNameElement.textContent !== fullName) {
                     userNameElement.innerHTML = fullName;
                 }
-            } else {
-                console.error('User name element not found!');
+            }
+            // Only log if neither student nor shared user name element exists
+            if (!studentNameElement && !userNameElement) {
+                console.error('Student/user name element not found!');
             }
         } else {
             console.error('No current user found!');

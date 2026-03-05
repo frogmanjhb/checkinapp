@@ -9,6 +9,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
     <meta name="theme-color" content="#2196F3">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Its OK">
     <link rel="stylesheet" href="styles.css">
@@ -258,6 +259,7 @@
                             <button type="button" class="student-tab" data-target="tab-mood-analytics" role="tab" aria-selected="false" aria-controls="tab-mood-analytics">Mood Analytics</button>
                             <button type="button" class="student-tab" data-target="tab-house-points" role="tab" aria-selected="false" aria-controls="housePointsCard">House Points</button>
                             <button type="button" class="student-tab" data-target="tab-tile-flips" role="tab" aria-selected="false" aria-controls="tileFlipCard">Tile Flips</button>
+                            <button type="button" class="student-tab" data-target="tab-quotes" role="tab" aria-selected="false" aria-controls="quotesCard">Quotes</button>
                             <button type="button" class="student-tab" data-target="tab-recent-activity" role="tab" aria-selected="false" aria-controls="tab-recent-activity">Recent Activity</button>
                         </div>
 
@@ -413,6 +415,29 @@
                                     </div>
                                 </div>
                             </div>
+                            </section>
+
+                            <!-- Quotes (collected from tile flips) -->
+                            <section class="bento-card bento-quotes" id="quotesCard" data-student-tab="tab-quotes" role="tabpanel" aria-labelledby="bento-quotes-title" style="display: none;">
+                                <div class="bento-card-header">
+                                    <h3 id="bento-quotes-title">💬 Quotes</h3>
+                                </div>
+                                <div class="bento-card-body">
+                                    <div class="quote-collection-view" id="quoteCollectionView">
+                                        <div class="quote-collection-empty" id="quoteCollectionEmpty">
+                                            <p>Flip tiles to collect quotes.</p>
+                                        </div>
+                                        <div class="quote-collection-content student-tab-hidden" id="quoteCollectionContent">
+                                            <button type="button" class="quote-nav-button quote-nav-prev" id="quoteNavPrev" aria-label="Previous quote">←</button>
+                                            <div class="quote-display">
+                                                <blockquote class="quote-text" id="quoteDisplayText"></blockquote>
+                                                <cite class="quote-author" id="quoteDisplayAuthor"></cite>
+                                                <span class="quote-counter" id="quoteCounter"></span>
+                                            </div>
+                                            <button type="button" class="quote-nav-button quote-nav-next" id="quoteNavNext" aria-label="Next quote">→</button>
+                                        </div>
+                                    </div>
+                                </div>
                             </section>
                         </div>
                     </div>

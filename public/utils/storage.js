@@ -59,7 +59,7 @@ function clearFlaggingData() {
     removeJson('flagEvents');
 }
 
-// ES module export (for type="module" entry)
+// ES module export (for app.js and other type="module" consumers)
 export { loadJson, saveJson, removeJson, clearFlaggingData };
 
 // Export for Node / bundlers
