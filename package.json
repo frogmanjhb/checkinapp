@@ -9,7 +9,8 @@
     "build:app": "node scripts/build-app-js.cjs",
     "dev": "node backend.js",
     "migrate": "node -r dotenv/config node_modules/node-pg-migrate/bin/node-pg-migrate.js up",
-    "migrate:legacy": "node migrate-database.js"
+    "migrate:legacy": "node migrate-database.js",
+    "test": "node --test tests/*.mjs"
   },
   "keywords": [
     "mood",
