@@ -6671,7 +6671,8 @@ body {
 .student-tab-shell .bento-history,
 .student-tab-shell .bento-journal,
 .student-tab-shell .bento-house-points,
-.student-tab-shell .bento-tile-flip {
+.student-tab-shell .bento-tile-flip,
+.student-tab-shell .bento-quotes {
     grid-column: auto !important;
     grid-row: auto !important;
 }
@@ -6683,6 +6684,74 @@ body {
 .bento-journal { grid-column: 2; grid-row: 2; }
 .bento-house-points { grid-column: 2; grid-row: 3; }
 .bento-tile-flip { grid-column: 1 / -1; grid-row: 4; }
+
+/* Quotes tab (collected from tile flips) */
+.quote-collection-view {
+    min-height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.quote-collection-empty {
+    color: #666;
+    font-size: 1rem;
+    text-align: center;
+    padding: 1.5rem;
+}
+.quote-collection-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    padding: 0.5rem 0;
+}
+.quote-nav-button {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid #2196F3;
+    background: #fff;
+    color: #2196F3;
+    font-size: 1.25rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
+}
+.quote-nav-button:hover:not(:disabled) {
+    background: #2196F3;
+    color: #fff;
+}
+.quote-nav-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.quote-display {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+}
+.quote-display .quote-text {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+    line-height: 1.5;
+    font-style: italic;
+    color: #333;
+}
+.quote-display .quote-author {
+    display: block;
+    font-size: 0.95rem;
+    color: #666;
+    font-style: normal;
+}
+.quote-display .quote-counter {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: #888;
+}
 
 /* Compact check-in layout */
 .student-checkin-layout {

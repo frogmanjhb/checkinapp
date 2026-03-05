@@ -3,6 +3,7 @@
  * Automatically scans journal entries for concerning words/phrases
  * and creates flag records with severity levels.
  */
+import { loadJson, saveJson } from './storage.js';
 
 // Set localStorage.debugFlagging = 'true' in the console to see verbose flagging logs
 const FLAGGING_DEBUG = typeof localStorage !== 'undefined' && localStorage.getItem('debugFlagging') === 'true';
@@ -438,7 +439,7 @@ async function processJournalEntryFlagging(entryText, user, isGhostMode = false,
         debugLog('Processing journal entry flagging:', { entryText, userId: user.id, isGhostMode, entryId });
         
         // Check for duplicates before creating flag
-        if (!skipSave && typeof loadJson !== 'undefined') {
+        if (!skipSave) {
             const existingFlags = loadJson('journalFlags', []);
             if (flagExists(existingFlags, entryText, user.id, entryTimestamp, entryId)) {
                 debugLog('Flag already exists for this entry, skipping');
@@ -470,11 +471,6 @@ async function processJournalEntryFlagging(entryText, user, isGhostMode = false,
         
         // Save flag to localStorage unless skipSave is true
         if (!skipSave) {
-            if (typeof loadJson === 'undefined' || typeof saveJson === 'undefined') {
-                debugError('Storage functions not available');
-                return flag;
-            }
-            
             const flags = loadJson('journalFlags', []);
             
             // Double-check for duplicates before saving
@@ -500,28 +496,19 @@ async function processJournalEntryFlagging(entryText, user, isGhostMode = false,
     }
 }
 
-// Export functions for use in other files (Node.js)
+export { processJournalEntryFlagging, normalise, detectMatches, computeSeverity, applyFrequencyRules, createFlagRecord, loadFlagKeywords };
+
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-        normalise,
-        detectMatches,
-        computeSeverity,
-        applyFrequencyRules,
-        createFlagRecord,
-        processJournalEntryFlagging,
-        loadFlagKeywords
+        normalise, detectMatches, computeSeverity, applyFrequencyRules, createFlagRecord, processJournalEntryFlagging, loadFlagKeywords
     };
 }
-
-// Make functions globally available in browser
 if (typeof window !== 'undefined') {
     window.processJournalEntryFlagging = processJournalEntryFlagging;
     window.detectMatches = detectMatches;
     window.normalise = normalise;
     window.computeSeverity = computeSeverity;
     window.loadFlagKeywords = loadFlagKeywords;
-    
-    // Test function for debugging
     window.testFlagging = async function(text) {
         debugLog('Testing flagging for text:', text);
         const matches = await detectMatches(text);

@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node backend.js",
     "build": "echo 'Build complete'",
+    "build:app": "node scripts/build-app-js.cjs",
     "dev": "node backend.js",
     "migrate": "node -r dotenv/config node_modules/node-pg-migrate/bin/node-pg-migrate.js up",
     "migrate:legacy": "node migrate-database.js"

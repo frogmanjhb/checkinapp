@@ -59,17 +59,15 @@ function clearFlaggingData() {
     removeJson('flagEvents');
 }
 
-// Export functions for use in other files (Node.js)
+// ES module export (for type="module" entry)
+export { loadJson, saveJson, removeJson, clearFlaggingData };
+
+// Export for Node / bundlers
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        loadJson,
-        saveJson,
-        removeJson,
-        clearFlaggingData
-    };
+    module.exports = { loadJson, saveJson, removeJson, clearFlaggingData };
 }
 
-// Make functions globally available in browser
+// Globals when loaded as classic script (backward compat)
 if (typeof window !== 'undefined') {
     window.loadJson = loadJson;
     window.saveJson = saveJson;

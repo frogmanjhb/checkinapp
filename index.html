@@ -258,6 +258,7 @@
                             <button type="button" class="student-tab" data-target="tab-mood-analytics">Mood Analytics</button>
                             <button type="button" class="student-tab" data-target="tab-house-points">House Points</button>
                             <button type="button" class="student-tab" data-target="tab-tile-flips">Tile Flips</button>
+                            <button type="button" class="student-tab" data-target="tab-quotes">Quotes</button>
                             <button type="button" class="student-tab" data-target="tab-recent-activity">Recent Activity</button>
                         </div>
 
@@ -413,6 +414,29 @@
                                     </div>
                                 </div>
                             </div>
+                            </section>
+
+                            <!-- Quotes (collected from tile flips) -->
+                            <section class="bento-card bento-quotes" id="quotesCard" data-student-tab="tab-quotes" style="display: none;">
+                                <div class="bento-card-header">
+                                    <h3>💬 Quotes</h3>
+                                </div>
+                                <div class="bento-card-body">
+                                    <div class="quote-collection-view" id="quoteCollectionView">
+                                        <div class="quote-collection-empty" id="quoteCollectionEmpty">
+                                            <p>Flip tiles to collect quotes.</p>
+                                        </div>
+                                        <div class="quote-collection-content student-tab-hidden" id="quoteCollectionContent">
+                                            <button type="button" class="quote-nav-button quote-nav-prev" id="quoteNavPrev" aria-label="Previous quote">←</button>
+                                            <div class="quote-display">
+                                                <blockquote class="quote-text" id="quoteDisplayText"></blockquote>
+                                                <cite class="quote-author" id="quoteDisplayAuthor"></cite>
+                                                <span class="quote-counter" id="quoteCounter"></span>
+                                            </div>
+                                            <button type="button" class="quote-nav-button quote-nav-next" id="quoteNavNext" aria-label="Next quote">→</button>
+                                        </div>
+                                    </div>
+                                </div>
                             </section>
                         </div>
                     </div>
@@ -1801,7 +1825,7 @@
         </div>
     </div>
 
-    <!-- API is same-origin by default. If the app is served elsewhere (e.g. Live Server on :3000), set window.REACT_API_BASE to the backend URL (e.g. "http://localhost:3001") before loading app-api.js. -->
+    <!-- API is same-origin by default. If the app is served elsewhere, set window.REACT_API_BASE before loading. Served app uses public/index.html with main.js (module). -->
     <script src="utils/storage.js"></script>
     <script src="utils/flagging.js"></script>
     <script src="app-api.js"></script>

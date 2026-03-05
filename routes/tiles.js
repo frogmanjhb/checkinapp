@@ -27,8 +27,22 @@ function createTilesRouter({ pool, housePoints }) {
       if (parseInt(req.params.userId, 10) !== userId) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
-      const flippedResult = await pool.query('SELECT tile_index FROM tile_flips WHERE user_id = $1', [userId]);
+      const flippedResult = await pool.query(
+        `SELECT tf.tile_index, tf.quote_index, tf.flipped_at, tq.quote_text, tq.author
+         FROM tile_flips tf
+         LEFT JOIN tile_quotes tq ON tf.quote_index = tq.quote_index
+         WHERE tf.user_id = $1
+         ORDER BY tf.flipped_at ASC`,
+        [userId]
+      );
       const flippedTiles = flippedResult.rows.map((row) => row.tile_index);
+      const unlockedQuotes = flippedResult.rows.map((row) => ({
+        tileIndex: row.tile_index,
+        quoteIndex: row.quote_index,
+        text: row.quote_text,
+        author: row.author,
+        flippedAt: row.flipped_at,
+      }));
 
       const journalResult = await pool.query(
         'SELECT COUNT(*)::int AS count FROM journal_entries WHERE user_id = $1',
@@ -53,7 +67,7 @@ function createTilesRouter({ pool, housePoints }) {
         }
       }
       const availableFlips = Math.max(0, journalCount - flippedTiles.length);
-      res.json({ success: true, flippedTiles, availableFlips, shouldReset, resetAt, nextQuoteIndex });
+      res.json({ success: true, flippedTiles, availableFlips, shouldReset, resetAt, nextQuoteIndex, unlockedQuotes });
     } catch (error) {
       console.error('Get tile flip status error:', error);
       res.status(500).json({ success: false, error: error.message });
@@ -144,17 +158,29 @@ function createTilesRouter({ pool, housePoints }) {
       }
 
       const updatedFlippedResult = await pool.query(
-        'SELECT tile_index FROM tile_flips WHERE user_id = $1',
+        `SELECT tf.tile_index, tf.quote_index, tf.flipped_at, tq.quote_text, tq.author
+         FROM tile_flips tf
+         LEFT JOIN tile_quotes tq ON tf.quote_index = tq.quote_index
+         WHERE tf.user_id = $1
+         ORDER BY tf.flipped_at ASC`,
         [userId]
       );
       const updatedFlippedTiles = updatedFlippedResult.rows.map((row) => row.tile_index);
       const updatedAvailableFlips = Math.max(0, journalCount - updatedFlippedTiles.length);
+      const unlockedQuotes = updatedFlippedResult.rows.map((row) => ({
+        tileIndex: row.tile_index,
+        quoteIndex: row.quote_index,
+        text: row.quote_text,
+        author: row.author,
+        flippedAt: row.flipped_at,
+      }));
 
       res.json({
         success: true,
         quote: { text: quote.quote_text, author: quote.author },
         flippedTiles: updatedFlippedTiles,
         availableFlips: updatedAvailableFlips,
+        unlockedQuotes,
       });
     } catch (error) {
       console.error('Flip tile error:', error);
