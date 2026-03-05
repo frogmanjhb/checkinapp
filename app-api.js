@@ -2,6 +2,11 @@
 // Set window.REACT_API_BASE if the app is served from a different origin than the API (e.g. '' or 'http://localhost:3000')
 const API_BASE = (typeof window !== 'undefined' && window.REACT_API_BASE) ? window.REACT_API_BASE : '';
 
+// Set localStorage.debugApp = 'true' to see verbose app logs (init, filters, charts, aggregation)
+const APP_DEBUG = typeof localStorage !== 'undefined' && localStorage.getItem('debugApp') === 'true';
+const _appLog = typeof console !== 'undefined' && console.log ? console.log.bind(console) : () => {};
+function appDebugLog(...args) { if (APP_DEBUG) _appLog(...args); }
+
 // Helper function to extract grade from class name
 // Examples: "5EF" -> "Grade 5", "6A" -> "Grade 6", "7B" -> "Grade 7"
 // Also handles legacy format: "Grade 5" -> "Grade 5"
@@ -1196,18 +1201,18 @@ class MoodCheckInApp {
     async refreshCurrentUser() {
         try {
             if (!this.currentUser || !this.currentUser.id) {
-                console.log('No current user to refresh');
+                appDebugLog('No current user to refresh');
                 return;
             }
 
-            console.log('Refreshing user data for:', this.currentUser.email);
+            appDebugLog('Refreshing user data for:', this.currentUser.email);
             
             // Get fresh user data from server
             const usersResponse = await APIUtils.getAllUsers();
             if (usersResponse.success && usersResponse.users) {
                 const freshUser = usersResponse.users.find(u => u.id === this.currentUser.id);
                 if (freshUser) {
-                    console.log('Updated user data:', freshUser);
+                    appDebugLog('Updated user data:', freshUser);
                     this.currentUser = freshUser;
                     localStorage.setItem('checkinUser', JSON.stringify(this.currentUser));
                     
@@ -2120,7 +2125,7 @@ class MoodCheckInApp {
                 if (this.currentUser.user_type === 'student') {
                     if (typeof processJournalEntryFlagging === 'function') {
                         try {
-                            console.log('Calling processJournalEntryFlagging for entry:', entryText);
+                            appDebugLog('Calling processJournalEntryFlagging for entry:', entryText);
                             // Pass entry ID and timestamp from response to prevent duplicates
                             const entryId = response.journalEntry?.id || null;
                             const entryTimestamp = response.journalEntry?.timestamp || null;
@@ -2299,7 +2304,7 @@ class MoodCheckInApp {
         // Store ghost mode state
         this.isGhostMode = isEnabled;
         
-        console.log('Ghost mode state updated:', this.isGhostMode);
+        appDebugLog('Ghost mode state updated:', this.isGhostMode);
     }
 
     selectMood(mood, emoji) {
@@ -3178,7 +3183,7 @@ class MoodCheckInApp {
                 if (this.currentUser.user_type === 'student') {
                     if (typeof processJournalEntryFlagging === 'function') {
                         try {
-                            console.log('Calling processJournalEntryFlagging for entry:', entryText);
+                            appDebugLog('Calling processJournalEntryFlagging for entry:', entryText);
                             // Pass entry ID and timestamp from response to prevent duplicates
                             const entryId = response.journalEntry?.id || null;
                             const entryTimestamp = response.journalEntry?.timestamp || null;
@@ -3718,7 +3723,7 @@ class MoodCheckInApp {
             return;
         }
 
-        console.log('Opening message center...');
+        appDebugLog('Opening message center...');
         modal.classList.add('active');
         this.showConversationsList();
         await this.loadConversations();
@@ -4341,7 +4346,7 @@ class MoodCheckInApp {
             }
             
             if (newFlagsCount > 0) {
-                console.log(`Retroactively flagged ${newFlagsCount} existing journal entries`);
+                appDebugLog(`Retroactively flagged ${newFlagsCount} existing journal entries`);
                 // Flags are already saved by processJournalEntryFlagging, just reload display
                 this.loadDirectorFlags();
             }
@@ -4369,7 +4374,7 @@ class MoodCheckInApp {
         
         // If we removed duplicates, save the deduplicated list
         if (unique.length < flags.length) {
-            console.log(`Removed ${flags.length - unique.length} duplicate flags`);
+            appDebugLog(`Removed ${flags.length - unique.length} duplicate flags`);
             if (typeof saveJson !== 'undefined') {
                 saveJson('journalFlags', unique);
             }
@@ -4813,19 +4818,17 @@ class MoodCheckInApp {
     updateGradeCard(grade, users, moodData) {
         const gradeValue = grade.replace('grade', 'Grade ');
         
-        // Debug: Log all students and their classes
         const allStudents = users.filter(user => user.user_type === 'student');
-        console.log(`[${gradeValue}] Total students:`, allStudents.length);
-        console.log(`[${gradeValue}] Students with classes:`, allStudents.map(s => ({ 
-            name: `${s.first_name} ${s.surname}`, 
-            class: s.class, 
+        appDebugLog(`[${gradeValue}] Total students:`, allStudents.length);
+        appDebugLog(`[${gradeValue}] Students with classes:`, allStudents.map(s => ({
+            name: `${s.first_name} ${s.surname}`,
+            class: s.class,
             derivedGrade: getGradeFromClass(s.class),
             matchesGrade: isClassInGrade(s.class, gradeValue)
         })));
-        
-        // Filter students by grade - supports both new class names (5EF, 6A) and legacy format (Grade 5)
+
         const students = users.filter(user => user.user_type === 'student' && isClassInGrade(user.class, gradeValue));
-        console.log(`[${gradeValue}] Filtered students:`, students.length);
+        appDebugLog(`[${gradeValue}] Filtered students:`, students.length);
         
         const studentMoods = moodData.filter(mood => 
             students.some(student => student.id === mood.user_id)
@@ -4927,7 +4930,7 @@ class MoodCheckInApp {
 
     // Setup modal card click handlers
     setupDirectorModalHandlers() {
-        console.log('setupDirectorModalHandlers() called');
+        appDebugLog('setupDirectorModalHandlers() called');
         // Setup grade card handlers
         ['grade5', 'grade6', 'grade7'].forEach(grade => {
             const card = document.getElementById(grade + 'Card');
@@ -4935,7 +4938,7 @@ class MoodCheckInApp {
                 card.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Grade card clicked:', grade);
+                    appDebugLog('Grade card clicked:', grade);
                     this.showGroupDetailModal(grade, 'grade');
                 });
             }
@@ -4948,7 +4951,7 @@ class MoodCheckInApp {
                 card.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('House card clicked:', house);
+                    appDebugLog('House card clicked:', house);
                     this.showGroupDetailModal(house, 'house');
                 });
             }
@@ -4960,7 +4963,7 @@ class MoodCheckInApp {
             teachersCard.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Teachers card clicked');
+                appDebugLog('Teachers card clicked');
                 this.showGroupDetailModal('teachers', 'teachers');
             });
         }
@@ -5101,10 +5104,10 @@ class MoodCheckInApp {
 
         // Student Class Assignment Modal
         const openStudentClassAssignmentBtn = document.getElementById('openStudentClassAssignmentBtn');
-        console.log('Setting up Student Class Assignment button:', openStudentClassAssignmentBtn);
+        appDebugLog('Setting up Student Class Assignment button:', openStudentClassAssignmentBtn);
         if (openStudentClassAssignmentBtn) {
             openStudentClassAssignmentBtn.addEventListener('click', () => {
-                console.log('Manage Student Classes button clicked');
+                appDebugLog('Manage Student Classes button clicked');
                 this.openStudentClassAssignmentModal();
             });
         } else {
@@ -5141,7 +5144,7 @@ class MoodCheckInApp {
         const openStudentDeletionBtn = document.getElementById('openStudentDeletionBtn');
         if (openStudentDeletionBtn) {
             openStudentDeletionBtn.addEventListener('click', () => {
-                console.log('Manage Student Accounts button clicked');
+                appDebugLog('Manage Student Accounts button clicked');
                 this.openStudentDeletionModal();
             });
         }
@@ -5449,9 +5452,9 @@ class MoodCheckInApp {
 
     // Student Class Assignment Methods
     async openStudentClassAssignmentModal() {
-        console.log('openStudentClassAssignmentModal called');
+        appDebugLog('openStudentClassAssignmentModal called');
         const modal = document.getElementById('studentClassAssignmentModal');
-        console.log('Modal element:', modal);
+        appDebugLog('Modal element:', modal);
         if (!modal) {
             console.error('studentClassAssignmentModal not found!');
             return;
@@ -5459,7 +5462,7 @@ class MoodCheckInApp {
 
         modal.style.display = 'flex';
         modal.classList.add('active');
-        console.log('Modal should now be visible');
+        appDebugLog('Modal should now be visible');
 
         // Load class names for filter dropdown
         await this.loadClassFilterOptions();
@@ -5639,7 +5642,7 @@ class MoodCheckInApp {
 
     // Student Deletion Modal Methods
     async openStudentDeletionModal() {
-        console.log('openStudentDeletionModal called');
+        appDebugLog('openStudentDeletionModal called');
         const modal = document.getElementById('studentDeletionModal');
         if (!modal) {
             console.error('studentDeletionModal not found');
@@ -6127,12 +6130,12 @@ class MoodCheckInApp {
     // Show group detail modal
     async showGroupDetailModal(groupId, groupType) {
         try {
-            console.log('showGroupDetailModal called with:', groupId, groupType);
+            appDebugLog('showGroupDetailModal called with:', groupId, groupType);
             const modal = document.getElementById('directorGroupDetailModal');
             const titleElement = document.getElementById('directorGroupDetailTitle');
             const contentElement = document.getElementById('directorGroupDetailContent');
             
-            console.log('Group modal elements found:', { modal: !!modal, titleElement: !!titleElement, contentElement: !!contentElement });
+            appDebugLog('Group modal elements found:', { modal: !!modal, titleElement: !!titleElement, contentElement: !!contentElement });
             
             if (!modal || !titleElement || !contentElement) {
                 console.error('Missing group modal elements');
@@ -6175,14 +6178,14 @@ class MoodCheckInApp {
                 this.displayGroupDetailContent(contentElement, groupUsers, moodData, groupType);
             }
             
-            console.log('Showing group detail modal');
+            appDebugLog('Showing group detail modal');
             modal.style.display = 'flex';
             modal.style.zIndex = '3000';
             modal.classList.add('active');
-            console.log('Group modal classes after adding active:', modal.className);
-            console.log('Group modal computed display:', window.getComputedStyle(modal).display);
-            console.log('Group modal computed visibility:', window.getComputedStyle(modal).visibility);
-            console.log('Group modal computed z-index:', window.getComputedStyle(modal).zIndex);
+            appDebugLog('Group modal classes after adding active:', modal.className);
+            appDebugLog('Group modal computed display:', window.getComputedStyle(modal).display);
+            appDebugLog('Group modal computed visibility:', window.getComputedStyle(modal).visibility);
+            appDebugLog('Group modal computed z-index:', window.getComputedStyle(modal).zIndex);
         } catch (error) {
             console.error('Failed to show group detail modal:', error);
         }
@@ -6320,13 +6323,13 @@ class MoodCheckInApp {
     // Setup student click handlers
     setupStudentClickHandlers() {
         const studentItems = document.querySelectorAll('.director-student-item');
-        console.log('Setting up click handlers for', studentItems.length, 'student items');
+        appDebugLog('Setting up click handlers for', studentItems.length, 'student items');
         studentItems.forEach(item => {
             item.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 const userId = item.dataset.userId;
-                console.log('Student item clicked, userId:', userId);
+                appDebugLog('Student item clicked, userId:', userId);
                 await this.showStudentDetailModal(userId);
             });
         });
@@ -6335,12 +6338,12 @@ class MoodCheckInApp {
     // Show student detail modal
     async showStudentDetailModal(userId) {
         try {
-            console.log('showStudentDetailModal called with userId:', userId);
+            appDebugLog('showStudentDetailModal called with userId:', userId);
             const modal = document.getElementById('directorStudentDetailModal');
             const titleElement = document.getElementById('directorStudentDetailTitle');
             const contentElement = document.getElementById('directorStudentDetailContent');
             
-            console.log('Modal elements found:', { modal: !!modal, titleElement: !!titleElement, contentElement: !!contentElement });
+            appDebugLog('Modal elements found:', { modal: !!modal, titleElement: !!titleElement, contentElement: !!contentElement });
             
             if (!modal || !titleElement || !contentElement) {
                 console.error('Missing modal elements');
@@ -6348,22 +6351,22 @@ class MoodCheckInApp {
             }
             
             // Show modal immediately
-            console.log('Showing student detail modal immediately');
+            appDebugLog('Showing student detail modal immediately');
             modal.style.display = 'flex';
             modal.style.zIndex = '3000';
             modal.classList.add('active');
-            console.log('Modal classes after adding active:', modal.className);
-            console.log('Modal computed display:', window.getComputedStyle(modal).display);
-            console.log('Modal computed visibility:', window.getComputedStyle(modal).visibility);
-            console.log('Modal computed z-index:', window.getComputedStyle(modal).zIndex);
+            appDebugLog('Modal classes after adding active:', modal.className);
+            appDebugLog('Modal computed display:', window.getComputedStyle(modal).display);
+            appDebugLog('Modal computed visibility:', window.getComputedStyle(modal).visibility);
+            appDebugLog('Modal computed z-index:', window.getComputedStyle(modal).zIndex);
             
             // Load user, mood, and this student's journal entries (all time so director sees full history)
-            console.log('Loading user and mood data...');
+            appDebugLog('Loading user and mood data...');
             const usersResponse = await APIUtils.getAllUsers();
             const moodResponse = await APIUtils.getAllMoodData('daily');
             const journalResponse = await APIUtils.getJournalEntries(userId, 'all');
             
-            console.log('API responses:', {
+            appDebugLog('API responses:', {
                 usersSuccess: usersResponse.success,
                 moodSuccess: moodResponse.success,
                 journalSuccess: journalResponse.success,
@@ -6377,9 +6380,9 @@ class MoodCheckInApp {
                 const moodData = moodResponse.checkins || [];
                 const journalData = journalResponse.entries || [];
                 
-                console.log('Looking for user with ID:', userId);
+                appDebugLog('Looking for user with ID:', userId);
                 const user = users.find(u => u.id == userId); // Use == instead of === for type coercion
-                console.log('Found user:', user);
+                appDebugLog('Found user:', user);
                 
                 if (!user) {
                     console.error('User not found with ID:', userId);
@@ -6387,13 +6390,13 @@ class MoodCheckInApp {
                 }
                 
                 titleElement.textContent = user.first_name;
-                console.log('Set title to:', titleElement.textContent);
+                appDebugLog('Set title to:', titleElement.textContent);
                 
                 const userJournals = journalData.filter(journal => journal.user_id == userId); // Use == for type coercion
                 this.currentStudentDetailUserId = user.id;
                 this.displayStudentDetailContent(contentElement, user, [], userJournals);
                 this.loadStudentCheckinsForPeriod(user.id, 'weekly');
-                console.log('Content populated');
+                appDebugLog('Content populated');
             } else {
                 console.error('API responses failed:', { usersResponse, moodResponse, journalResponse });
                 // Show modal with error message
@@ -6406,7 +6409,7 @@ class MoodCheckInApp {
 
     // Display student detail content
     displayStudentDetailContent(contentElement, user, moodData, journalData) {
-        console.log('displayStudentDetailContent called with:', { user, moodDataLength: moodData.length, journalDataLength: journalData.length });
+        appDebugLog('displayStudentDetailContent called with:', { user, moodDataLength: moodData.length, journalDataLength: journalData.length });
         
         const initials = `${user.first_name.charAt(0)}${user.surname.charAt(0)}`.toUpperCase();
         const latestMood = moodData.length > 0 ? moodData[moodData.length - 1] : null;
@@ -6447,7 +6450,7 @@ class MoodCheckInApp {
             </div>
         `;
         
-        console.log('Setting content HTML, length:', contentHTML.length);
+        appDebugLog('Setting content HTML, length:', contentHTML.length);
         contentElement.innerHTML = contentHTML;
         
         document.querySelectorAll('.director-checkins-period-tab').forEach(tab => {
@@ -6459,7 +6462,7 @@ class MoodCheckInApp {
                 this.loadStudentCheckinsForPeriod(this.currentStudentDetailUserId, period);
             });
         });
-        console.log('Content set successfully');
+        appDebugLog('Content set successfully');
     }
 
     async loadStudentCheckinsForPeriod(userId, period) {
@@ -6546,7 +6549,7 @@ class MoodCheckInApp {
     // Initialize director charts
     async initializeDirectorCharts() {
         try {
-            console.log('Initializing director charts...');
+            appDebugLog('Initializing director charts...');
             
             // Setup chart controls
             this.setupChartControls();
@@ -6591,7 +6594,7 @@ class MoodCheckInApp {
     async updateAllCharts() {
         try {
             const period = document.getElementById('chartPeriodSelect')?.value || 'daily';
-            console.log('Updating charts with period:', period);
+            appDebugLog('Updating charts with period:', period);
             
             const [usersResponse, moodResponse, journalResponse] = await Promise.all([
                 APIUtils.getAllUsers(),
@@ -6847,18 +6850,15 @@ class MoodCheckInApp {
     aggregateMoodDataByHouses(users, moodData) {
         const groupData = {};
         
-        console.log('Aggregating mood data for houses:', users.length, 'users and', moodData.length, 'mood entries');
-        
-        // First, collect all unique houses from users
+        appDebugLog('Aggregating mood data for houses:', users.length, 'users and', moodData.length, 'mood entries');
+
         const allHouses = new Set();
-        
         users.forEach(user => {
             if (user.user_type === 'student' && user.house) {
                 allHouses.add(user.house);
             }
         });
-        
-        console.log('All houses found:', Array.from(allHouses));
+        appDebugLog('All houses found:', Array.from(allHouses));
         
         // Initialize all houses with empty mood counts
         allHouses.forEach(house => {
@@ -6869,26 +6869,23 @@ class MoodCheckInApp {
         users.forEach(user => {
             if (user.user_type === 'student' && user.house) {
                 const userMoods = moodData.filter(mood => mood.user_id == user.id);
-                console.log(`User ${user.first_name} ${user.surname} (House: ${user.house}): ${userMoods.length} mood entries`);
-                
+                appDebugLog(`User ${user.first_name} ${user.surname} (House: ${user.house}): ${userMoods.length} mood entries`);
+
                 userMoods.forEach(mood => {
-                    // Capitalize mood value to match chart expectations (e.g., 'happy' -> 'Happy')
                     const moodType = mood.mood ? mood.mood.charAt(0).toUpperCase() + mood.mood.slice(1) : 'Unknown';
-                    
                     if (!groupData[user.house][moodType]) {
                         groupData[user.house][moodType] = 0;
                     }
                     groupData[user.house][moodType]++;
-                    console.log(`Added ${moodType} mood to house ${user.house}`);
+                    appDebugLog(`Added ${moodType} mood to house ${user.house}`);
                 });
             }
         });
-        
-        console.log('Final houses group data:', groupData);
-        
-        // Add sample data for missing houses
+
+        appDebugLog('Final houses group data:', groupData);
+
         if (Object.keys(groupData).length === 0 || Object.values(groupData).every(group => Object.keys(group).length === 0)) {
-            console.log('No house data found, adding sample data for testing');
+            appDebugLog('No house data found, adding sample data for testing');
             groupData['Mirfield'] = { 'Happy': 3, 'Sad': 1, 'Excited': 2, 'Calm': 1 };
             groupData['Bishops'] = { 'Happy': 2, 'Calm': 3, 'Anxious': 1, 'Excited': 1 };
             groupData['Bavin'] = { 'Happy': 4, 'Excited': 1, 'Calm': 2, 'Sad': 1 };
@@ -6911,8 +6908,8 @@ class MoodCheckInApp {
     aggregateMoodDataByGrades(users, moodData) {
         const groupData = {};
         
-        console.log('Aggregating mood data for grades:', users.length, 'users and', moodData.length, 'mood entries');
-        
+        appDebugLog('Aggregating mood data for grades:', users.length, 'users and', moodData.length, 'mood entries');
+
         // Initialize all standard grades
         const standardGrades = ['Grade 5', 'Grade 6', 'Grade 7'];
         standardGrades.forEach(grade => {
@@ -6927,12 +6924,10 @@ class MoodCheckInApp {
                 if (!userGrade) return;
                 
                 const userMoods = moodData.filter(mood => mood.user_id == user.id);
-                console.log(`User ${user.first_name} ${user.surname} (Class: ${user.class}, Grade: ${userGrade}): ${userMoods.length} mood entries`);
-                
+                appDebugLog(`User ${user.first_name} ${user.surname} (Class: ${user.class}, Grade: ${userGrade}): ${userMoods.length} mood entries`);
+
                 userMoods.forEach(mood => {
-                    // Capitalize mood value to match chart expectations (e.g., 'happy' -> 'Happy')
                     const moodType = mood.mood ? mood.mood.charAt(0).toUpperCase() + mood.mood.slice(1) : 'Unknown';
-                    
                     if (!groupData[userGrade]) {
                         groupData[userGrade] = {};
                     }
@@ -6940,16 +6935,15 @@ class MoodCheckInApp {
                         groupData[userGrade][moodType] = 0;
                     }
                     groupData[userGrade][moodType]++;
-                    console.log(`Added ${moodType} mood to ${userGrade}`);
+                    appDebugLog(`Added ${moodType} mood to ${userGrade}`);
                 });
             }
         });
-        
-        console.log('Final grades group data:', groupData);
-        
-        // Add sample data for missing grades
+
+        appDebugLog('Final grades group data:', groupData);
+
         if (Object.keys(groupData).length === 0 || Object.values(groupData).every(group => Object.keys(group).length === 0)) {
-            console.log('No grade data found, adding sample data for testing');
+            appDebugLog('No grade data found, adding sample data for testing');
             groupData['Grade 5'] = { 'Happy': 5, 'Excited': 2, 'Calm': 1, 'Sad': 1 };
             groupData['Grade 6'] = { 'Happy': 3, 'Sad': 1, 'Anxious': 2, 'Calm': 2 };
             groupData['Grade 7'] = { 'Happy': 2, 'Calm': 3, 'Excited': 1, 'Angry': 1 };
@@ -7013,8 +7007,8 @@ class MoodCheckInApp {
     aggregateMoodDataByGroup(users, moodData) {
         const groupData = {};
         
-        console.log('Aggregating mood data for', users.length, 'users and', moodData.length, 'mood entries');
-        
+        appDebugLog('Aggregating mood data for', users.length, 'users and', moodData.length, 'mood entries');
+
         // Initialize standard houses and grades
         const standardHouses = ['Mirfield', 'Bishops', 'Bavin', 'Dodson', 'Sage'];
         const standardGrades = ['Grade 5', 'Grade 6', 'Grade 7'];
@@ -7033,37 +7027,32 @@ class MoodCheckInApp {
                 const userMoods = moodData.filter(mood => mood.user_id == user.id);
                 // Get the grade from the class name (e.g., "5EF" -> "Grade 5")
                 const userGrade = getGradeFromClass(user.class);
-                console.log(`User ${user.first_name} ${user.surname} (House: ${user.house}, Class: ${user.class}, Grade: ${userGrade}): ${userMoods.length} mood entries`);
-                
+                appDebugLog(`User ${user.first_name} ${user.surname} (House: ${user.house}, Class: ${user.class}, Grade: ${userGrade}): ${userMoods.length} mood entries`);
+
                 userMoods.forEach(mood => {
                     const moodType = mood.mood;
-                    
-                    // Add to house group
                     if (user.house && groupData[user.house]) {
                         if (!groupData[user.house][moodType]) {
                             groupData[user.house][moodType] = 0;
                         }
                         groupData[user.house][moodType]++;
                     }
-                    
-                    // Add to grade group (using derived grade from class name)
                     if (userGrade && groupData[userGrade]) {
                         if (!groupData[userGrade][moodType]) {
                             groupData[userGrade][moodType] = 0;
                         }
                         groupData[userGrade][moodType]++;
                     }
-                    
-                    console.log(`Added ${moodType} mood to ${user.house || 'no house'} and ${userGrade || 'no grade'}`);
+                    appDebugLog(`Added ${moodType} mood to ${user.house || 'no house'} and ${userGrade || 'no grade'}`);
                 });
             }
         });
-        
-        console.log('Final group data:', groupData);
+
+        appDebugLog('Final group data:', groupData);
         
         // If still no data, add comprehensive sample data
         if (Object.keys(groupData).length === 0 || Object.values(groupData).every(group => Object.keys(group).length === 0)) {
-            console.log('No data found, adding comprehensive sample data for testing');
+            appDebugLog('No data found, adding comprehensive sample data for testing');
             groupData['Mirfield'] = { 'Happy': 3, 'Sad': 1, 'Excited': 2, 'Calm': 1 };
             groupData['Bishops'] = { 'Happy': 2, 'Calm': 3, 'Anxious': 1, 'Excited': 1 };
             groupData['Bavin'] = { 'Happy': 4, 'Excited': 1, 'Calm': 2, 'Sad': 1 };
@@ -7076,7 +7065,7 @@ class MoodCheckInApp {
         
         // For testing: if we have very few groups, add all houses and grades with sample data
         if (Object.keys(groupData).length < 6) {
-            console.log('Adding missing houses and grades with sample data for complete chart display');
+            appDebugLog('Adding missing houses and grades with sample data for complete chart display');
             const allHouses = ['Mirfield', 'Bishops', 'Bavin', 'Dodson', 'Sage'];
             const allGrades = ['Grade 5', 'Grade 6', 'Grade 7'];
             
@@ -7117,8 +7106,8 @@ class MoodCheckInApp {
             moodTypes = ['Happy', 'Sad', 'Angry', 'Anxious', 'Excited', 'Calm'];
         }
         
-        console.log('Found mood types:', moodTypes);
-        console.log('Chart labels:', labels);
+        appDebugLog('Found mood types:', moodTypes);
+        appDebugLog('Chart labels:', labels);
         
         // Use a more comprehensive color palette
         const colors = ['#4CAF50', '#F44336', '#FF9800', '#9C27B0', '#2196F3', '#00BCD4', '#FF5722', '#795548', '#607D8B', '#E91E63'];
@@ -7128,7 +7117,7 @@ class MoodCheckInApp {
                 const value = groupData[group]?.[mood] || 0;
                 return value;
             });
-            console.log(`Mood ${mood} data for labels ${labels}:`, data);
+            appDebugLog(`Mood ${mood} data for labels ${labels}:`, data);
             return {
                 label: mood,
                 data: data,
@@ -7221,7 +7210,7 @@ class MoodCheckInApp {
 
 // Global function to force show teacher form
 window.showTeacherForm = function() {
-    console.log('Forcing teacher form to show...');
+    appDebugLog('Forcing teacher form to show...');
     
     // Hide all forms
     document.querySelectorAll('.register-form').forEach(form => {
@@ -7232,13 +7221,13 @@ window.showTeacherForm = function() {
     const teacherForm = document.getElementById('teacherRegisterForm');
     if (teacherForm) {
         teacherForm.classList.add('active');
-        console.log('Teacher form activated');
+        appDebugLog('Teacher form activated');
         
         // Check elements after a delay
         setTimeout(() => {
             const gradeElement = document.getElementById('teacherGrade');
             const houseElement = document.getElementById('teacherHouse');
-            console.log('After forcing show:', {
+            appDebugLog('After forcing show:', {
                 gradeElement: !!gradeElement,
                 houseElement: !!houseElement,
                 gradeParent: gradeElement ? gradeElement.parentElement : null,
@@ -8079,24 +8068,24 @@ async function fetchTeacherAssignments(teacherId) {
 
 // Update teacher filters display
 async function updateTeacherFilters() {
-    console.log('updateTeacherFilters called');
+    appDebugLog('updateTeacherFilters called');
     
     const teacherHouseDisplay = document.getElementById('teacherHouseDisplay');
     const gradeButtonsContainer = document.getElementById('gradeButtonsContainer');
     
-    console.log('Elements found:', { 
+    appDebugLog('Elements found:', { 
         teacherHouseDisplay: !!teacherHouseDisplay, 
         gradeButtonsContainer: !!gradeButtonsContainer 
     });
     
     if (!teacherHouseDisplay || !gradeButtonsContainer) {
-        console.log('Teacher filter elements not found');
+        appDebugLog('Teacher filter elements not found');
         return;
     }
     
     // Set default values based on teacher's assigned grade and house
     if (window.moodApp && window.moodApp.currentUser) {
-        console.log('Current user found:', window.moodApp.currentUser);
+        appDebugLog('Current user found:', window.moodApp.currentUser);
         const houseName = window.moodApp.currentUser.house || 'Unknown';
         
         // For demo purposes, let's use mock data instead of API call
@@ -8132,9 +8121,9 @@ async function updateTeacherFilters() {
             gradeButtonsContainer.appendChild(gradeButton);
         });
         
-        console.log('Updated teacher filters with mock data:', { houseName, grades });
+        appDebugLog('Updated teacher filters with mock data:', { houseName, grades });
     } else {
-        console.log('No teacher data available, showing default buttons');
+        appDebugLog('No teacher data available, showing default buttons');
         // Set default values if no teacher data
         teacherHouseDisplay.textContent = 'House: Mirfield';
         
@@ -8466,9 +8455,9 @@ MoodCheckInApp.prototype.loadTeacherClassCheckins = async function (period = 'da
 // Initialize the app when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     try {
-        console.log('DOM loaded, initializing app with database...');
+        appDebugLog('DOM loaded, initializing app with database...');
         window.moodApp = new MoodCheckInApp();
-        console.log('App instance created and available as window.moodApp');
+        appDebugLog('App instance created and available as window.moodApp');
     } catch (error) {
         console.error('Error initializing app:', error);
         alert('Error initializing app: ' + error.message);
@@ -8480,7 +8469,7 @@ document.addEventListener('DOMContentLoaded', () => {
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(function(registrations) {
         for(let registration of registrations) {
-            console.log('Unregistering service worker:', registration);
+            appDebugLog('Unregistering service worker:', registration);
             registration.unregister();
         }
     });
@@ -8490,10 +8479,10 @@ if ('serviceWorker' in navigator) {
 //     window.addEventListener('load', () => {
 //         navigator.serviceWorker.register('/sw.js')
 //             .then((registration) => {
-//                 console.log('SW registered: ', registration);
+//                 appDebugLog('SW registered: ', registration);
 //             })
 //             .catch((registrationError) => {
-//                 console.log('SW registration failed: ', registrationError);
+//                 appDebugLog('SW registration failed: ', registrationError);
 //             });
 //     });
 // }

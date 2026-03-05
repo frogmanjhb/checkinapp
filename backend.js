@@ -8,6 +8,7 @@ const bcrypt = require('bcryptjs');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
+const fs = require('fs');
 const session = require('express-session');
 const pgSession = require('connect-pg-simple');
 const cookieParser = require('cookie-parser');
@@ -698,6 +699,26 @@ app.post('/api/logout', (req, res) => {
     }
     res.json({ success: true });
   });
+});
+
+// Serve flag keywords JSON for client-side flagging (avoids static path issues)
+app.get('/api/flag-keywords', (req, res) => {
+  const candidates = [
+    path.join(__dirname, 'public', 'data', 'flagKeywords.json'),
+    path.join(__dirname, 'data', 'flagKeywords.json')
+  ];
+  for (const filePath of candidates) {
+    try {
+      if (fs.existsSync(filePath)) {
+        const data = fs.readFileSync(filePath, 'utf8');
+        const json = JSON.parse(data);
+        return res.type('application/json').json(json);
+      }
+    } catch (err) {
+      continue;
+    }
+  }
+  res.status(404).json({ red: {}, amber: {}, yellow: {} });
 });
 
 // Get app settings (e.g. plugin toggles) — used by all roles for UI visibility

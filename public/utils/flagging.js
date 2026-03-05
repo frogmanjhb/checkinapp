@@ -10,25 +10,45 @@ function debugLog(...args) { if (FLAGGING_DEBUG) console.log(...args); }
 function debugWarn(...args) { if (FLAGGING_DEBUG) console.warn(...args); }
 function debugError(...args) { if (FLAGGING_DEBUG) console.error(...args); }
 
-// Load flag keywords from JSON (cached; on failure cache empty so we don't retry or log repeatedly)
+// Load flag keywords (cached; single in-flight request; prefers API then static)
 let flagKeywords = null;
 let flagKeywordsLoadFailed = false;
+let flagKeywordsLoadPromise = null;
 
 async function loadFlagKeywords() {
     if (flagKeywords) return flagKeywords;
     if (flagKeywordsLoadFailed) return { red: {}, amber: {}, yellow: {} };
 
-    try {
-        const response = await fetch('data/flagKeywords.json');
-        if (!response.ok) throw new Error(response.statusText);
-        flagKeywords = await response.json();
-        return flagKeywords;
-    } catch (error) {
-        flagKeywordsLoadFailed = true;
-        flagKeywords = { red: {}, amber: {}, yellow: {} };
-        console.warn('Flag keywords not loaded (data/flagKeywords.json missing or invalid). Flagging will be disabled.', error.message);
-        return flagKeywords;
+    if (!flagKeywordsLoadPromise) {
+        flagKeywordsLoadPromise = (async () => {
+            const empty = { red: {}, amber: {}, yellow: {} };
+            for (const url of ['/api/flag-keywords', '/data/flagKeywords.json']) {
+                try {
+                    const response = await fetch(url, { credentials: 'include' });
+                    if (!response.ok) continue;
+                    const contentType = (response.headers.get('Content-Type') || '').toLowerCase();
+                    if (!contentType.includes('application/json')) continue;
+                    const data = await response.json();
+                    if (data && (data.red != null || data.amber != null || data.yellow != null)) {
+                        return data;
+                    }
+                } catch (_) { /* try next */ }
+            }
+            return null;
+        })();
     }
+
+    try {
+        const data = await flagKeywordsLoadPromise;
+        if (data) {
+            flagKeywords = data;
+            return flagKeywords;
+        }
+    } catch (_) { /* ignore */ }
+    flagKeywordsLoadFailed = true;
+    flagKeywords = { red: {}, amber: {}, yellow: {} };
+    debugWarn('Flag keywords not loaded. Flagging will be disabled.');
+    return flagKeywords;
 }
 
 /**
