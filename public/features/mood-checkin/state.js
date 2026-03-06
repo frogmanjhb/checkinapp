@@ -1,28 +1,29 @@
 /**
  * Mood check-in feature: state shape and defaults.
  * Keeps state explicit and testable (React-ready).
+ * Mood keys match app and HTML: happy, excited, calm, tired, anxious, sad, angry, confused.
  */
 
 export const MOOD_EMOJIS = ['😊', '🤩', '😌', '😴', '😰', '😢', '😠', '😕'];
+export const MOOD_KEYS = ['happy', 'excited', 'calm', 'tired', 'anxious', 'sad', 'angry', 'confused'];
 export const MOOD_LABELS = {
-  great: 'Great',
+  happy: 'Happy',
   excited: 'Excited',
   calm: 'Calm',
   tired: 'Tired',
   anxious: 'Anxious',
   sad: 'Sad',
   angry: 'Angry',
-  unsure: 'Unsure'
+  confused: 'Confused'
 };
 
 /**
- * @returns Initial state for the mood check-in flow
+ * @returns Initial state for the mood check-in flow (supports multi-select up to 2)
  */
 export function getDefaultState() {
   return {
-    step: 'mood', // 'mood' | 'emotions' | 'reasons' | 'location' | 'confirm'
-    selectedMood: null,
-    selectedEmoji: null,
+    step: 'mood',
+    selectedMoods: [], // [{ mood, emoji }, ...] max 2
     selectedEmotions: [],
     selectedReasons: [],
     location: null,

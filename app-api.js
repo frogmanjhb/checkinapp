@@ -1589,39 +1589,38 @@ class MoodCheckInApp {
             return;
         }
 
+        var houseBadgeMap = {
+            'Bavin': 'images/SP House_Bavin.png',
+            'Bishops': 'images/SP House_Bishops.png',
+            'Dodson': 'images/SP House_Dodson.png',
+            'Mirfield': 'images/SP House_Mirfield.png',
+            'Sage': 'images/SP House_Sage.png'
+        };
+
         try {
             const response = await APIUtils.getHousePoints(this.currentUser.id);
             if (response.success) {
                 const housePointsCard = document.getElementById('housePointsCard');
-                const houseBadge = document.getElementById('houseBadge');
-                const studentNameCard = document.getElementById('studentNameCard');
-                const housePoints = document.getElementById('housePoints');
-
-                if (housePointsCard && houseBadge && studentNameCard && housePoints) {
-                    // Set house badge image
-                    const houseBadgeMap = {
-                        'Bavin': 'images/SP House_Bavin.png',
-                        'Bishops': 'images/SP House_Bishops.png',
-                        'Dodson': 'images/SP House_Dodson.png',
-                        'Mirfield': 'images/SP House_Mirfield.png',
-                        'Sage': 'images/SP House_Sage.png'
-                    };
-
-                    const house = response.house || this.currentUser.house;
-                    if (house && houseBadgeMap[house]) {
-                        houseBadge.src = houseBadgeMap[house];
-                        houseBadge.alt = `${house} House Badge`;
+                if (housePointsCard && window.HousePointsFeature) {
+                    var house = response.house || this.currentUser.house;
+                    var firstName = this.currentUser.first_name || this.currentUser.firstName || '';
+                    var surname = this.currentUser.surname || this.currentUser.lastName || '';
+                    window.HousePointsFeature.renderYourPanel(housePointsCard, { points: response.points || 0, house: house }, { houseBadgeMap: houseBadgeMap, studentName: (firstName + ' ' + surname).trim() });
+                } else if (housePointsCard) {
+                    const houseBadge = document.getElementById('houseBadge');
+                    const studentNameCard = document.getElementById('studentNameCard');
+                    const housePoints = document.getElementById('housePoints');
+                    if (houseBadge && studentNameCard && housePoints) {
+                        const house = response.house || this.currentUser.house;
+                        if (house && houseBadgeMap[house]) {
+                            houseBadge.src = houseBadgeMap[house];
+                            houseBadge.alt = house + ' House Badge';
+                        }
+                        const firstName = this.currentUser.first_name || this.currentUser.firstName || '';
+                        const surname = this.currentUser.surname || this.currentUser.lastName || '';
+                        studentNameCard.textContent = (firstName + ' ' + surname).trim();
+                        housePoints.textContent = response.points || 0;
                     }
-
-                    // Set student name
-                    const firstName = this.currentUser.first_name || this.currentUser.firstName || '';
-                    const surname = this.currentUser.surname || this.currentUser.lastName || '';
-                    studentNameCard.textContent = `${firstName} ${surname}`.trim();
-
-                    // Set house points
-                    housePoints.textContent = response.points || 0;
-
-                    // Visibility is controlled by applyHousePointsVisibility()
                 }
             }
         } catch (error) {
@@ -1649,7 +1648,9 @@ class MoodCheckInApp {
         el.innerHTML = '<p class="loading-text">Loading...</p>';
         try {
             const response = await APIUtils.getGradeHousePoints();
-            if (response.success && response.gradePoints && response.gradePoints.length > 0) {
+            if (response.success && window.HousePointsFeature) {
+                window.HousePointsFeature.renderGradeList(el, response.gradePoints || []);
+            } else if (response.success && response.gradePoints && response.gradePoints.length > 0) {
                 el.innerHTML = response.gradePoints.map(row => `
                     <div class="house-points-list-item">
                         <span class="house-points-list-label">${row.grade || 'Unknown'}</span>
@@ -1669,25 +1670,21 @@ class MoodCheckInApp {
         const el = document.getElementById('schoolHousePointsList');
         if (!el) return;
         el.innerHTML = '<p class="loading-text">Loading...</p>';
+        var houseBadgeMap = {
+            'Bavin': 'images/SP House_Bavin.png',
+            'Bishops': 'images/SP House_Bishops.png',
+            'Dodson': 'images/SP House_Dodson.png',
+            'Mirfield': 'images/SP House_Mirfield.png',
+            'Sage': 'images/SP House_Sage.png'
+        };
         try {
             const response = await APIUtils.getSchoolHousePoints();
-            if (response.success && response.housePoints && response.housePoints.length > 0) {
-                const houseBadgeMap = {
-                    'Bavin': 'images/SP House_Bavin.png',
-                    'Bishops': 'images/SP House_Bishops.png',
-                    'Dodson': 'images/SP House_Dodson.png',
-                    'Mirfield': 'images/SP House_Mirfield.png',
-                    'Sage': 'images/SP House_Sage.png'
-                };
+            if (response.success && window.HousePointsFeature) {
+                window.HousePointsFeature.renderSchoolList(el, response.housePoints || [], houseBadgeMap);
+            } else if (response.success && response.housePoints && response.housePoints.length > 0) {
                 el.innerHTML = response.housePoints.map(row => {
-                    const img = houseBadgeMap[row.house] ? `<img src="${houseBadgeMap[row.house]}" alt="${row.house}" class="house-points-list-badge">` : '';
-                    return `
-                    <div class="house-points-list-item">
-                        ${img}
-                        <span class="house-points-list-label">${row.house || 'Unknown'}</span>
-                        <span class="house-points-list-value">${parseInt(row.total_points)} points</span>
-                    </div>
-                `;
+                    const img = houseBadgeMap[row.house] ? '<img src="' + houseBadgeMap[row.house] + '" alt="' + row.house + '" class="house-points-list-badge">' : '';
+                    return '<div class="house-points-list-item">' + img + '<span class="house-points-list-label">' + (row.house || 'Unknown') + '</span><span class="house-points-list-value">' + parseInt(row.total_points) + ' points</span></div>';
                 }).join('');
             } else {
                 el.innerHTML = '<p class="loading-text">No school house points data yet.</p>';
@@ -1906,7 +1903,14 @@ class MoodCheckInApp {
         }
         document.getElementById('moodModal').classList.add('active');
         this.selectedMoods = [];
-        this.updateMoodButtons();
+        var moodFeature = window.MoodCheckinFeature;
+        var moodContainer = document.getElementById('moodOptionsContainer');
+        if (moodFeature && moodContainer) {
+            this.moodCheckinState = moodFeature.getDefaultState();
+            moodFeature.renderMoodStep(moodContainer, this.moodCheckinState, (mood, emoji) => this.selectMood(mood, emoji));
+        } else {
+            this.updateMoodButtons();
+        }
         
         // Disable all mood modal buttons initially
         const proceedToEmotions = document.getElementById('proceedToEmotions');
@@ -2095,9 +2099,12 @@ class MoodCheckInApp {
     showJournalingEncouragementModal() {
         // Show journal prompts for all selected moods (combined, deduplicated)
         var moods = (this.selectedMoods || []).map(function (m) { return m.mood; });
-        var prompts = getPromptsForMoodsInline(moods);
-        var listEl = document.querySelector('#journalingModal .journal-prompts-list');
-        if (listEl) {
+        var listEl = document.getElementById('journalingPromptsList');
+        if (listEl && window.JournalFeature) {
+            var prompts = window.JournalFeature.getPromptsForMoods(moods);
+            window.JournalFeature.renderQuickJournalPrompts(listEl, prompts, 'journalEntry');
+        } else if (listEl) {
+            var prompts = getPromptsForMoodsInline(moods);
             renderQuickJournalPromptsInline(listEl, prompts, 'journalEntry');
         }
 
@@ -2355,7 +2362,14 @@ class MoodCheckInApp {
         var idx = this.selectedMoods.findIndex(function (m) { return m.mood === mood; });
         if (idx > -1) this.selectedMoods.splice(idx, 1);
         else if (this.selectedMoods.length < 2) this.selectedMoods.push({ mood: mood, emoji: emoji });
-        this.updateMoodButtons();
+        var moodFeature = window.MoodCheckinFeature;
+        var moodContainer = document.getElementById('moodOptionsContainer');
+        if (moodFeature && moodContainer && this.moodCheckinState) {
+            this.moodCheckinState = moodFeature.mergeState(this.moodCheckinState, { selectedMoods: this.selectedMoods });
+            moodFeature.renderMoodStep(moodContainer, this.moodCheckinState, (mood, emoji) => this.selectMood(mood, emoji));
+        } else {
+            this.updateMoodButtons();
+        }
         var proceedToEmotions = document.getElementById('proceedToEmotions');
         var confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
         var hasSelection = this.selectedMoods.length >= 1;
@@ -3165,6 +3179,12 @@ class MoodCheckInApp {
         document.getElementById('journalEntryModal').classList.add('active');
         document.getElementById('journalEntryText').value = '';
         this.updateJournalCharacterCount('');
+        // Render default prompts from journal feature when available
+        var promptsEl = document.getElementById('journalEntryModalPromptsList');
+        if (promptsEl && window.JournalFeature) {
+            var defaultPrompts = window.JournalFeature.getPromptsForMood();
+            window.JournalFeature.renderQuickJournalPrompts(promptsEl, defaultPrompts, 'journalEntryText');
+        }
     }
 
     hideJournalEntryModal() {
@@ -6103,7 +6123,11 @@ class MoodCheckInApp {
 
         try {
             const response = await APIUtils.getHousePointsTotals(this.currentUser.id);
-            if (response.success && response.housePoints) {
+            if (response.success && window.HousePointsFeature) {
+                const byHouse = {};
+                (response.housePoints || []).forEach(h => { byHouse[h.house] = h; });
+                window.HousePointsFeature.renderDirectorRow(housePointsRow, byHouse, houseOrder, houseBadgeMap);
+            } else if (response.success && response.housePoints) {
                 const byHouse = {};
                 (response.housePoints || []).forEach(h => { byHouse[h.house] = h; });
                 housePointsRow.innerHTML = houseOrder.map(houseName => {
@@ -6111,16 +6135,7 @@ class MoodCheckInApp {
                     const badgeSrc = houseBadgeMap[house.house] || '';
                     const pts = parseInt(house.total_points) || 0;
                     const count = parseInt(house.student_count) || 0;
-                    return `
-                        <div class="house-points-item">
-                            <img src="${badgeSrc}" alt="${house.house} House Badge" class="house-badge-director">
-                            <div class="house-points-details">
-                                <div class="house-name-director">${house.house} House</div>
-                                <div class="house-points-total">${pts} Points</div>
-                                <div class="house-students-count">${count} Student${count !== 1 ? 's' : ''}</div>
-                            </div>
-                        </div>
-                    `;
+                    return '<div class="house-points-item"><img src="' + badgeSrc + '" alt="' + house.house + ' House Badge" class="house-badge-director"><div class="house-points-details"><div class="house-name-director">' + house.house + ' House</div><div class="house-points-total">' + pts + ' Points</div><div class="house-students-count">' + count + ' Student' + (count !== 1 ? 's' : '') + '</div></div></div>';
                 }).join('');
             } else {
                 housePointsRow.innerHTML = '<p class="loading-text">No house points data available.</p>';

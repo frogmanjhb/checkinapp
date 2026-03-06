@@ -1,2 +1,2 @@
 export { getDefaultState, mergeState } from './state.js';
-export { renderHousePoints } from './render.js';
+export { renderHousePoints, renderYourPanel, renderGradeList, renderSchoolList, renderDirectorRow } from './render.js';

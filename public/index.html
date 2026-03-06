@@ -968,7 +968,7 @@
                         <div class="mood-selection">
                             <h4>Select 1 or 2 moods that describe how you feel:</h4>
                             <p class="mood-hint">Click to select; click again to deselect. You can choose up to two.</p>
-                            <div class="mood-options">
+                            <div id="moodOptionsContainer" class="mood-options">
                                 <button class="mood-btn" data-mood="happy" data-emoji="😊">
                                     <span class="mood-emoji">😊</span>
                                     <span class="mood-label">Happy</span>
@@ -1256,7 +1256,7 @@
                             <p class="journaling-hint">Write 1-2 sentences about your current thoughts or feelings. This is optional but can help you reflect on your day.</p>
                             <div class="journal-prompts">
                                 <span class="journal-prompts-label">Try these prompts:</span>
-                                <div class="journal-prompts-list" aria-live="polite">
+                                <div id="journalingPromptsList" class="journal-prompts-list" aria-live="polite">
                                     <!-- Prompts are injected by JS from features/journal based on selected mood -->
                                 </div>
                             </div>
@@ -1288,7 +1288,7 @@
                             <p class="journal-hint">Write about your day, how you're feeling, or anything you'd like to reflect on.</p>
                             <div class="journal-prompts">
                                 <span class="journal-prompts-label">Try these prompts:</span>
-                                <div class="journal-prompts-list">
+                                <div id="journalEntryModalPromptsList" class="journal-prompts-list">
                                     <button type="button" class="journal-prompt" data-target="journalEntryText" data-text="Today I...">Today I...</button>
                                     <button type="button" class="journal-prompt" data-target="journalEntryText" data-text="I'm feeling...">I'm feeling...</button>
                                     <button type="button" class="journal-prompt" data-target="journalEntryText" data-text="I'm grateful for...">I'm grateful for...</button>

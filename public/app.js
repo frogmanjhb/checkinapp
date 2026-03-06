@@ -4,15 +4,63 @@ import { SecurityUtils } from './utils/security.js';
 import { getGradeFromClass, isClassInGrade } from './utils/grade.js';
 import { loadJson, saveJson } from './utils/storage.js';
 import { processJournalEntryFlagging } from './utils/flagging.js';
-import { getPromptsForMoods } from './features/journal/prompts.js';
-import { renderQuickJournalPrompts } from './features/journal/render.js';
 
+const JOURNAL_PROMPTS_BY_MOOD = {
+    great: ['Today I...', "I'm feeling...", "I'm grateful for...", 'Something good that happened...', "I'm looking forward to...", 'What made you smile today?', 'One thing I learned...', "I'm proud of..."],
+    excited: ["I'm excited because...", "I can't wait to...", "Something I'm looking forward to...", "I'm feeling...", 'Today was great when...', 'I want to share...', "I'm looking forward to...", 'What made today good...'],
+    calm: ['Right now I feel...', "I'm grateful for...", 'Something peaceful today...', "I'm feeling...", 'One thing that helped me feel calm...', 'Today I noticed...', 'I feel at ease when...'],
+    tired: ['Right now I...', "I'm feeling...", 'What would help me rest...', 'One small win today...', "I'm looking forward to...", 'Today was...', 'I need...'],
+    anxious: ['Right now I feel...', "What's on my mind...", 'One thing that might help...', "I'm feeling...", 'Something that usually helps me...', "I'm worried about...", 'What I need right now...'],
+    sad: ["I'm feeling...", "What's on my mind...", 'Something that might help...', "One small thing that's okay...", "I'm not alone because...", 'Today was hard because...', 'What I need...'],
+    angry: ["I'm feeling...", 'What happened...', 'What I need right now...', 'Something that might help...', "I'm upset because...", 'What would help...', 'Right now I...'],
+    unsure: ["I'm feeling...", 'Right now I...', "What's on my mind...", "Something I'm wondering about...", "I'm not sure but...", 'Today I...', 'One thing I noticed...']
+};
+var MOOD_KEY_TO_PROMPT_KEY = { happy: 'great', confused: 'unsure' };
+function normaliseMoodKeyForPromptsInline(mood) {
+    return MOOD_KEY_TO_PROMPT_KEY[mood] || mood;
+}
+function getPromptsForMoodInline(mood) {
+    var key = normaliseMoodKeyForPromptsInline(mood);
+    var resolved = key && JOURNAL_PROMPTS_BY_MOOD[key] ? key : 'unsure';
+    return JOURNAL_PROMPTS_BY_MOOD[resolved] || JOURNAL_PROMPTS_BY_MOOD.unsure;
+}
+function getPromptsForMoodsInline(moods) {
+    if (!moods || moods.length === 0) return getPromptsForMoodInline();
+    var seen = {};
+    var out = [];
+    for (var i = 0; i < moods.length; i++) {
+        var prompts = getPromptsForMoodInline(moods[i]);
+        for (var j = 0; j < prompts.length; j++) {
+            var text = prompts[j];
+            if (!seen[text]) { seen[text] = true; out.push(text); }
+        }
+    }
+    return out.length ? out : getPromptsForMoodInline();
+}
+function renderQuickJournalPromptsInline(listContainer, prompts, targetId) {
+    if (!listContainer) return;
+    targetId = targetId || 'journalEntry';
+    listContainer.innerHTML = '';
+    (prompts || []).forEach(function (text) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'journal-prompt';
+        btn.dataset.target = targetId;
+        btn.dataset.text = text;
+        btn.textContent = text;
+        btn.setAttribute('aria-label', 'Use prompt: ' + text);
+        listContainer.appendChild(btn);
+    });
+}
+
+// REACT - Mood Check-In App with Database Integration
 class MoodCheckInApp {
     constructor() {
         this.currentUser = null;
         this.moodHistory = [];
         this.journalEntries = [];
         this.selectedMoods = [];
+        this.selectedLocations = [];
         this.allUsers = [];
         this.allMoodHistory = [];
         this.moodEmojis = ['😊', '🤩', '😌', '😴', '😰', '😢', '😠', '😕'];
@@ -20,7 +68,6 @@ class MoodCheckInApp {
         this.isGhostMode = false;
         this.selectedEmotions = [];
         this.selectedReasons = [];
-        this.selectedLocations = [];
         this.mouseX = 0;
         this.mouseY = 0;
         this.physicsInterval = null;
@@ -1174,39 +1221,38 @@ class MoodCheckInApp {
             return;
         }
 
+        var houseBadgeMap = {
+            'Bavin': 'images/SP House_Bavin.png',
+            'Bishops': 'images/SP House_Bishops.png',
+            'Dodson': 'images/SP House_Dodson.png',
+            'Mirfield': 'images/SP House_Mirfield.png',
+            'Sage': 'images/SP House_Sage.png'
+        };
+
         try {
             const response = await APIUtils.getHousePoints(this.currentUser.id);
             if (response.success) {
                 const housePointsCard = document.getElementById('housePointsCard');
-                const houseBadge = document.getElementById('houseBadge');
-                const studentNameCard = document.getElementById('studentNameCard');
-                const housePoints = document.getElementById('housePoints');
-
-                if (housePointsCard && houseBadge && studentNameCard && housePoints) {
-                    // Set house badge image
-                    const houseBadgeMap = {
-                        'Bavin': 'images/SP House_Bavin.png',
-                        'Bishops': 'images/SP House_Bishops.png',
-                        'Dodson': 'images/SP House_Dodson.png',
-                        'Mirfield': 'images/SP House_Mirfield.png',
-                        'Sage': 'images/SP House_Sage.png'
-                    };
-
-                    const house = response.house || this.currentUser.house;
-                    if (house && houseBadgeMap[house]) {
-                        houseBadge.src = houseBadgeMap[house];
-                        houseBadge.alt = `${house} House Badge`;
+                if (housePointsCard && window.HousePointsFeature) {
+                    var house = response.house || this.currentUser.house;
+                    var firstName = this.currentUser.first_name || this.currentUser.firstName || '';
+                    var surname = this.currentUser.surname || this.currentUser.lastName || '';
+                    window.HousePointsFeature.renderYourPanel(housePointsCard, { points: response.points || 0, house: house }, { houseBadgeMap: houseBadgeMap, studentName: (firstName + ' ' + surname).trim() });
+                } else if (housePointsCard) {
+                    const houseBadge = document.getElementById('houseBadge');
+                    const studentNameCard = document.getElementById('studentNameCard');
+                    const housePoints = document.getElementById('housePoints');
+                    if (houseBadge && studentNameCard && housePoints) {
+                        const house = response.house || this.currentUser.house;
+                        if (house && houseBadgeMap[house]) {
+                            houseBadge.src = houseBadgeMap[house];
+                            houseBadge.alt = house + ' House Badge';
+                        }
+                        const firstName = this.currentUser.first_name || this.currentUser.firstName || '';
+                        const surname = this.currentUser.surname || this.currentUser.lastName || '';
+                        studentNameCard.textContent = (firstName + ' ' + surname).trim();
+                        housePoints.textContent = response.points || 0;
                     }
-
-                    // Set student name
-                    const firstName = this.currentUser.first_name || this.currentUser.firstName || '';
-                    const surname = this.currentUser.surname || this.currentUser.lastName || '';
-                    studentNameCard.textContent = `${firstName} ${surname}`.trim();
-
-                    // Set house points
-                    housePoints.textContent = response.points || 0;
-
-                    // Visibility is controlled by applyHousePointsVisibility()
                 }
             }
         } catch (error) {
@@ -1234,7 +1280,9 @@ class MoodCheckInApp {
         el.innerHTML = '<p class="loading-text">Loading...</p>';
         try {
             const response = await APIUtils.getGradeHousePoints();
-            if (response.success && response.gradePoints && response.gradePoints.length > 0) {
+            if (response.success && window.HousePointsFeature) {
+                window.HousePointsFeature.renderGradeList(el, response.gradePoints || []);
+            } else if (response.success && response.gradePoints && response.gradePoints.length > 0) {
                 el.innerHTML = response.gradePoints.map(row => `
                     <div class="house-points-list-item">
                         <span class="house-points-list-label">${row.grade || 'Unknown'}</span>
@@ -1254,25 +1302,21 @@ class MoodCheckInApp {
         const el = document.getElementById('schoolHousePointsList');
         if (!el) return;
         el.innerHTML = '<p class="loading-text">Loading...</p>';
+        var houseBadgeMap = {
+            'Bavin': 'images/SP House_Bavin.png',
+            'Bishops': 'images/SP House_Bishops.png',
+            'Dodson': 'images/SP House_Dodson.png',
+            'Mirfield': 'images/SP House_Mirfield.png',
+            'Sage': 'images/SP House_Sage.png'
+        };
         try {
             const response = await APIUtils.getSchoolHousePoints();
-            if (response.success && response.housePoints && response.housePoints.length > 0) {
-                const houseBadgeMap = {
-                    'Bavin': 'images/SP House_Bavin.png',
-                    'Bishops': 'images/SP House_Bishops.png',
-                    'Dodson': 'images/SP House_Dodson.png',
-                    'Mirfield': 'images/SP House_Mirfield.png',
-                    'Sage': 'images/SP House_Sage.png'
-                };
+            if (response.success && window.HousePointsFeature) {
+                window.HousePointsFeature.renderSchoolList(el, response.housePoints || [], houseBadgeMap);
+            } else if (response.success && response.housePoints && response.housePoints.length > 0) {
                 el.innerHTML = response.housePoints.map(row => {
-                    const img = houseBadgeMap[row.house] ? `<img src="${houseBadgeMap[row.house]}" alt="${row.house}" class="house-points-list-badge">` : '';
-                    return `
-                    <div class="house-points-list-item">
-                        ${img}
-                        <span class="house-points-list-label">${row.house || 'Unknown'}</span>
-                        <span class="house-points-list-value">${parseInt(row.total_points)} points</span>
-                    </div>
-                `;
+                    const img = houseBadgeMap[row.house] ? '<img src="' + houseBadgeMap[row.house] + '" alt="' + row.house + '" class="house-points-list-badge">' : '';
+                    return '<div class="house-points-list-item">' + img + '<span class="house-points-list-label">' + (row.house || 'Unknown') + '</span><span class="house-points-list-value">' + parseInt(row.total_points) + ' points</span></div>';
                 }).join('');
             } else {
                 el.innerHTML = '<p class="loading-text">No school house points data yet.</p>';
@@ -1301,18 +1345,17 @@ class MoodCheckInApp {
                 if (studentNameElement.textContent !== fullName) {
                     studentNameElement.innerHTML = fullName;
                 }
-            } else {
-                console.error('Student name element not found!');
             }
-            
             if (userNameElement) {
                 userNameElement.textContent = fullName;
                 // Fallback to innerHTML if textContent doesn't work
                 if (userNameElement.textContent !== fullName) {
                     userNameElement.innerHTML = fullName;
                 }
-            } else {
-                console.error('User name element not found!');
+            }
+            // Only log if neither student nor shared user name element exists
+            if (!studentNameElement && !userNameElement) {
+                console.error('Student/user name element not found!');
             }
         } else {
             console.error('No current user found!');
@@ -1492,9 +1535,16 @@ class MoodCheckInApp {
         }
         document.getElementById('moodModal').classList.add('active');
         this.selectedMoods = [];
-        this.updateMoodButtons();
+        var moodFeature = window.MoodCheckinFeature;
+        var moodContainer = document.getElementById('moodOptionsContainer');
+        if (moodFeature && moodContainer) {
+            this.moodCheckinState = moodFeature.getDefaultState();
+            moodFeature.renderMoodStep(moodContainer, this.moodCheckinState, (mood, emoji) => this.selectMood(mood, emoji));
+        } else {
+            this.updateMoodButtons();
+        }
         
-        // Enable proceed when at least one mood selected (max 2)
+        // Disable all mood modal buttons initially
         const proceedToEmotions = document.getElementById('proceedToEmotions');
         const confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
         
@@ -1616,15 +1666,15 @@ class MoodCheckInApp {
         };
 
         // Get emotions for all selected moods (merge and dedupe by emotion id)
-        const moods = (this.selectedMoods && this.selectedMoods.length) ? this.selectedMoods.map(m => m.mood) : ['happy'];
-        const emotionMap = new Map();
-        moods.forEach(moodKey => {
-            const list = moodEmotions[moodKey] || moodEmotions.happy;
-            (list || []).forEach(em => {
-                if (!emotionMap.has(em.emotion)) emotionMap.set(em.emotion, em);
+        var moods = (this.selectedMoods && this.selectedMoods.length) ? this.selectedMoods.map(function (m) { return m.mood; }) : ['happy'];
+        var emotionMap = {};
+        moods.forEach(function (moodKey) {
+            var list = moodEmotions[moodKey] || moodEmotions.happy;
+            (list || []).forEach(function (em) {
+                if (!emotionMap[em.emotion]) emotionMap[em.emotion] = em;
             });
         });
-        const emotions = Array.from(emotionMap.values());
+        var emotions = Object.keys(emotionMap).map(function (k) { return emotionMap[k]; });
 
         // Clear existing options
         emotionOptions.innerHTML = '';
@@ -1670,11 +1720,8 @@ class MoodCheckInApp {
         this.selectedLocations = [];
         this.updateLocationButtons();
         
-        // Disable confirm button initially
         const confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
-        if (confirmMoodCheckin) {
-            confirmMoodCheckin.disabled = true;
-        }
+        if (confirmMoodCheckin) confirmMoodCheckin.disabled = true;
     }
 
     hideLocationModal() {
@@ -1683,11 +1730,14 @@ class MoodCheckInApp {
 
     showJournalingEncouragementModal() {
         // Show journal prompts for all selected moods (combined, deduplicated)
-        const moods = (this.selectedMoods || []).map(m => m.mood);
-        const prompts = getPromptsForMoods(moods);
-        const listEl = document.querySelector('#journalingModal .journal-prompts-list');
-        if (listEl) {
-            renderQuickJournalPrompts(listEl, prompts, 'journalEntry');
+        var moods = (this.selectedMoods || []).map(function (m) { return m.mood; });
+        var listEl = document.getElementById('journalingPromptsList');
+        if (listEl && window.JournalFeature) {
+            var prompts = window.JournalFeature.getPromptsForMoods(moods);
+            window.JournalFeature.renderQuickJournalPrompts(listEl, prompts, 'journalEntry');
+        } else if (listEl) {
+            var prompts = getPromptsForMoodsInline(moods);
+            renderQuickJournalPromptsInline(listEl, prompts, 'journalEntry');
         }
 
         // Show the journaling modal
@@ -1829,63 +1879,45 @@ class MoodCheckInApp {
     }
 
     updateLocationButtons() {
-        const selected = this.selectedLocations || [];
+        var selected = this.selectedLocations || [];
         document.querySelectorAll('.location-btn').forEach(btn => {
             btn.classList.remove('selected');
-            if (selected.includes(btn.dataset.location)) {
-                btn.classList.add('selected');
-            }
+            if (selected.indexOf(btn.dataset.location) > -1) btn.classList.add('selected');
         });
-        
-        // Enable/disable confirm button based on at least one location
-        const confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
-        if (confirmMoodCheckin) {
-            confirmMoodCheckin.disabled = selected.length === 0;
-        }
+        var confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
+        if (confirmMoodCheckin) confirmMoodCheckin.disabled = selected.length === 0;
     }
 
     selectLocation(location) {
         if (!this.selectedLocations) this.selectedLocations = [];
-        const idx = this.selectedLocations.indexOf(location);
-        if (idx > -1) {
-            this.selectedLocations.splice(idx, 1);
-        } else {
-            this.selectedLocations.push(location);
-        }
+        var idx = this.selectedLocations.indexOf(location);
+        if (idx > -1) this.selectedLocations.splice(idx, 1);
+        else this.selectedLocations.push(location);
         this.selectedReasons = [];
         this.updateLocationButtons();
-        
-        // Show/hide reason sections for all selected locations
         this.showReasonSectionForLocations(this.selectedLocations);
     }
 
     showReasonSectionForLocations(locations) {
-        const list = locations || [];
-        const isTeacher = this.currentUser && this.currentUser.user_type === 'teacher';
-        
-        const schoolReasons = document.getElementById('schoolReasons');
-        const homeReasons = document.getElementById('homeReasons');
-        const teacherSchoolReasons = document.getElementById('teacherSchoolReasons');
-        const teacherHomeReasons = document.getElementById('teacherHomeReasons');
-        const otherLocationInput = document.getElementById('otherLocationInput');
-        
+        var list = locations || [];
+        var isTeacher = this.currentUser && this.currentUser.user_type === 'teacher';
+        var schoolReasons = document.getElementById('schoolReasons');
+        var homeReasons = document.getElementById('homeReasons');
+        var teacherSchoolReasons = document.getElementById('teacherSchoolReasons');
+        var teacherHomeReasons = document.getElementById('teacherHomeReasons');
+        var otherLocationInput = document.getElementById('otherLocationInput');
         [schoolReasons, homeReasons, teacherSchoolReasons, teacherHomeReasons].forEach(section => {
             if (section) section.style.display = 'none';
         });
-        
-        if (list.includes('school')) {
+        if (list.indexOf('school') > -1) {
             if (isTeacher && teacherSchoolReasons) teacherSchoolReasons.style.display = 'block';
             else if (schoolReasons) schoolReasons.style.display = 'block';
         }
-        if (list.includes('home')) {
+        if (list.indexOf('home') > -1) {
             if (isTeacher && teacherHomeReasons) teacherHomeReasons.style.display = 'block';
             else if (homeReasons) homeReasons.style.display = 'block';
         }
-        
-        if (otherLocationInput) {
-            otherLocationInput.style.display = list.includes('other') ? 'block' : 'none';
-        }
-        
+        if (otherLocationInput) otherLocationInput.style.display = list.indexOf('other') > -1 ? 'block' : 'none';
         this.clearReasonSelections();
         this.setupReasonToggleListeners();
     }
@@ -1959,25 +1991,28 @@ class MoodCheckInApp {
 
     selectMood(mood, emoji) {
         if (!this.selectedMoods) this.selectedMoods = [];
-        const idx = this.selectedMoods.findIndex(m => m.mood === mood);
-        if (idx > -1) {
-            this.selectedMoods.splice(idx, 1);
-        } else if (this.selectedMoods.length < 2) {
-            this.selectedMoods.push({ mood, emoji });
+        var idx = this.selectedMoods.findIndex(function (m) { return m.mood === mood; });
+        if (idx > -1) this.selectedMoods.splice(idx, 1);
+        else if (this.selectedMoods.length < 2) this.selectedMoods.push({ mood: mood, emoji: emoji });
+        var moodFeature = window.MoodCheckinFeature;
+        var moodContainer = document.getElementById('moodOptionsContainer');
+        if (moodFeature && moodContainer && this.moodCheckinState) {
+            this.moodCheckinState = moodFeature.mergeState(this.moodCheckinState, { selectedMoods: this.selectedMoods });
+            moodFeature.renderMoodStep(moodContainer, this.moodCheckinState, (mood, emoji) => this.selectMood(mood, emoji));
+        } else {
+            this.updateMoodButtons();
         }
-        this.updateMoodButtons();
-        
-        const proceedToEmotions = document.getElementById('proceedToEmotions');
-        const confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
-        const hasSelection = this.selectedMoods.length >= 1;
+        var proceedToEmotions = document.getElementById('proceedToEmotions');
+        var confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
+        var hasSelection = this.selectedMoods.length >= 1;
         if (proceedToEmotions) proceedToEmotions.disabled = !hasSelection;
         if (confirmMoodCheckin) confirmMoodCheckin.disabled = !hasSelection;
     }
 
     updateMoodButtons() {
-        const selectedMoodKeys = (this.selectedMoods || []).map(m => m.mood);
+        var selectedMoodKeys = (this.selectedMoods || []).map(function (m) { return m.mood; });
         document.querySelectorAll('.mood-btn').forEach(btn => {
-            btn.classList.toggle('selected', selectedMoodKeys.includes(btn.dataset.mood));
+            btn.classList.toggle('selected', selectedMoodKeys.indexOf(btn.dataset.mood) > -1);
         });
     }
 
@@ -2012,59 +2047,41 @@ class MoodCheckInApp {
     }
 
     async handleMoodCheckIn() {
-        if (!this.selectedMoods || this.selectedMoods.length === 0 || !this.currentUser) {
-            return;
-        }
+        if (!this.selectedMoods || this.selectedMoods.length === 0 || !this.currentUser) return;
 
-        const notes = document.getElementById('moodNotes').value;
-        const primary = this.selectedMoods[0];
+        var notes = document.getElementById('moodNotes').value;
+        var primary = this.selectedMoods[0];
         
         try {
-            const moodData = {
+            var moodData = {
                 userId: this.currentUser.id,
                 mood: primary.mood,
                 emoji: primary.emoji,
                 notes: notes
             };
-            
             if (this.selectedLocations && this.selectedLocations.length > 0) {
                 moodData.location = this.selectedLocations.join(',');
             }
-            if (this.selectedReasons && this.selectedReasons.length > 0) {
-                moodData.reasons = this.selectedReasons;
-            }
-            if (this.selectedEmotions && this.selectedEmotions.length > 0) {
-                moodData.emotions = this.selectedEmotions;
-            }
+            if (this.selectedReasons && this.selectedReasons.length > 0) moodData.reasons = this.selectedReasons;
+            if (this.selectedEmotions && this.selectedEmotions.length > 0) moodData.emotions = this.selectedEmotions;
             
-            const response = await APIUtils.saveMoodCheckin(moodData);
+            var response = await APIUtils.saveMoodCheckin(moodData);
 
             if (response.success) {
-                const moodRecord = {
-                    ...response.checkin,
-                    timestamp: new Date(response.checkin.timestamp)
-                };
-
+                var moodRecord = { ...response.checkin, timestamp: new Date(response.checkin.timestamp) };
                 this.moodHistory.unshift(moodRecord);
                 this.allMoodHistory.unshift(moodRecord);
-                
-                if (this.currentUser.user_type === 'student') {
-                    this.updateHousePoints();
-                }
-                
+                if (this.currentUser.user_type === 'student') this.updateHousePoints();
                 this.hideLocationModal();
                 this.updateStatusDisplay();
                 this.updateHistoryDisplay();
-                
-                if (this.currentUser.user_type === 'student') {
-                    this.updateStudentAnalytics();
-                } else if (this.currentUser.user_type === 'teacher') {
+                if (this.currentUser.user_type === 'student') this.updateStudentAnalytics();
+                else if (this.currentUser.user_type === 'teacher') {
                     this.updateTeacherAnalytics();
                     this.updateTeacherStatusDisplay();
                 }
-                
-                const moodSummary = this.selectedMoods.map(m => `${m.emoji} ${m.mood}`).join(' & ');
-                this.showMessage(`Mood recorded: ${moodSummary}!`, 'success');
+                var moodSummary = this.selectedMoods.map(function (m) { return m.emoji + ' ' + m.mood; }).join(' & ');
+                this.showMessage('Mood recorded: ' + moodSummary + '!', 'success');
                 
                 // Show journaling encouragement modal after successful check-in
                 setTimeout(() => {
@@ -2794,6 +2811,12 @@ class MoodCheckInApp {
         document.getElementById('journalEntryModal').classList.add('active');
         document.getElementById('journalEntryText').value = '';
         this.updateJournalCharacterCount('');
+        // Render default prompts from journal feature when available
+        var promptsEl = document.getElementById('journalEntryModalPromptsList');
+        if (promptsEl && window.JournalFeature) {
+            var defaultPrompts = window.JournalFeature.getPromptsForMood();
+            window.JournalFeature.renderQuickJournalPrompts(promptsEl, defaultPrompts, 'journalEntryText');
+        }
     }
 
     hideJournalEntryModal() {
@@ -5732,7 +5755,11 @@ class MoodCheckInApp {
 
         try {
             const response = await APIUtils.getHousePointsTotals(this.currentUser.id);
-            if (response.success && response.housePoints) {
+            if (response.success && window.HousePointsFeature) {
+                const byHouse = {};
+                (response.housePoints || []).forEach(h => { byHouse[h.house] = h; });
+                window.HousePointsFeature.renderDirectorRow(housePointsRow, byHouse, houseOrder, houseBadgeMap);
+            } else if (response.success && response.housePoints) {
                 const byHouse = {};
                 (response.housePoints || []).forEach(h => { byHouse[h.house] = h; });
                 housePointsRow.innerHTML = houseOrder.map(houseName => {
@@ -5740,16 +5767,7 @@ class MoodCheckInApp {
                     const badgeSrc = houseBadgeMap[house.house] || '';
                     const pts = parseInt(house.total_points) || 0;
                     const count = parseInt(house.student_count) || 0;
-                    return `
-                        <div class="house-points-item">
-                            <img src="${badgeSrc}" alt="${house.house} House Badge" class="house-badge-director">
-                            <div class="house-points-details">
-                                <div class="house-name-director">${house.house} House</div>
-                                <div class="house-points-total">${pts} Points</div>
-                                <div class="house-students-count">${count} Student${count !== 1 ? 's' : ''}</div>
-                            </div>
-                        </div>
-                    `;
+                    return '<div class="house-points-item"><img src="' + badgeSrc + '" alt="' + house.house + ' House Badge" class="house-badge-director"><div class="house-points-details"><div class="house-name-director">' + house.house + ' House</div><div class="house-points-total">' + pts + ' Points</div><div class="house-students-count">' + count + ' Student' + (count !== 1 ? 's' : '') + '</div></div></div>';
                 }).join('');
             } else {
                 housePointsRow.innerHTML = '<p class="loading-text">No house points data available.</p>';
@@ -8142,32 +8160,5 @@ MoodCheckInApp.prototype.loadTeacherClassCheckins = async function (period = 'da
                 const moodEmoji = moodEmojis[latestCheckin.mood] || '😊';
                 const timestamp = new Date(latestCheckin.timestamp);
                 const timeStr = timestamp.toLocaleString();
-                
-                return `
-                    <div class="class-checkin-item">
-                        <div class="checkin-student-info">
-                            <span class="checkin-mood-emoji">${moodEmoji}</span>
-                            <div class="checkin-student-details">
-                                <span class="checkin-student-name">${student.first_name} ${student.surname}</span>
-                                <span class="checkin-student-meta">${student.class || ''} ${student.house || ''}</span>
-                            </div>
-                        </div>
-                        <div class="checkin-details">
-                            <span class="checkin-mood">${latestCheckin.mood}</span>
-                            <span class="checkin-time">${timeStr}</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        } else {
-            checkinsList.innerHTML = '<p class="loading-text">Failed to load check-ins.</p>';
-        }
-    } catch (error) {
-        console.error('Failed to load teacher class check-ins:', error);
-        checkinsList.innerHTML = '<p class="loading-text">Failed to load check-ins.</p>';
-    }
-};
-
-// Initialize the app when the page loads
 
 export { MoodCheckInApp };
