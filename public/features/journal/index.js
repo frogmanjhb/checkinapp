@@ -1,2 +1,3 @@
 export { getDefaultState, mergeState } from './state.js';
-export { renderJournalEntry } from './render.js';
+export { renderJournalEntry, renderQuickJournalPrompts } from './render.js';
+export { getPromptsForMood, getPromptsForMoods } from './prompts.js';

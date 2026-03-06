@@ -4,13 +4,15 @@ import { SecurityUtils } from './utils/security.js';
 import { getGradeFromClass, isClassInGrade } from './utils/grade.js';
 import { loadJson, saveJson } from './utils/storage.js';
 import { processJournalEntryFlagging } from './utils/flagging.js';
+import { getPromptsForMoods } from './features/journal/prompts.js';
+import { renderQuickJournalPrompts } from './features/journal/render.js';
 
 class MoodCheckInApp {
     constructor() {
         this.currentUser = null;
         this.moodHistory = [];
         this.journalEntries = [];
-        this.selectedMood = null;
+        this.selectedMoods = [];
         this.allUsers = [];
         this.allMoodHistory = [];
         this.moodEmojis = ['😊', '🤩', '😌', '😴', '😰', '😢', '😠', '😕'];
@@ -18,6 +20,7 @@ class MoodCheckInApp {
         this.isGhostMode = false;
         this.selectedEmotions = [];
         this.selectedReasons = [];
+        this.selectedLocations = [];
         this.mouseX = 0;
         this.mouseY = 0;
         this.physicsInterval = null;
@@ -1488,10 +1491,10 @@ class MoodCheckInApp {
             }
         }
         document.getElementById('moodModal').classList.add('active');
-        this.selectedMood = null;
+        this.selectedMoods = [];
         this.updateMoodButtons();
         
-        // Disable all mood modal buttons initially
+        // Enable proceed when at least one mood selected (max 2)
         const proceedToEmotions = document.getElementById('proceedToEmotions');
         const confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
         
@@ -1612,9 +1615,16 @@ class MoodCheckInApp {
             ]
         };
 
-        // Get emotions for the selected mood
-        const selectedMood = this.selectedMood?.mood || 'happy';
-        const emotions = moodEmotions[selectedMood] || moodEmotions.happy;
+        // Get emotions for all selected moods (merge and dedupe by emotion id)
+        const moods = (this.selectedMoods && this.selectedMoods.length) ? this.selectedMoods.map(m => m.mood) : ['happy'];
+        const emotionMap = new Map();
+        moods.forEach(moodKey => {
+            const list = moodEmotions[moodKey] || moodEmotions.happy;
+            (list || []).forEach(em => {
+                if (!emotionMap.has(em.emotion)) emotionMap.set(em.emotion, em);
+            });
+        });
+        const emotions = Array.from(emotionMap.values());
 
         // Clear existing options
         emotionOptions.innerHTML = '';
@@ -1656,8 +1666,8 @@ class MoodCheckInApp {
             ghostModeLocationIndicator.style.display = this.isGhostMode ? 'block' : 'none';
         }
         
-        // Initialize location selection
-        this.selectedLocation = null;
+        // Initialize location selection (can select multiple: home, school, other)
+        this.selectedLocations = [];
         this.updateLocationButtons();
         
         // Disable confirm button initially
@@ -1672,6 +1682,14 @@ class MoodCheckInApp {
     }
 
     showJournalingEncouragementModal() {
+        // Show journal prompts for all selected moods (combined, deduplicated)
+        const moods = (this.selectedMoods || []).map(m => m.mood);
+        const prompts = getPromptsForMoods(moods);
+        const listEl = document.querySelector('#journalingModal .journal-prompts-list');
+        if (listEl) {
+            renderQuickJournalPrompts(listEl, prompts, 'journalEntry');
+        }
+
         // Show the journaling modal
         document.getElementById('journalingModal').classList.add('active');
         
@@ -1811,70 +1829,65 @@ class MoodCheckInApp {
     }
 
     updateLocationButtons() {
+        const selected = this.selectedLocations || [];
         document.querySelectorAll('.location-btn').forEach(btn => {
             btn.classList.remove('selected');
-            if (btn.dataset.location === this.selectedLocation) {
+            if (selected.includes(btn.dataset.location)) {
                 btn.classList.add('selected');
             }
         });
         
-        // Enable/disable confirm button based on selection
+        // Enable/disable confirm button based on at least one location
         const confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
         if (confirmMoodCheckin) {
-            confirmMoodCheckin.disabled = !this.selectedLocation;
+            confirmMoodCheckin.disabled = selected.length === 0;
         }
     }
 
     selectLocation(location) {
-        this.selectedLocation = location;
-        this.selectedReasons = []; // Reset selected reasons
+        if (!this.selectedLocations) this.selectedLocations = [];
+        const idx = this.selectedLocations.indexOf(location);
+        if (idx > -1) {
+            this.selectedLocations.splice(idx, 1);
+        } else {
+            this.selectedLocations.push(location);
+        }
+        this.selectedReasons = [];
         this.updateLocationButtons();
         
-        // Show/hide reason sections and other location input based on user type
-        this.showReasonSectionForLocation(location);
+        // Show/hide reason sections for all selected locations
+        this.showReasonSectionForLocations(this.selectedLocations);
     }
 
-    showReasonSectionForLocation(location) {
+    showReasonSectionForLocations(locations) {
+        const list = locations || [];
         const isTeacher = this.currentUser && this.currentUser.user_type === 'teacher';
         
-        // Get all reason sections
         const schoolReasons = document.getElementById('schoolReasons');
         const homeReasons = document.getElementById('homeReasons');
         const teacherSchoolReasons = document.getElementById('teacherSchoolReasons');
         const teacherHomeReasons = document.getElementById('teacherHomeReasons');
         const otherLocationInput = document.getElementById('otherLocationInput');
         
-        // Hide all reason sections first
         [schoolReasons, homeReasons, teacherSchoolReasons, teacherHomeReasons].forEach(section => {
             if (section) section.style.display = 'none';
         });
         
-        // Show appropriate sections based on location and user type
-        if (location === 'school') {
-            if (isTeacher && teacherSchoolReasons) {
-                teacherSchoolReasons.style.display = 'block';
-            } else if (schoolReasons) {
-                schoolReasons.style.display = 'block';
-            }
-        } else if (location === 'home') {
-            if (isTeacher && teacherHomeReasons) {
-                teacherHomeReasons.style.display = 'block';
-            } else if (homeReasons) {
-                homeReasons.style.display = 'block';
-            }
+        if (list.includes('school')) {
+            if (isTeacher && teacherSchoolReasons) teacherSchoolReasons.style.display = 'block';
+            else if (schoolReasons) schoolReasons.style.display = 'block';
+        }
+        if (list.includes('home')) {
+            if (isTeacher && teacherHomeReasons) teacherHomeReasons.style.display = 'block';
+            else if (homeReasons) homeReasons.style.display = 'block';
         }
         
-        // Show other location input for any user type
         if (otherLocationInput) {
-            otherLocationInput.style.display = location === 'other' ? 'block' : 'none';
+            otherLocationInput.style.display = list.includes('other') ? 'block' : 'none';
         }
         
-        // Clear any previously selected reasons
         this.clearReasonSelections();
-        
-        // Set up reason toggle event listeners for the visible section
         this.setupReasonToggleListeners();
-        
     }
 
     clearReasonSelections() {
@@ -1945,27 +1958,26 @@ class MoodCheckInApp {
     }
 
     selectMood(mood, emoji) {
-        this.selectedMood = { mood, emoji };
+        if (!this.selectedMoods) this.selectedMoods = [];
+        const idx = this.selectedMoods.findIndex(m => m.mood === mood);
+        if (idx > -1) {
+            this.selectedMoods.splice(idx, 1);
+        } else if (this.selectedMoods.length < 2) {
+            this.selectedMoods.push({ mood, emoji });
+        }
         this.updateMoodButtons();
         
-        // Enable the correct button based on the modal step
         const proceedToEmotions = document.getElementById('proceedToEmotions');
         const confirmMoodCheckin = document.getElementById('confirmMoodCheckin');
-        
-        if (proceedToEmotions) {
-            proceedToEmotions.disabled = false;
-        }
-        if (confirmMoodCheckin) {
-            confirmMoodCheckin.disabled = false;
-        }
+        const hasSelection = this.selectedMoods.length >= 1;
+        if (proceedToEmotions) proceedToEmotions.disabled = !hasSelection;
+        if (confirmMoodCheckin) confirmMoodCheckin.disabled = !hasSelection;
     }
 
     updateMoodButtons() {
+        const selectedMoodKeys = (this.selectedMoods || []).map(m => m.mood);
         document.querySelectorAll('.mood-btn').forEach(btn => {
-            btn.classList.remove('selected');
-            if (btn.dataset.mood === this.selectedMood?.mood) {
-                btn.classList.add('selected');
-            }
+            btn.classList.toggle('selected', selectedMoodKeys.includes(btn.dataset.mood));
         });
     }
 
@@ -2000,24 +2012,23 @@ class MoodCheckInApp {
     }
 
     async handleMoodCheckIn() {
-        if (!this.selectedMood || !this.currentUser) {
+        if (!this.selectedMoods || this.selectedMoods.length === 0 || !this.currentUser) {
             return;
         }
 
         const notes = document.getElementById('moodNotes').value;
+        const primary = this.selectedMoods[0];
         
         try {
-            // Prepare data for API call
             const moodData = {
                 userId: this.currentUser.id,
-                mood: this.selectedMood.mood,
-                emoji: this.selectedMood.emoji,
+                mood: primary.mood,
+                emoji: primary.emoji,
                 notes: notes
             };
             
-            // Add new fields if available
-            if (this.selectedLocation) {
-                moodData.location = this.selectedLocation;
+            if (this.selectedLocations && this.selectedLocations.length > 0) {
+                moodData.location = this.selectedLocations.join(',');
             }
             if (this.selectedReasons && this.selectedReasons.length > 0) {
                 moodData.reasons = this.selectedReasons;
@@ -2026,7 +2037,6 @@ class MoodCheckInApp {
                 moodData.emotions = this.selectedEmotions;
             }
             
-            // Save to database
             const response = await APIUtils.saveMoodCheckin(moodData);
 
             if (response.success) {
@@ -2038,16 +2048,14 @@ class MoodCheckInApp {
                 this.moodHistory.unshift(moodRecord);
                 this.allMoodHistory.unshift(moodRecord);
                 
-                // Update house points after check-in
                 if (this.currentUser.user_type === 'student') {
                     this.updateHousePoints();
                 }
                 
-                this.hideLocationModal(); // Hide location modal
+                this.hideLocationModal();
                 this.updateStatusDisplay();
                 this.updateHistoryDisplay();
                 
-                // Update appropriate analytics based on user type
                 if (this.currentUser.user_type === 'student') {
                     this.updateStudentAnalytics();
                 } else if (this.currentUser.user_type === 'teacher') {
@@ -2055,7 +2063,8 @@ class MoodCheckInApp {
                     this.updateTeacherStatusDisplay();
                 }
                 
-                this.showMessage(`Mood recorded: ${this.selectedMood.emoji} ${this.selectedMood.mood}!`, 'success');
+                const moodSummary = this.selectedMoods.map(m => `${m.emoji} ${m.mood}`).join(' & ');
+                this.showMessage(`Mood recorded: ${moodSummary}!`, 'success');
                 
                 // Show journaling encouragement modal after successful check-in
                 setTimeout(() => {

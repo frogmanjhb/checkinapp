@@ -966,7 +966,8 @@
                     </div>
                     <div class="modal-body">
                         <div class="mood-selection">
-                            <h4>Select your current mood:</h4>
+                            <h4>Select 1 or 2 moods that describe how you feel:</h4>
+                            <p class="mood-hint">Click to select; click again to deselect. You can choose up to two.</p>
                             <div class="mood-options">
                                 <button class="mood-btn" data-mood="happy" data-emoji="😊">
                                     <span class="mood-emoji">😊</span>
@@ -1058,7 +1059,8 @@
                     </div>
                     <div class="modal-body">
                         <div class="location-selection">
-                            <h4>Select where you're experiencing these emotions:</h4>
+                            <h4>Select where you're experiencing these emotions (you can pick more than one):</h4>
+                            <p class="location-hint">e.g. Home and School</p>
                             <div class="location-options">
                                 <button class="location-btn" data-location="school">
                                     <span class="location-emoji">🏫</span>
@@ -1254,18 +1256,11 @@
                             <p class="journaling-hint">Write 1-2 sentences about your current thoughts or feelings. This is optional but can help you reflect on your day.</p>
                             <div class="journal-prompts">
                                 <span class="journal-prompts-label">Try these prompts:</span>
-                                <div class="journal-prompts-list">
-                                    <button type="button" class="journal-prompt" data-target="journalEntry" data-text="Today I...">Today I...</button>
-                                    <button type="button" class="journal-prompt" data-target="journalEntry" data-text="I'm feeling...">I'm feeling...</button>
-                                    <button type="button" class="journal-prompt" data-target="journalEntry" data-text="I'm grateful for...">I'm grateful for...</button>
-                                    <button type="button" class="journal-prompt" data-target="journalEntry" data-text="Something good that happened...">Something good that happened...</button>
-                                    <button type="button" class="journal-prompt" data-target="journalEntry" data-text="I'm looking forward to...">I'm looking forward to...</button>
-                                    <button type="button" class="journal-prompt" data-target="journalEntry" data-text="What made you smile today?">What made you smile today?</button>
-                                    <button type="button" class="journal-prompt" data-target="journalEntry" data-text="One thing I learned...">One thing I learned...</button>
-                                    <button type="button" class="journal-prompt" data-target="journalEntry" data-text="I'm proud of...">I'm proud of...</button>
+                                <div class="journal-prompts-list" aria-live="polite">
+                                    <!-- Prompts are injected by JS from features/journal based on selected mood -->
                                 </div>
                             </div>
-                            <textarea id="journalEntry" placeholder="I'm feeling... Today I... I'm grateful for... I'm looking forward to..." rows="4"></textarea>
+                            <textarea id="journalEntry" placeholder="I'm feeling... Today I... What's on my mind..." rows="4"></textarea>
                             <div class="character-count">
                                 <span id="characterCount">0</span> characters
                             </div>
