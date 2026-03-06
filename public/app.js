@@ -4,6 +4,7 @@ import { SecurityUtils } from './utils/security.js';
 import { getGradeFromClass, isClassInGrade } from './utils/grade.js';
 import { loadJson, saveJson } from './utils/storage.js';
 import { processJournalEntryFlagging } from './utils/flagging.js';
+import { HOUSE_BADGE_MAP, HOUSE_ORDER } from './utils/house-badges.js';
 
 const JOURNAL_PROMPTS_BY_MOOD = {
     great: ['Today I...', "I'm feeling...", "I'm grateful for...", 'Something good that happened...', "I'm looking forward to...", 'What made you smile today?', 'One thing I learned...', "I'm proud of..."],
@@ -1221,14 +1222,6 @@ class MoodCheckInApp {
             return;
         }
 
-        var houseBadgeMap = {
-            'Bavin': 'images/SP House_Bavin.png',
-            'Bishops': 'images/SP House_Bishops.png',
-            'Dodson': 'images/SP House_Dodson.png',
-            'Mirfield': 'images/SP House_Mirfield.png',
-            'Sage': 'images/SP House_Sage.png'
-        };
-
         try {
             const response = await APIUtils.getHousePoints(this.currentUser.id);
             if (response.success) {
@@ -1237,15 +1230,15 @@ class MoodCheckInApp {
                     var house = response.house || this.currentUser.house;
                     var firstName = this.currentUser.first_name || this.currentUser.firstName || '';
                     var surname = this.currentUser.surname || this.currentUser.lastName || '';
-                    window.HousePointsFeature.renderYourPanel(housePointsCard, { points: response.points || 0, house: house }, { houseBadgeMap: houseBadgeMap, studentName: (firstName + ' ' + surname).trim() });
+                    window.HousePointsFeature.renderYourPanel(housePointsCard, { points: response.points || 0, house: house }, { houseBadgeMap: HOUSE_BADGE_MAP, studentName: (firstName + ' ' + surname).trim() });
                 } else if (housePointsCard) {
                     const houseBadge = document.getElementById('houseBadge');
                     const studentNameCard = document.getElementById('studentNameCard');
                     const housePoints = document.getElementById('housePoints');
                     if (houseBadge && studentNameCard && housePoints) {
                         const house = response.house || this.currentUser.house;
-                        if (house && houseBadgeMap[house]) {
-                            houseBadge.src = houseBadgeMap[house];
+                        if (house && HOUSE_BADGE_MAP[house]) {
+                            houseBadge.src = HOUSE_BADGE_MAP[house];
                             houseBadge.alt = house + ' House Badge';
                         }
                         const firstName = this.currentUser.first_name || this.currentUser.firstName || '';
@@ -1302,20 +1295,13 @@ class MoodCheckInApp {
         const el = document.getElementById('schoolHousePointsList');
         if (!el) return;
         el.innerHTML = '<p class="loading-text">Loading...</p>';
-        var houseBadgeMap = {
-            'Bavin': 'images/SP House_Bavin.png',
-            'Bishops': 'images/SP House_Bishops.png',
-            'Dodson': 'images/SP House_Dodson.png',
-            'Mirfield': 'images/SP House_Mirfield.png',
-            'Sage': 'images/SP House_Sage.png'
-        };
         try {
             const response = await APIUtils.getSchoolHousePoints();
             if (response.success && window.HousePointsFeature) {
-                window.HousePointsFeature.renderSchoolList(el, response.housePoints || [], houseBadgeMap);
+                window.HousePointsFeature.renderSchoolList(el, response.housePoints || [], HOUSE_BADGE_MAP);
             } else if (response.success && response.housePoints && response.housePoints.length > 0) {
                 el.innerHTML = response.housePoints.map(row => {
-                    const img = houseBadgeMap[row.house] ? '<img src="' + houseBadgeMap[row.house] + '" alt="' + row.house + '" class="house-points-list-badge">' : '';
+                    const img = HOUSE_BADGE_MAP[row.house] ? '<img src="' + HOUSE_BADGE_MAP[row.house] + '" alt="' + row.house + '" class="house-points-list-badge">' : '';
                     return '<div class="house-points-list-item">' + img + '<span class="house-points-list-label">' + (row.house || 'Unknown') + '</span><span class="house-points-list-value">' + parseInt(row.total_points) + ' points</span></div>';
                 }).join('');
             } else {
@@ -5744,27 +5730,18 @@ class MoodCheckInApp {
         const housePointsRow = document.getElementById('directorHousePointsRow');
         if (!housePointsRow) return;
 
-        const houseOrder = ['Mirfield', 'Bavin', 'Sage', 'Bishops', 'Dodson'];
-        const houseBadgeMap = {
-            'Bavin': 'images/SP House_Bavin.png',
-            'Bishops': 'images/SP House_Bishops.png',
-            'Dodson': 'images/SP House_Dodson.png',
-            'Mirfield': 'images/SP House_Mirfield.png',
-            'Sage': 'images/SP House_Sage.png'
-        };
-
         try {
             const response = await APIUtils.getHousePointsTotals(this.currentUser.id);
             if (response.success && window.HousePointsFeature) {
                 const byHouse = {};
                 (response.housePoints || []).forEach(h => { byHouse[h.house] = h; });
-                window.HousePointsFeature.renderDirectorRow(housePointsRow, byHouse, houseOrder, houseBadgeMap);
+                window.HousePointsFeature.renderDirectorRow(housePointsRow, byHouse, HOUSE_ORDER, HOUSE_BADGE_MAP);
             } else if (response.success && response.housePoints) {
                 const byHouse = {};
                 (response.housePoints || []).forEach(h => { byHouse[h.house] = h; });
-                housePointsRow.innerHTML = houseOrder.map(houseName => {
+                housePointsRow.innerHTML = HOUSE_ORDER.map(houseName => {
                     const house = byHouse[houseName] || { house: houseName, total_points: 0, student_count: 0 };
-                    const badgeSrc = houseBadgeMap[house.house] || '';
+                    const badgeSrc = HOUSE_BADGE_MAP[house.house] || '';
                     const pts = parseInt(house.total_points) || 0;
                     const count = parseInt(house.student_count) || 0;
                     return '<div class="house-points-item"><img src="' + badgeSrc + '" alt="' + house.house + ' House Badge" class="house-badge-director"><div class="house-points-details"><div class="house-name-director">' + house.house + ' House</div><div class="house-points-total">' + pts + ' Points</div><div class="house-students-count">' + count + ' Student' + (count !== 1 ? 's' : '') + '</div></div></div>';
@@ -8160,5 +8137,29 @@ MoodCheckInApp.prototype.loadTeacherClassCheckins = async function (period = 'da
                 const moodEmoji = moodEmojis[latestCheckin.mood] || '😊';
                 const timestamp = new Date(latestCheckin.timestamp);
                 const timeStr = timestamp.toLocaleString();
+                
+                return `
+                    <div class="class-checkin-item">
+                        <div class="checkin-student-info">
+                            <span class="checkin-mood-emoji">${moodEmoji}</span>
+                            <div class="checkin-student-details">
+                                <span class="checkin-student-name">${student.first_name} ${student.surname}</span>
+                                <span class="checkin-student-meta">${student.class || ''} ${student.house || ''}</span>
+                            </div>
+                        </div>
+                        <div class="checkin-details">
+                            <span class="checkin-mood">${latestCheckin.mood}</span>
+                            <span class="checkin-time">${timeStr}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            checkinsList.innerHTML = '<p class="loading-text">Failed to load check-ins.</p>';
+        }
+    } catch (error) {
+        console.error('Failed to load teacher class check-ins:', error);
+        checkinsList.innerHTML = '<p class="loading-text">Failed to load check-ins.</p>';
+    }
 
 export { MoodCheckInApp };

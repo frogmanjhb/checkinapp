@@ -8,6 +8,7 @@ import { SecurityUtils } from './utils/security.js';
 import { getGradeFromClass, isClassInGrade } from './utils/grade.js';
 import { loadJson, saveJson } from './utils/storage.js';
 import { processJournalEntryFlagging } from './utils/flagging.js';
+import { HOUSE_BADGE_MAP, HOUSE_ORDER } from './utils/house-badges.js';
 
 `;
 const body = lines.slice(375, 8530).join('\n');
