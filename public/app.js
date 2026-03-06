@@ -5,6 +5,7 @@ import { getGradeFromClass, isClassInGrade } from './utils/grade.js';
 import { loadJson, saveJson } from './utils/storage.js';
 import { processJournalEntryFlagging } from './utils/flagging.js';
 import { HOUSE_BADGE_MAP, HOUSE_ORDER } from './utils/house-badges.js';
+import { validateAndBuildJournalPayload } from './features/journal/submit.js';
 
 const JOURNAL_PROMPTS_BY_MOOD = {
     great: ['Today I...', "I'm feeling...", "I'm grateful for...", 'Something good that happened...', "I'm looking forward to...", 'What made you smile today?', 'One thing I learned...', "I'm proud of..."],
@@ -1798,18 +1799,18 @@ class MoodCheckInApp {
     async handleJournalingEntry() {
         if (!this.currentUser) return;
 
-        const entryText = document.getElementById('journalEntry').value.trim();
-        
-        if (!entryText) {
-            this.showMessage('Please enter some text for your journal entry.', 'error');
+        const rawText = document.getElementById('journalEntry').value;
+        const result = validateAndBuildJournalPayload(rawText, this.currentUser.id);
+        if (!result.valid) {
+            if (result.error) {
+                this.showMessage(result.error, 'error');
+            }
             return;
         }
+        const entryText = result.payload.entry;
 
         try {
-            const response = await APIUtils.saveJournalEntry({
-                userId: this.currentUser.id,
-                entry: entryText
-            });
+            const response = await APIUtils.saveJournalEntry(result.payload);
 
             if (response.success) {
                 // Process flagging for journal entry (only for students)
@@ -2819,19 +2820,19 @@ class MoodCheckInApp {
     async handleJournalEntry() {
         if (!this.currentUser) return;
 
-        const entryText = document.getElementById('journalEntryText').value.trim();
-        
-        if (!entryText) {
-            this.showMessage('Please enter some text for your journal entry.', 'error');
+        const rawText = document.getElementById('journalEntryText').value;
+        const result = validateAndBuildJournalPayload(rawText, this.currentUser.id);
+        if (!result.valid) {
+            if (result.error) {
+                this.showMessage(result.error, 'error');
+            }
             return;
         }
+        const entryText = result.payload.entry;
 
         try {
             // Save to database
-            const response = await APIUtils.saveJournalEntry({
-                userId: this.currentUser.id,
-                entry: entryText
-            });
+            const response = await APIUtils.saveJournalEntry(result.payload);
 
             if (response.success) {
                 // Process flagging for journal entry (only for students)
@@ -8161,5 +8162,42 @@ MoodCheckInApp.prototype.loadTeacherClassCheckins = async function (period = 'da
         console.error('Failed to load teacher class check-ins:', error);
         checkinsList.innerHTML = '<p class="loading-text">Failed to load check-ins.</p>';
     }
+};
+
+// Initialize the app when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        appDebugLog('DOM loaded, initializing app with database...');
+        window.moodApp = new MoodCheckInApp();
+        appDebugLog('App instance created and available as window.moodApp');
+    } catch (error) {
+        console.error('Error initializing app:', error);
+        alert('Error initializing app: ' + error.message);
+    }
+});
+
+// Service Worker Registration for PWA - DISABLED FOR DEVELOPMENT
+// Unregister any existing service workers to prevent caching issues
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+            appDebugLog('Unregistering service worker:', registration);
+            registration.unregister();
+        }
+    });
+}
+
+// if ('serviceWorker' in navigator) {
+//     window.addEventListener('load', () => {
+//         navigator.serviceWorker.register('/sw.js')
+//             .then((registration) => {
+//                 appDebugLog('SW registered: ', registration);
+//             })
+//             .catch((registrationError) => {
+//                 appDebugLog('SW registration failed: ', registrationError);
+//             });
+//     });
+// }
+
 
 export { MoodCheckInApp };

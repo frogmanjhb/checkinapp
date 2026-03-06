@@ -2165,18 +2165,18 @@ class MoodCheckInApp {
     async handleJournalingEntry() {
         if (!this.currentUser) return;
 
-        const entryText = document.getElementById('journalEntry').value.trim();
-        
-        if (!entryText) {
-            this.showMessage('Please enter some text for your journal entry.', 'error');
+        const rawText = document.getElementById('journalEntry').value;
+        const result = validateAndBuildJournalPayload(rawText, this.currentUser.id);
+        if (!result.valid) {
+            if (result.error) {
+                this.showMessage(result.error, 'error');
+            }
             return;
         }
+        const entryText = result.payload.entry;
 
         try {
-            const response = await APIUtils.saveJournalEntry({
-                userId: this.currentUser.id,
-                entry: entryText
-            });
+            const response = await APIUtils.saveJournalEntry(result.payload);
 
             if (response.success) {
                 // Process flagging for journal entry (only for students)
@@ -3186,19 +3186,19 @@ class MoodCheckInApp {
     async handleJournalEntry() {
         if (!this.currentUser) return;
 
-        const entryText = document.getElementById('journalEntryText').value.trim();
-        
-        if (!entryText) {
-            this.showMessage('Please enter some text for your journal entry.', 'error');
+        const rawText = document.getElementById('journalEntryText').value;
+        const result = validateAndBuildJournalPayload(rawText, this.currentUser.id);
+        if (!result.valid) {
+            if (result.error) {
+                this.showMessage(result.error, 'error');
+            }
             return;
         }
+        const entryText = result.payload.entry;
 
         try {
             // Save to database
-            const response = await APIUtils.saveJournalEntry({
-                userId: this.currentUser.id,
-                entry: entryText
-            });
+            const response = await APIUtils.saveJournalEntry(result.payload);
 
             if (response.success) {
                 // Process flagging for journal entry (only for students)
