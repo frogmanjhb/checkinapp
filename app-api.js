@@ -8533,6 +8533,11 @@ MoodCheckInApp.prototype.loadTeacherClassCheckins = async function (period = 'da
 // Initialize the app when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     try {
+        // Guard against double initialisation (e.g., if multiple entrypoints load).
+        if (window.moodApp) {
+            appDebugLog('MoodCheckInApp already initialised; skipping duplicate init in root app-api.js');
+            return;
+        }
         appDebugLog('DOM loaded, initializing app with database...');
         window.moodApp = new MoodCheckInApp();
         appDebugLog('App instance created and available as window.moodApp');

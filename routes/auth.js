@@ -15,7 +15,11 @@ function createAuthRouter({ pool, config, authLimiter }) {
       return res.status(503).json({ success: false, error: 'Database not available' });
     }
     try {
-      const { firstName, surname, email, password, userType, class: studentClass, house, grades, registrationPassword } = req.body;
+      const { firstName, surname, password, userType, class: studentClass, house, grades, registrationPassword } = req.body;
+      const normalisedEmail = (typeof req.body.email === 'string' ? req.body.email : '')
+        .trim()
+        .toLowerCase();
+      const email = normalisedEmail;
 
       if (!firstName || !surname || !email || !password || !userType) {
         return res.status(400).json({ success: false, error: 'Missing required fields' });
@@ -35,7 +39,9 @@ function createAuthRouter({ pool, config, authLimiter }) {
         return res.status(400).json({ success: false, error: 'Teachers must specify at least one grade and house assignment' });
       }
 
-      const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+      // Uniqueness is enforced on (likely case-insensitive) email.
+      // Query using lower(email) to prevent duplicates slipping through.
+      const existingUser = await pool.query('SELECT id FROM users WHERE lower(email) = $1', [email]);
       if (existingUser.rows.length > 0) {
         return res.status(400).json({ success: false, error: 'User with this email already exists' });
       }
@@ -60,6 +66,10 @@ function createAuthRouter({ pool, config, authLimiter }) {
       res.status(201).json({ success: true, user: result.rows[0] });
     } catch (error) {
       console.error('Registration error:', error);
+      // Fallback for unique constraint violations in case two requests race.
+      if (error && (error.code === '23505' || error.constraint === 'users_email_key')) {
+        return res.status(400).json({ success: false, error: 'User with this email already exists' });
+      }
       res.status(500).json({ success: false, error: error.message });
     }
   });
@@ -69,7 +79,9 @@ function createAuthRouter({ pool, config, authLimiter }) {
       return res.status(503).json({ success: false, error: 'Database not available' });
     }
     try {
-      const email = (req.body.email && typeof req.body.email === 'string') ? req.body.email.trim() : '';
+      const email = (req.body.email && typeof req.body.email === 'string')
+        ? req.body.email.trim().toLowerCase()
+        : '';
       const password = req.body.password;
       if (!email || !password) {
         return res.status(400).json({ success: false, error: 'Email and password are required' });
@@ -78,7 +90,7 @@ function createAuthRouter({ pool, config, authLimiter }) {
         return res.status(400).json({ success: false, error: 'Invalid request' });
       }
 
-      const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+      const result = await pool.query('SELECT * FROM users WHERE lower(email) = $1', [email]);
       if (result.rows.length === 0) {
         return res.status(401).json({ success: false, error: 'Invalid credentials' });
       }

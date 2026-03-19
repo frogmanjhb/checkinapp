@@ -648,7 +648,7 @@ class MoodCheckInApp {
         const surname = SecurityUtils.sanitizeInput(surnameElement.value);
         const studentClass = studentClassElement.value;
         const house = houseElement.value;
-        const email = SecurityUtils.sanitizeInput(emailElement.value);
+        const email = SecurityUtils.sanitizeInput(emailElement.value).toLowerCase();
         const password = passwordElement.value;
         const confirmPassword = confirmPasswordElement.value;
 
@@ -688,7 +688,12 @@ class MoodCheckInApp {
             }
         } catch (error) {
             console.error('Registration error:', error);
-            this.showMessage('Registration failed. Please try again.', 'error');
+            const msg = (error && typeof error.message === 'string') ? error.message : '';
+            if (msg.toLowerCase().includes('already exists')) {
+                this.showMessage('That email is already registered. Please login.', 'error');
+                return;
+            }
+            this.showMessage(msg || 'Registration failed. Please try again.', 'error');
         }
     }
 
@@ -754,7 +759,7 @@ class MoodCheckInApp {
         const grades = Array.from(gradeCheckboxes).map(checkbox => checkbox.value);
         const house = houseElement.value;
         const registrationPassword = registrationPasswordElement.value;
-        const email = SecurityUtils.sanitizeInput(emailElement.value);
+        const email = SecurityUtils.sanitizeInput(emailElement.value).toLowerCase();
         const password = passwordElement.value;
         const confirmPassword = confirmPasswordElement.value;
 
@@ -801,7 +806,12 @@ class MoodCheckInApp {
             }
         } catch (error) {
             console.error('Registration error:', error);
-            this.showMessage('Registration failed. Please try again.', 'error');
+            const msg = (error && typeof error.message === 'string') ? error.message : '';
+            if (msg.toLowerCase().includes('already exists')) {
+                this.showMessage('That email is already registered. Please login.', 'error');
+                return;
+            }
+            this.showMessage(msg || 'Registration failed. Please try again.', 'error');
         }
     }
 
@@ -823,7 +833,7 @@ class MoodCheckInApp {
         const firstName = SecurityUtils.sanitizeInput(firstNameElement.value);
         const surname = SecurityUtils.sanitizeInput(surnameElement.value);
         const registrationPassword = registrationPasswordElement.value;
-        const email = SecurityUtils.sanitizeInput(emailElement.value);
+        const email = SecurityUtils.sanitizeInput(emailElement.value).toLowerCase();
         const password = passwordElement.value;
         const confirmPassword = confirmPasswordElement.value;
 
@@ -862,12 +872,18 @@ class MoodCheckInApp {
             }
         } catch (error) {
             console.error('Registration error:', error);
-            this.showMessage('Registration failed. Please try again.', 'error');
+            const msg = (error && typeof error.message === 'string') ? error.message : '';
+            if (msg.toLowerCase().includes('already exists')) {
+                this.showMessage('That email is already registered. Please login.', 'error');
+                return;
+            }
+            this.showMessage(msg || 'Registration failed. Please try again.', 'error');
         }
     }
 
     validateEmail(email) {
-        return email.endsWith('@stpeters.co.za') && email.includes('@');
+        const normalised = (email || '').trim().toLowerCase();
+        return normalised.endsWith('@stpeters.co.za') && normalised.includes('@');
     }
 
     async handleLogout() {
@@ -8167,6 +8183,12 @@ MoodCheckInApp.prototype.loadTeacherClassCheckins = async function (period = 'da
 // Initialize the app when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     try {
+        // `public/main.js` is the intended entrypoint and already creates `window.moodApp`.
+        // If both scripts initialise, UI event handlers (e.g., journal prompt click) can be registered twice.
+        if (window.moodApp) {
+            appDebugLog('MoodCheckInApp already initialised; skipping duplicate init in app.js');
+            return;
+        }
         appDebugLog('DOM loaded, initializing app with database...');
         window.moodApp = new MoodCheckInApp();
         appDebugLog('App instance created and available as window.moodApp');

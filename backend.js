@@ -117,22 +117,25 @@ app.get('*', (req, res) => {
 async function ensureDemoUsers(p, cfg) {
   if (!p || !cfg.demo.enabled) return;
   try {
-    const directorExists = await p.query('SELECT id FROM users WHERE email = $1', [cfg.demo.directorEmail]);
+    const directorEmail = (cfg.demo.directorEmail || '').trim().toLowerCase();
+    const teacherEmail = (cfg.demo.teacherEmail || '').trim().toLowerCase();
+
+    const directorExists = await p.query('SELECT id FROM users WHERE lower(email) = $1', [directorEmail]);
     if (directorExists.rows.length === 0) {
       const hash = await bcrypt.hash(cfg.demo.directorPassword, 10);
       await p.query(
         `INSERT INTO users (first_name, surname, email, password_hash, user_type) VALUES ($1, $2, $3, $4, $5)`,
-        ['Jat', 'Lee', cfg.demo.directorEmail, hash, 'director']
+        ['Jat', 'Lee', directorEmail, hash, 'director']
       );
       log('✅ Demo director user created');
     }
-    const teacherExists = await p.query('SELECT id FROM users WHERE email = $1', [cfg.demo.teacherEmail]);
+    const teacherExists = await p.query('SELECT id FROM users WHERE lower(email) = $1', [teacherEmail]);
     if (teacherExists.rows.length === 0) {
       const hash = await bcrypt.hash(cfg.demo.teacherPassword, 10);
       const teacherResult = await p.query(
         `INSERT INTO users (first_name, surname, email, password_hash, user_type, class, house)
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-        ['Demo', 'Teacher', cfg.demo.teacherEmail, hash, 'teacher', 'Grade 6', 'Mirfield']
+        ['Demo', 'Teacher', teacherEmail, hash, 'teacher', 'Grade 6', 'Mirfield']
       );
       const teacherId = teacherResult.rows[0].id;
       await p.query(

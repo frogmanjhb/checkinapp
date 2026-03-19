@@ -51,22 +51,20 @@ function createTilesRouter({ pool, housePoints }) {
       const journalCount = journalResult.rows[0]?.count || 0;
 
       const resetResult = await pool.query(
-        'SELECT reset_at, next_quote_index FROM tile_flip_resets WHERE user_id = $1',
+        'SELECT reset_at, next_quote_index, flips_used FROM tile_flip_resets WHERE user_id = $1',
         [userId]
       );
       let nextQuoteIndex = 0;
       let resetAt = null;
-      let shouldReset = false;
+      let flipsUsed = 0;
+      // Immediate reset: once all 12 tiles are flipped, reset and reload right away.
+      let shouldReset = flippedTiles.length === 12;
       if (resetResult.rows.length > 0) {
         nextQuoteIndex = resetResult.rows[0].next_quote_index;
         resetAt = resetResult.rows[0].reset_at;
-        if (flippedTiles.length === 12 && resetAt) {
-          const resetDate = new Date(resetAt);
-          const oneDayLater = new Date(resetDate.getTime() + 24 * 60 * 60 * 1000);
-          if (new Date() >= oneDayLater) shouldReset = true;
-        }
+        flipsUsed = resetResult.rows[0].flips_used || 0;
       }
-      const availableFlips = Math.max(0, journalCount - flippedTiles.length);
+      const availableFlips = Math.max(0, journalCount - flipsUsed);
       res.json({ success: true, flippedTiles, availableFlips, shouldReset, resetAt, nextQuoteIndex, unlockedQuotes });
     } catch (error) {
       console.error('Get tile flip status error:', error);
@@ -96,22 +94,20 @@ function createTilesRouter({ pool, housePoints }) {
         [userId]
       );
       const journalCount = journalResult.rows[0]?.count || 0;
-      const flippedResult = await pool.query(
-        'SELECT COUNT(*)::int AS count FROM tile_flips WHERE user_id = $1',
+
+      const resetRecord = await pool.query(
+        'SELECT next_quote_index, flips_used FROM tile_flip_resets WHERE user_id = $1',
         [userId]
       );
-      const flippedCount = flippedResult.rows[0]?.count || 0;
-      if (journalCount <= flippedCount) {
+
+      let flipsUsed = resetRecord.rows.length > 0 ? (resetRecord.rows[0].flips_used || 0) : 0;
+      if (journalCount <= flipsUsed) {
         return res.status(400).json({
           success: false,
           error: 'No available flips. Complete a journal entry to earn a flip.',
         });
       }
 
-      let resetRecord = await pool.query(
-        'SELECT next_quote_index FROM tile_flip_resets WHERE user_id = $1',
-        [userId]
-      );
       let quoteIndex;
       if (resetRecord.rows.length === 0) {
         quoteIndex = 0;
@@ -148,13 +144,21 @@ function createTilesRouter({ pool, housePoints }) {
         [userId]
       );
       const allFlippedCount = allFlippedResult.rows[0]?.count || 0;
+
+      // Update total flips consumed for correct credit calculations across resets.
+      await pool.query(
+        'UPDATE tile_flip_resets SET flips_used = flips_used + 1 WHERE user_id = $1',
+        [userId]
+      );
+      const flipsUsedAfter = flipsUsed + 1;
+
+      // Immediate reset: once all 12 tiles are flipped, wipe this cycle so the student can keep flipping.
       if (allFlippedCount === 12) {
         await pool.query(
-          `INSERT INTO tile_flip_resets (user_id, reset_at, next_quote_index)
-           VALUES ($1, CURRENT_TIMESTAMP, $2)
-           ON CONFLICT (user_id) DO UPDATE SET reset_at = CURRENT_TIMESTAMP`,
-          [userId, (quoteIndex + 1) % 50]
+          'UPDATE tile_flip_resets SET reset_at = CURRENT_TIMESTAMP WHERE user_id = $1',
+          [userId]
         );
+        await pool.query('DELETE FROM tile_flips WHERE user_id = $1', [userId]);
       }
 
       const updatedFlippedResult = await pool.query(
@@ -166,7 +170,7 @@ function createTilesRouter({ pool, housePoints }) {
         [userId]
       );
       const updatedFlippedTiles = updatedFlippedResult.rows.map((row) => row.tile_index);
-      const updatedAvailableFlips = Math.max(0, journalCount - updatedFlippedTiles.length);
+      const updatedAvailableFlips = Math.max(0, journalCount - flipsUsedAfter);
       const unlockedQuotes = updatedFlippedResult.rows.map((row) => ({
         tileIndex: row.tile_index,
         quoteIndex: row.quote_index,
@@ -198,9 +202,9 @@ function createTilesRouter({ pool, housePoints }) {
       await pool.query('DELETE FROM tile_flips WHERE user_id = $1', [userId]);
       await pool.query(
         `INSERT INTO tile_flip_resets (user_id, reset_at, next_quote_index)
-         VALUES ($1, CURRENT_TIMESTAMP, $2)
-         ON CONFLICT (user_id) DO UPDATE SET reset_at = CURRENT_TIMESTAMP, next_quote_index = $2`,
-        [userId, 0]
+         VALUES ($1, CURRENT_TIMESTAMP, 0)
+         ON CONFLICT (user_id) DO UPDATE SET reset_at = CURRENT_TIMESTAMP`,
+        [userId]
       );
       res.json({ success: true });
     } catch (error) {
